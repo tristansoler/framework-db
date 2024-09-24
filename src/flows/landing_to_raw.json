@@ -19,14 +19,16 @@
         }
       },
       "target": {
-        "filetype": "text",
-        "header_cols": "Portfolio_Currency|Morningstar_Category_Id|Morningstar_Category|Name|Base_Currency|Distribution_Status|Currency_Hedged|Currency_Hedged_To|IA_Sector|Inception_Date|Institutional|ISIN|Fund_Legal_Name|Primary_Share|PerformanceId|SecId|FundId",
+        "header_cols": "\n\nportfoliocurrency|morningstarcategoryid|morningstarcategory|name|basecurrency|distributionstatus|currencyhedged|currencyhedgedto|iasector|inceptiondate|institutional|isin|fundlegalname|primaryshare|performanceid|secid|fundid",
         "partition_field": "datadate",
+        "db": "funds_raw",
+        "db_rl": "rl_funds_raw",
         "mode": "overwrite",
+        "filetype": "text",
         "filetype_text": {
           "extension": "csv",
           "header": "true",
-          "delimiter": "|",
+          "delimiter": ";",
           "encoding": "UTF-8"
         },
         "filetype_parquet": {

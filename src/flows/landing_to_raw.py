@@ -18,13 +18,14 @@ logger.addHandler(handler)
 
 logger = logging.getLogger()
 
-
+aws_region = 'eu-west-1'
 
 class ProcessingCoordinator:
     def __init__(self):
         logger.info('Initializing Spark application...')
 
         self.s3_client = boto3.client('s3')
+        self.glue_client = boto3.client('glue', aws_region)
 
         args_parser = argparse.ArgumentParser(description="Arguments")
         # --table,morningstar_classes,
@@ -36,7 +37,6 @@ class ProcessingCoordinator:
         args_parser.add_argument("--source_bucket", type=str, required=True, help="Source bucket")
         args_parser.add_argument("--target_bucket", type=str, required=True, help="Target bucket")
         self.args = args_parser.parse_args()
-
 
         self.config = self._read_json_config(self.s3_client,
                                              "-".join([self.args.source_bucket.split('-')[0], 'code']),
@@ -55,6 +55,7 @@ class ProcessingCoordinator:
         df_original = self._read_data()
         df_final = self._transformations(df_original)
         self._write_data(df_final)
+        self._create_partition()
 
     def _read_json_config(self, s3, bucket, key):
         logger.info("_read_json_config")
@@ -65,6 +66,8 @@ class ProcessingCoordinator:
 
     def _set_vars(self):
         logger.info("_set_vars")
+        self.db_target = self.config['target']['db']
+        self.db_target_rl = self.config['target']['db_rl']
         self.filename = self.args.source_file.split("/")[-1]
         self.filedate = 'YYYYMMDD'
         if self.config['source']['filetype_text']['date_position'] == "filename":
@@ -79,42 +82,78 @@ class ProcessingCoordinator:
 
         self.s3_target_path = "/".join(["s3:/",
                                         self.args.target_bucket,
-                                        "funds_raw",
+                                        self.db_target,
                                         self.args.table])  # /{p_partition_field}}=20240917/"
         return
 
     def _read_data(self):
         logger.info("_read_data")
         if self.config['source']['filetype'] == "text":
+            config_txt = self.config['source']['filetype_text']
             df = self.spark.read \
-                .option('skipRows', self.config['source']['filetype_text']['skip_rows']) \
-                .option('sep', self.config['source']['filetype_text']['delimiter']) \
-                .option('header', self.config['source']['filetype_text']['header']) \
-                .option('inferSchema', self.config['source']['filetype_text']['infer_schema']) \
-                .option('encoding', self.config['source']['filetype_text']['encoding']) \
+                .option('skipRows', config_txt['skip_rows']) \
+                .option('sep', config_txt['delimiter']) \
+                .option('header', config_txt['header']) \
+                .option('inferSchema', config_txt['infer_schema']) \
+                .option('encoding', config_txt['encoding']) \
                 .csv(self.s3_source_path)
-    
+
             df.show(10)
         return df
 
     def _write_data(self, df):
         logger.info("_write_data")
         partition = f"{self.config['target']['partition_field']}={self.filedate}"
-        file = "/".join([self.s3_target_path,
-                         partition])
+        file = "/".join([self.s3_target_path, partition])
 
         logger.info(f"_write_data to {file}")
         df.show(10)
+
         if self.config['target']['filetype'] == "text":
-            df.write.options(header=self.config['target']['filetype_text']['header'],
-                             delimiter=self.config['target']['filetype_text']['delimiter'],
-                             encoding=self.config['target']['filetype_text']['encoding']) \
+            config_txt = self.config['source']['filetype_text']
+            df.write.options(header=config_txt['header'],
+                             delimiter=config_txt['delimiter'],
+                             encoding=config_txt['encoding']) \
                 .mode(self.config['target']['mode']) \
                 .csv(file)
         elif self.config['target']['filetype'] == "parquet":
             df.write \
                 .mode(self.config['target']['mode']) \
                 .parquet(file)
+
+        return
+
+    def _create_partition(self):
+        logger.info(f'_create_partition')
+
+        tabla = self.glue_client.get_table(DatabaseName=self.db_target_rl, Name=self.args.table)
+
+        descriptor_almacenamiento_tabla = tabla['Table']['StorageDescriptor']
+        descriptor_almacenamiento = descriptor_almacenamiento_tabla.copy()
+        ubicacion = descriptor_almacenamiento['Location']
+        ubicacion += f"/{self.config['target']['partition_field']}={self.filedate}"
+        descriptor_almacenamiento['Location'] = ubicacion
+
+        entrada_particion = {
+            'Values': [self.filedate],
+            'StorageDescriptor': descriptor_almacenamiento,
+            'Parameters': {}
+        }
+        particion = [entrada_particion]
+        logger.info(f'particiones:{str(particion)}')
+
+        respuesta = self.glue_client.batch_create_partition(
+            DatabaseName=self.db_target_rl,
+            TableName=self.args.table,
+            PartitionInputList=particion
+        )
+
+        if 'Errors' in respuesta and respuesta['Errors']:
+            logger.info(f"Erros creating partition {ubicacion}: {respuesta['Errors']}")
+        else:
+            logger.info(f'New partition created: datadate:{ubicacion}')
+
+        return
 
     def _transformations(self, df):
         logger.info("_transformations")
@@ -130,7 +169,7 @@ class ProcessingCoordinator:
             df = df.withColumnRenamed(col, l_cols_raw[i])
             i = i + 1
 
-        df = df.withColumn('filename', lit(self.filename).cast(StringType()))
+        # df = df.withColumn('filename', lit(self.filename).cast(StringType()))
         # df = df.withColumn(p_partition_field, lit(self.filedate).cast(StringType())) 
         return df
 
