@@ -1,12 +1,13 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StringType
-from pyspark.sql.functions import lit
 import logging
 import boto3
 import os
 import sys
 import argparse
 import json
+# from dataplatform_tools import SparkTool, GlueClientTool
+from spark import SparkTool
+from glue import GlueClientTool
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -49,13 +50,21 @@ class ProcessingCoordinator:
         self.spark = SparkSession.builder \
             .appName("Landing to Raw") \
             .getOrCreate()
+
+        self.spark_tool = SparkTool(self.spark)
+        self.glue_tool = GlueClientTool(self.glue_client)
     
     def process(self):
         logger.info("process")
         df_original = self._read_data()
         df_final = self._transformations(df_original)
         self._write_data(df_final)
-        self._create_partition()
+        # self._create_partition()
+        self.glue_tool.create_partition(logger,
+                                         self.db_target_rl,
+                                         self.args.table,
+                                         self.config['target']['partition_field'],
+                                         self.filedate)
 
     def _read_json_config(self, s3, bucket, key):
         logger.info("_read_json_config")
@@ -90,13 +99,7 @@ class ProcessingCoordinator:
         logger.info("_read_data")
         if self.config['source']['filetype'] == "text":
             config_txt = self.config['source']['filetype_text']
-            df = self.spark.read \
-                .option('skipRows', config_txt['skip_rows']) \
-                .option('sep', config_txt['delimiter']) \
-                .option('header', config_txt['header']) \
-                .option('inferSchema', config_txt['infer_schema']) \
-                .option('encoding', config_txt['encoding']) \
-                .csv(self.s3_source_path)
+            df = self.spark_tool.read_file_txt(config_txt, self.s3_source_path)
 
             df.show(10)
         return df
@@ -109,50 +112,16 @@ class ProcessingCoordinator:
         logger.info(f"_write_data to {file}")
         df.show(10)
 
-        if self.config['target']['filetype'] == "text":
-            config_txt = self.config['source']['filetype_text']
-            df.write.options(header=config_txt['header'],
-                             delimiter=config_txt['delimiter'],
-                             encoding=config_txt['encoding']) \
-                .mode(self.config['target']['mode']) \
-                .csv(file)
-        elif self.config['target']['filetype'] == "parquet":
-            df.write \
-                .mode(self.config['target']['mode']) \
-                .parquet(file)
-
-        return
-
-    def _create_partition(self):
-        logger.info(f'_create_partition')
-
-        tabla = self.glue_client.get_table(DatabaseName=self.db_target_rl, Name=self.args.table)
-
-        descriptor_almacenamiento_tabla = tabla['Table']['StorageDescriptor']
-        descriptor_almacenamiento = descriptor_almacenamiento_tabla.copy()
-        ubicacion = descriptor_almacenamiento['Location']
-        ubicacion += f"/{self.config['target']['partition_field']}={self.filedate}"
-        descriptor_almacenamiento['Location'] = ubicacion
-
-        entrada_particion = {
-            'Values': [self.filedate],
-            'StorageDescriptor': descriptor_almacenamiento,
-            'Parameters': {}
-        }
-        particion = [entrada_particion]
-        logger.info(f'particiones:{str(particion)}')
-
-        respuesta = self.glue_client.batch_create_partition(
-            DatabaseName=self.db_target_rl,
-            TableName=self.args.table,
-            PartitionInputList=particion
-        )
-
-        if 'Errors' in respuesta and respuesta['Errors']:
-            logger.info(f"Erros creating partition {ubicacion}: {respuesta['Errors']}")
-        else:
-            logger.info(f'New partition created: datadate:{ubicacion}')
-
+        target_filetype = self.config['target']['filetype']
+        if target_filetype == "text":
+            self.spark_tool.write_file_txt(df,
+                                           self.config['target']['filetype_text'],
+                                           self.config['target']['mode'],
+                                           file)
+        elif target_filetype == "parquet":
+            self.spark_tool.write_file_parquet(df,
+                                               self.config['target']['mode'],
+                                               file)
         return
 
     def _transformations(self, df):
@@ -169,8 +138,6 @@ class ProcessingCoordinator:
             df = df.withColumnRenamed(col, l_cols_raw[i])
             i = i + 1
 
-        # df = df.withColumn('filename', lit(self.filename).cast(StringType()))
-        # df = df.withColumn(p_partition_field, lit(self.filedate).cast(StringType())) 
         return df
 
 
