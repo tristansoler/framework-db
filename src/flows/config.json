@@ -1,0 +1,14 @@
+[
+    {
+        "dataflow_name": "dummy_dataflow",
+        "main_filename_pattern": "file_package_YYYY_MM_DD",
+        "main_extension": "zip",
+        "compressed": true,
+        "filename_pattern": "dummy_filename_YYYY_MM_DD",
+        "extension": "csv",
+        "delimiter": ";",
+        "header_line": 3,
+        "ordered_columns": false,
+        "columns": ["column1", "column2", "column3", "column4", "column5", "column6"]
+    }
+]
