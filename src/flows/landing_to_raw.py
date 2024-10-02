@@ -1,4 +1,5 @@
-from pyspark.sql import SparkSession
+from spark import SparkTool, SparkToolText, SparkToolParquet
+from glue import GlueClientTool
 import logging
 import boto3
 import os
@@ -6,8 +7,7 @@ import sys
 import argparse
 import json
 # from dataplatform_tools import SparkTool, GlueClientTool
-from spark import SparkTool
-from glue import GlueClientTool
+
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -19,14 +19,10 @@ logger.addHandler(handler)
 
 logger = logging.getLogger()
 
-aws_region = 'eu-west-1'
 
 class ProcessingCoordinator:
     def __init__(self):
-        logger.info('Initializing Spark application...')
-
-        self.s3_client = boto3.client('s3')
-        self.glue_client = boto3.client('glue', aws_region)
+        logger.info('Initializing ProcessingCoordinator...')
 
         args_parser = argparse.ArgumentParser(description="Arguments")
         # --table,morningstar_classes,
@@ -39,36 +35,21 @@ class ProcessingCoordinator:
         args_parser.add_argument("--target_bucket", type=str, required=True, help="Target bucket")
         self.args = args_parser.parse_args()
 
-        self.config = self._read_json_config(self.s3_client,
-                                             "-".join([self.args.source_bucket.split('-')[0], 'code']),
+        self.config = self._read_json_config("-".join([self.args.source_bucket.split('-')[0], 'code']),
                                              "/".join([self.args.table,
                                                        'emr',
                                                        ".".join([os.path.basename(__file__).split(".")[0], 'json'])]))
 
         self._set_vars()
 
-        self.spark = SparkSession.builder \
-            .appName("Landing to Raw") \
-            .getOrCreate()
+        self.app_name = "Landing to Raw"
+        self.spark_tool_source = self._get_spark_tool_type(self.app_name, self.config['source']['filetype'])
+        self.spark_tool_target = self._get_spark_tool_type(self.app_name, self.config['target']['filetype'])
 
-        self.spark_tool = SparkTool(self.spark)
-        self.glue_tool = GlueClientTool(self.glue_client)
-    
-    def process(self):
-        logger.info("process")
-        df_original = self._read_data()
-        df_final = self._transformations(df_original)
-        self._write_data(df_final)
-        # self._create_partition()
-        self.glue_tool.create_partition(logger,
-                                         self.db_target_rl,
-                                         self.args.table,
-                                         self.config['target']['partition_field'],
-                                         self.filedate)
-
-    def _read_json_config(self, s3, bucket, key):
+    def _read_json_config(self, bucket, key):
         logger.info("_read_json_config")
-        response = s3.get_object(Bucket=bucket, Key=key)
+        s3_client = boto3.client('s3')
+        response = s3_client.get_object(Bucket=bucket, Key=key)
         content = response['Body']
         json_object = json.loads(content.read())
         return json_object
@@ -79,50 +60,44 @@ class ProcessingCoordinator:
         self.db_target_rl = self.config['target']['db_rl']
         self.filename = self.args.source_file.split("/")[-1]
         self.filedate = 'YYYYMMDD'
+
         if self.config['source']['filetype_text']['date_position'] == "filename":
             date_from = self.config['source']['filetype_text']['date_position_filename']['date_from']
             date_to = self.config['source']['filetype_text']['date_position_filename']['date_to']
             self.filedate = self.filename[date_from: date_to]
+
         self.s3_source_path = "/".join(["s3:/",
                                         self.args.source_bucket,
                                         self.args.table,
                                         "inbound"])
-        print(f'self.s3_source_path : {self.s3_source_path}')
-
         self.s3_target_path = "/".join(["s3:/",
                                         self.args.target_bucket,
                                         self.db_target,
                                         self.args.table])  # /{p_partition_field}}=20240917/"
         return
 
+    def _get_spark_tool_type(self, app_name: str, filetype: str) -> SparkTool:
+        """
+        Función para la creación de clase según parametro con tipo de fichero
+        :param app_name: parámetro para la configuración de Spark
+        :param filetype: tipo de fichero, para la creación del correspondiente SparkTool
+        :return:
+        """
+        spark_tool_types = {
+            'text': SparkToolText(app_name),
+            'parquet': SparkToolParquet(app_name)
+        }
+        return spark_tool_types[filetype]
+
     def _read_data(self):
         logger.info("_read_data")
+        # retocar esto
         if self.config['source']['filetype'] == "text":
             config_txt = self.config['source']['filetype_text']
-            df = self.spark_tool.read_file_txt(config_txt, self.s3_source_path)
+            df = self.spark_tool_source.read_file(config_txt, self.s3_source_path)
 
             df.show(10)
         return df
-
-    def _write_data(self, df):
-        logger.info("_write_data")
-        partition = f"{self.config['target']['partition_field']}={self.filedate}"
-        file = "/".join([self.s3_target_path, partition])
-
-        logger.info(f"_write_data to {file}")
-        df.show(10)
-
-        target_filetype = self.config['target']['filetype']
-        if target_filetype == "text":
-            self.spark_tool.write_file_txt(df,
-                                           self.config['target']['filetype_text'],
-                                           self.config['target']['mode'],
-                                           file)
-        elif target_filetype == "parquet":
-            self.spark_tool.write_file_parquet(df,
-                                               self.config['target']['mode'],
-                                               file)
-        return
 
     def _transformations(self, df):
         logger.info("_transformations")
@@ -139,6 +114,40 @@ class ProcessingCoordinator:
             i = i + 1
 
         return df
+
+    def _write_data(self, df):
+        logger.info("_write_data")
+        partition = f"{self.config['target']['partition_field']}={self.filedate}"
+        file = "/".join([self.s3_target_path, partition])
+
+        logger.info(f"_write_data to {file}")
+        df.show(10)
+
+        options = self.config['target']['filetype_text'] if self.config['target']['filetype'] == "text" else None
+        self.spark_tool_target.write_file(df,
+                                          self.config['target']['mode'],
+                                          file,
+                                          options)
+        return
+
+    def process(self):
+        """
+        Método principal. Consiste en:
+        -lectura
+        -transformación del dato
+        -escritura
+        -creación de la partición
+        """
+        logger.info("process")
+        df_original = self._read_data()
+        df_final = self._transformations(df_original)
+        self._write_data(df_final)
+        glue_tool = GlueClientTool()
+        glue_tool.create_partition(logger,
+                                   self.db_target_rl,
+                                   self.args.table,
+                                   self.config['target']['partition_field'],
+                                   self.filedate)
 
 
 if __name__ == '__main__':

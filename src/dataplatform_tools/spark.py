@@ -1,12 +1,20 @@
+from pyspark.sql import SparkSession
+from abc import ABC, abstractmethod
+
+class SparkTool(ABC):
+
+    def __init__(self, appname):
+        self.spark = SparkSession.builder.appName(appname).getOrCreate()
+
+    def read_file(self, config_txt, s3_source_path):
+        pass
+
+    def write_file(self, df,  mode, file_path, options=None):
+        pass
 
 
-
-class SparkTool:
-
-    def __init__(self, a_spark):
-        self.spark = a_spark
-
-    def read_file_txt(self, config_txt, s3_source_path):
+class SparkToolText(SparkTool):
+    def read_file(self, config_txt, s3_source_path):
         df = self.spark.read \
                 .option('skipRows', config_txt['skip_rows']) \
                 .option('sep', config_txt['delimiter']) \
@@ -16,13 +24,18 @@ class SparkTool:
                 .csv(s3_source_path)
         return df
 
-    def write_file_txt(self, df, options, mode, file_path):
+    def write_file(self, df, mode, file_path, options):
         df.write.options(header=options['header'], delimiter=options['delimiter'], encoding=options['encoding']) \
                 .mode(mode) \
                 .csv(file_path)
-        return mode
+        return
 
-    def write_file_parquet(self, df,  mode, file_path):
+
+class SparkToolParquet(SparkTool):
+    def read_file(self, config_txt, s3_source_path):
+        return None
+
+    def write_file(self, df,  mode, file_path, options=None):
         df.write \
             .mode(mode) \
             .parquet(file_path)

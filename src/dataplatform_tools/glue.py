@@ -1,8 +1,11 @@
+import boto3
+
 
 class GlueClientTool:
 
-    def __init__(self, a_glue):
-        self.glue_client = a_glue
+    def __init__(self):
+        self.aws_region = 'eu-west-1'
+        self.glue_client = boto3.client('glue', self.aws_region)
 
     def create_partition(self, logger, db_target, table, partition_field, filedate):
         logger.info(f'GlueClientTool._create_partition')
