@@ -7,9 +7,6 @@ import sys
 import argparse
 
 
-from pyspark.sql import SparkSession
-from pyspark.conf import SparkConf
-
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -55,104 +52,6 @@ class ProcessingCoordinator:
         self.spark_tool_source = self._get_spark_tool_type(self.app_name, self.config['source']['filetype'])
         self.spark_tool_target = self._get_spark_tool_type(self.app_name, self.config['target']['filetype'])
 
-        # self.spark = SparkSession.builder.appName("appname").getOrCreate()
-        # df = self.spark.sql("select * from rl_funds_raw.morningstar_classes limit 10")
-
-        # %%configure - f
-        # {
-        #     "conf" :
-        #         {
-        #             "spark.sql.extensions" : "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-        #             "spark.sql.catalog.iceberg_catalog" : "org.apache.iceberg.spark.SparkCatalog",
-        #             "spark.sql.catalog.iceberg_catalog.catalog-impl" : "org.apache.iceberg.aws.glue.GlueCatalog",
-        #             "spark.sql.catalog.iceberg_catalog.io-impl" : "org.apache.iceberg.aws.s3.S3FileIO",
-        #             "spark.sql.catalog.iceberg_catalog.warehouse" : "s3://aihd1airas3aihgdp-staging/funds_staging/",
-        #             "spark.jars" : "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar",
-        #             "spark.hadoop.hive.metastore.client.factory.class" : "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
-        #         }
-        # # }
-
-        # conf = SparkConf().setAppName("MyApp")
-        #                   .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
-
-        # # Create a SparkSession object
-        # spark = SparkSession.builder.config(conf=conf).getOrCreate()
-        #
-        #     df.show()
-
-        # .config("spark.sql.catalog.iceberg_catalog.warehouse", 'funds_staging/') \
-
-        # self.spark = SparkSession \
-        #     .builder \
-        #     .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        #     .config("spark.sql.catalog.iceberg_catalog.warehouse", 's3://aihd1airas3aihgdp-raw/funds_raw/') \
-        #     .config("spark.sql.catalog.iceberg_catalog.io-impl", 'org.apache.iceberg.aws.s3.S3FileIO') \
-        #     .config("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog") \
-        #     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
-        #     .config("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory") \
-        #     .config("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar") \
-        #     .enableHiveSupport() \
-        #     .getOrCreate()
-        #
-        # self.spark.sql("show databases").show()
-        # self.spark.sql("show catalogs").show()
-        #
-        # self.spark.sql("use rl_funds_raw")
-        #
-        # self.spark.sql("show tables").show(truncate=False)
-        #
-        # df = self.spark.sql("select * from rl_funds_raw.product_test limit 10")
-        # df.show(10)
-
-        # self.spark = SparkSession \
-        #     .builder \
-        #     .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-        #     .config("spark.sql.catalog.iceberg_catalog.warehouse", 'funds_staging/') \
-        #     .enableHiveSupport() \
-        #     .getOrCreate()
-
-        self.spark = SparkSession \
-            .builder \
-            .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
-            .config("spark.sql.catalog.iceberg_catalog.warehouse", "funds_staging/") \
-            .enableHiveSupport() \
-            .getOrCreate()
-
-        self.spark.sql("show databases").show()
-        self.spark.sql("show catalogs").show()
-
-        try:
-            df = self.spark.sql("select * from rl_funds_raw.product_test limit 10")
-            df.show(10)
-        except Exception as error:
-            print('ERRROR rl_funds_raw.product_test %s' % str(error))
-
-        try:
-            df = self.spark.sql("select * from rl_funds_raw.morningstar_classes limit 10")
-            df.show(10)
-        except Exception as error:
-            print('ERRROR rl_funds_raw.morningstar_classes %s' % str(error))
-
-        try:
-            df = self.spark.sql("select * from rl_funds_staging.morningstar_dividends limit 10")
-            df.show(10)
-        except Exception as error:
-            print('ERRROR rl_funds_staging.morningstar_dividends %s' % str(error))
-
-
-    # def _read_json_config(self, bucket, key):
-    #     logger.info(f"_read_json_config {bucket} {key}")
-    #     # _read_json_config -         aihd1airas3aihgdp - code -         producttest_tabla1 / emr / landing_to_raw.json
-    #     s3_client = boto3.client('s3')
-    #     response = s3_client.get_object(Bucket=bucket, Key=key)
-    #     content = response['Body']
-    #     json_object = json.loads(content.read())
-    #     return json_object
 
     def _set_vars(self):
         logger.info("_set_vars")
