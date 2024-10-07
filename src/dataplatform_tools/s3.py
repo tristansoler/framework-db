@@ -43,3 +43,56 @@ class S3Client(object):
         except Exception as e:
             self.logger.error(f'Error obtaining file {file_key} from bucket {bucket_name}: {e}')
             return BytesIO()
+
+    def get_files_s3(self, bucket_name, key_name) -> list:
+        """
+        Función que recupera ficheros de un bucket y ruta.
+        Devuelve una lista con ellos.
+        TODO: NO PROBADO EN ESTE ENTORNO
+        :param bucket_name: nombre del bucket donde buscar
+        :param key_name: nombre de la ruta donde buscar
+        :return: lista de ficheros en el bucket y ruta
+        """
+        try:
+            response = self.s3_client.list_objects(Bucket=bucket_name, Prefix=key_name)
+            l_files = []
+            for obj in response.get('Contents', []):
+                file_name = obj['Key'].split('/')[-1]
+                l_files.append(file_name)
+            return l_files
+        except Exception as e:
+            self.logger.error(f'Error obtaining files from bucket {bucket_name} and key {key_name}: {e}')
+            return []
+
+    def f_move_file(self, obj, to_bucket_name, to_key):
+        """
+        Función para mover objeto a un bucket destino y ruta destino.
+        TODO: NO PROBADO EN ESTE ENTORNO
+        :param obj: objeto a mover
+        :param to_bucket_name: bucket de destino
+        :param to_key: ruta de destino
+        :return:
+        """
+        try:
+            to_obj = obj.key
+            self.s3_client.Object(to_bucket_name, to_key).copy_from(CopySource={'Bucket': obj.bucket_name, 'Key': obj.key})
+            self.s3_client.Object(obj.bucket_name, obj.key).delete()
+            print('* copy %s - delete file from source bucket %s' % (to_key, to_obj))
+        except Exception as e:
+            self.logger.error(f'Error moving file to {to_bucket_name} and key {to_key}: {e}')
+        return
+
+    def f_clean_s3(self, bucket_name, key):
+        """
+        Función para limpiar una carpeta de s3
+        TODO: NO PROBADO EN ESTE ENTORNO
+        :param to_bucket_name: bucket donde encontrar la carpeta a limpiar
+        :param to_key: ruta a limpiar
+        :return:
+        """
+        try:
+            bucket = self.s3_resource.Bucket(bucket_name)
+            bucket.objects.filter(Prefix=key).delete()
+        except Exception as e:
+            self.logger.error(f'Error cleaning {bucket_name} and key {key}: {e}')
+        return
