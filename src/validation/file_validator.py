@@ -16,32 +16,35 @@ from io import BytesIO
 import pandas as pd
 from pandas import DataFrame
 from src.dataplatform_tools.logger import configure_logger
+from src.dataplatform_tools.s3 import S3Client
 
 
 class FileValidator(object):
 
     def __init__(self, file_key: str, data_flow: str, source_bucket: str, athena_bucket: str, config_file: str) -> None:
         self.file_key = file_key
+        self.data_flow = data_flow
+        # Logging
+        self.logger = configure_logger('File Validator', 'INFO')
+        # AWS
+        self.s3_client = S3Client()
         self.source_bucket = source_bucket
         self.athena_bucket = athena_bucket
-        self.data_flow = data_flow
         self.catalog = 'iceberg_catalog'
         self.common_db = 'rl_funds_common'
         self.controls_table = 'quality_controls'
         self.raw_table = ''
-        self.s3_client = None
-        self.logger = configure_logger('File Validator', 'INFO')
         # File features
         self.config = self.get_file_config(config_file)
         self.file_extension = self.get_file_extension(file_key)
         self.full_filename = self.get_filename(file_key, with_extension=True)
         self.short_filename = self.get_filename(file_key, with_extension=False)
-        self.file_contents = self.get_file_contents(file_key)
+        self.file_contents = self.get_input_file_contents()
 
     def get_file_config(self, config_file: str) -> dict:
         # TODO: obtener fichero config de S3
         if os.path.exists(config_file):
-            self.logger.info(f'Reading config file {config_file}')
+            self.logger.info(f'Reading config file {config_file} for dataflow {self.data_flow}')
             with open(config_file, 'r') as f:
                 config = json.load(f)
             if not config.get(self.data_flow):
@@ -67,22 +70,23 @@ class FileValidator(object):
             self.logger.error(f'Name of the file {file_key} could not be obtained. Error: {e}')
             return ''
 
-    def get_file_contents(self, file_key: str) -> dict:
-        # TODO: obtain from S3
+    def get_input_file_contents(self) -> dict:
         try:
+            s3_file_content = self.s3_client.get_file_content_from_s3(
+                self.source_bucket, self.file_key
+            )
             file_contents = {}
             if self.file_extension == 'zip':
                 # TODO: otros tipos de archivos comprimidos
-                with zipfile.ZipFile(file_key, 'r') as z:
+                with zipfile.ZipFile(s3_file_content, 'r') as z:
                     for filename in z.namelist():
                         with z.open(filename) as f:
                             file_contents[filename] = BytesIO(f.read())
             else:
-                with open(file_key, 'rb') as f:
-                    file_contents[self.full_filename] = BytesIO(f.read())
+                file_contents[self.full_filename] = s3_file_content
             return file_contents
         except Exception as e:
-            self.logger.error(f'Contents of the file {file_key} could not be obtained. Error: {e}')
+            self.logger.error(f'Contents of the file {self.file_key} could not be obtained. Error: {e}')
             return {}
 
     def validate_file(self) -> bool:
@@ -129,19 +133,22 @@ class FileValidator(object):
         for filename, content in self.file_contents.items():
             if self.get_file_extension(filename) == 'csv':
                 self.logger.info(f'Validating {filename} contents')
-                # TODO: validate number of columns and rows
                 try:
                     df = pd.read_csv(
                         content,
                         delimiter=self.config['delimiter'],
                         header=self.config['header_line']
                     )
+                    expected_n_rows = content.getvalue().count(b'\n') - self.config['header_line']
+                    expected_n_columns = self.get_expected_number_of_columns(content)
+                    if df.shape != (expected_n_rows, expected_n_columns):
+                        self.logger.error(f'Invalid delimiter and/or header line for {filename}')
+                        return False
+                    if not self.validate_columns(df):
+                        return False
                 except Exception as e:
                     self.logger.error(f'Error validating {filename} contents: {e}')
                     return False
-                else:
-                    if not self.validate_columns(df):
-                        return False
         return True
 
     def validate_columns(self, df: DataFrame) -> bool:
@@ -164,6 +171,12 @@ class FileValidator(object):
         self.logger.info('All column names are valid')
         return True
 
+    def get_expected_number_of_columns(self, csv_content: BytesIO) -> int:
+        csv_content.seek(0)
+        for i, line in enumerate(csv_content):
+            if i == self.config['header_line']:
+                return len(line.decode('utf-8').split(';'))
+
     @staticmethod
     def convert_to_regex(expression: str) -> str:
         pattern = expression \
@@ -175,18 +188,18 @@ class FileValidator(object):
 
 if __name__ == '__main__':
     file_validator = FileValidator(
-        'C:/Users/x312756/Documents/Projects/1. Scripts/file_validator/files/file_package_2024_09_01.zip',
+        'factset_plcartera/inbound/file_package_2024_09_01.zip',
         'dataflow_with_compressed_file',
-        '',
+        'aihd1airas3aihgdp-landing',
         '',
         'src/validation/config.json'
     )
     file_validator.validate_file()
 
     file_validator = FileValidator(
-        'C:/Users/x312756/Documents/Projects/1. Scripts/file_validator/files/dummy_filename_2024_09_01.csv',
+        'factset_plcartera/inbound/dummy_filename_2024_09_01.csv',
         'dataflow_with_uncompressed_file',
-        '',
+        'aihd1airas3aihgdp-landing',
         '',
         'src/validation/config.json'
     )
