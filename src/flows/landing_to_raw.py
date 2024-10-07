@@ -242,9 +242,8 @@ class ProcessingCoordinator:
         df_original = self._read_data()
         df_final = self._transformations(df_original)
         self._write_data(df_final)
-        glue_tool = GlueClientTool()
-        glue_tool.create_partition(logger,
-                                   self.db_target_rl,
+        glue_tool = GlueClientTool(logger)
+        glue_tool.create_partition(self.db_target_rl,
                                    self.args.table,
                                    self.config['target']['partition_field'],
                                    self.filedate)
