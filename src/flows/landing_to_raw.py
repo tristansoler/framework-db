@@ -1,27 +1,30 @@
 from spark import SparkTool, SparkToolText, SparkToolParquet
 from glue import GlueClientTool
 from config import read_json_config_from_s3
-import logging
+# from src.dataplatform_tools.logger import configure_logger
+from logger import configure_logger
+# import logging
 import os
 import sys
 import argparse
 
+from pyspark.sql import SparkSession
 
 
-
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
-logger = logging.getLogger()
-handler = logging.FileHandler('landing_to_raw.log', 'w', 'utf-8')
-handler.setFormatter(logging.Formatter('%(name)s %(message)s'))
-logger.addHandler(handler)
-
-logger = logging.getLogger()
+# logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+#
+# logger = logging.getLogger()
+# handler = logging.FileHandler('landing_to_raw.log', 'w', 'utf-8')
+# handler.setFormatter(logging.Formatter('%(name)s %(message)s'))
+# logger.addHandler(handler)
+#
+# logger = logging.getLogger()
 
 
 class ProcessingCoordinator:
     def __init__(self):
-        logger.info('Initializing ProcessingCoordinator...')
+        # logger.info('Initializing ProcessingCoordinator...')
+        self.logger = configure_logger('landing_to_raw', 'INFO')
 
         args_parser = argparse.ArgumentParser(description="Arguments")
         # --table,morningstar_classes,
@@ -39,7 +42,6 @@ class ProcessingCoordinator:
         self.args = args_parser.parse_args()
         print(self.args)
 
-
         self.config = read_json_config_from_s3("-".join([self.args.source_bucket.split('-')[0], 'code']),
                                              "/".join([self.args.table,
                                                        'emr',
@@ -52,9 +54,41 @@ class ProcessingCoordinator:
         self.spark_tool_source = self._get_spark_tool_type(self.app_name, self.config['source']['filetype'])
         self.spark_tool_target = self._get_spark_tool_type(self.app_name, self.config['target']['filetype'])
 
+        self._prueba_spark()
+
+    def _prueba_spark(self):
+        self.spark = SparkSession \
+            .builder \
+            .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+            .config("spark.sql.catalog.iceberg_catalog.warehouse", "funds_staging/") \
+            .enableHiveSupport() \
+            .getOrCreate()
+
+        self.spark.sql("show databases").show()
+        self.spark.sql("show catalogs").show()
+
+        try:
+            df = self.spark.sql("select * from rl_funds_raw.product_test limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_raw.product_test %s' % str(error))
+
+        try:
+            df = self.spark.sql("select * from rl_funds_raw.morningstar_classes limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_raw.morningstar_classes %s' % str(error))
+
+        try:
+            df = self.spark.sql("select * from rl_funds_staging.morningstar_dividends limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_staging.morningstar_dividends %s' % str(error))
+
+        return
 
     def _set_vars(self):
-        logger.info("_set_vars")
+        self.logger.info("_set_vars")
         self.db_target = self.config['target']['db']
         self.db_target_rl = self.config['target']['db_rl']
         self.filename = self.args.source_file.split("/")[-1]
@@ -89,7 +123,7 @@ class ProcessingCoordinator:
         return spark_tool_types[filetype]
 
     def _read_data(self):
-        logger.info("_read_data")
+        self.logger.info("_read_data")
 
         if self.config['source']['filetype'] == "text":
             config_txt = self.config['source']['filetype_text']
@@ -99,7 +133,7 @@ class ProcessingCoordinator:
         return df
 
     def _transformations(self, df):
-        logger.info("_transformations")
+        self.logger.info("_transformations")
         # mapping nombres de columnas..
         # Añadir columna de fecha del fichero
         # Añadir columna con nombre del fichero
@@ -115,11 +149,11 @@ class ProcessingCoordinator:
         return df
 
     def _write_data(self, df):
-        logger.info("_write_data")
+        self.logger.info("_write_data")
         partition = f"{self.config['target']['partition_field']}={self.filedate}"
         file = "/".join([self.s3_target_path, partition])
 
-        logger.info(f"_write_data to {file}")
+        self. logger.info(f"_write_data to {file}")
         df.show(10)
 
         options = self.config['target']['filetype_text'] if self.config['target']['filetype'] == "text" else None
@@ -137,11 +171,11 @@ class ProcessingCoordinator:
         -escritura
         -creación de la partición
         """
-        logger.info("process")
+        self.logger.info("process")
         df_original = self._read_data()
         df_final = self._transformations(df_original)
         self._write_data(df_final)
-        glue_tool = GlueClientTool(logger)
+        glue_tool = GlueClientTool()
         glue_tool.create_partition(self.db_target_rl,
                                    self.args.table,
                                    self.config['target']['partition_field'],
@@ -154,5 +188,4 @@ if __name__ == '__main__':
         stb.process()
     except Exception as error:
         msg_error = 'Exception processing data Landing to Raw: %s' % str(error)
-        logger.error(msg_error)
-        raise error
+        raise msg_error
