@@ -1,12 +1,14 @@
 from spark import SparkTool, SparkToolText, SparkToolParquet
 from glue import GlueClientTool
+from config import read_json_config_from_s3
 import logging
-import boto3
 import os
 import sys
 import argparse
-import json
-# from dataplatform_tools import SparkTool, GlueClientTool
+
+
+from pyspark.sql import SparkSession
+from pyspark.conf import SparkConf
 
 
 
@@ -29,16 +31,23 @@ class ProcessingCoordinator:
         # --source_file,morningstar_classes/processed/classes_20240826_prueba_sf.csv,
         # --source_bucket,aihd1airas3aihgdp-landing,
         # --target_bucket,aihd1airas3aihgdp-raw
+        # Namespace(table='producttest_tabla1', source_file='product_test/inbound/classes_20240922_prueba.csv',
+        #           source_bucket='aihd1airas3aihgdp-landing', target_bucket='aihd1airas3aihgdp-raw')
+        # Namespace(table='producttest_tabla1', source_file='product_test/inbound/classes_20240922_prueba.csv',
+        #           source_bucket='aihd1airas3aihgdp-landing', target_bucket='aihd1airas3aihgdp-raw')
         args_parser.add_argument("--table", type=str, required=True, help="Table name")
         args_parser.add_argument("--source_file", type=str, required=True, help="File to load")
         args_parser.add_argument("--source_bucket", type=str, required=True, help="Source bucket")
         args_parser.add_argument("--target_bucket", type=str, required=True, help="Target bucket")
         self.args = args_parser.parse_args()
+        print(self.args)
 
-        self.config = self._read_json_config("-".join([self.args.source_bucket.split('-')[0], 'code']),
+
+        self.config = read_json_config_from_s3("-".join([self.args.source_bucket.split('-')[0], 'code']),
                                              "/".join([self.args.table,
                                                        'emr',
                                                        ".".join([os.path.basename(__file__).split(".")[0], 'json'])]))
+        print(type(self.config))
 
         self._set_vars()
 
@@ -46,13 +55,104 @@ class ProcessingCoordinator:
         self.spark_tool_source = self._get_spark_tool_type(self.app_name, self.config['source']['filetype'])
         self.spark_tool_target = self._get_spark_tool_type(self.app_name, self.config['target']['filetype'])
 
-    def _read_json_config(self, bucket, key):
-        logger.info("_read_json_config")
-        s3_client = boto3.client('s3')
-        response = s3_client.get_object(Bucket=bucket, Key=key)
-        content = response['Body']
-        json_object = json.loads(content.read())
-        return json_object
+        # self.spark = SparkSession.builder.appName("appname").getOrCreate()
+        # df = self.spark.sql("select * from rl_funds_raw.morningstar_classes limit 10")
+
+        # %%configure - f
+        # {
+        #     "conf" :
+        #         {
+        #             "spark.sql.extensions" : "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        #             "spark.sql.catalog.iceberg_catalog" : "org.apache.iceberg.spark.SparkCatalog",
+        #             "spark.sql.catalog.iceberg_catalog.catalog-impl" : "org.apache.iceberg.aws.glue.GlueCatalog",
+        #             "spark.sql.catalog.iceberg_catalog.io-impl" : "org.apache.iceberg.aws.s3.S3FileIO",
+        #             "spark.sql.catalog.iceberg_catalog.warehouse" : "s3://aihd1airas3aihgdp-staging/funds_staging/",
+        #             "spark.jars" : "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar",
+        #             "spark.hadoop.hive.metastore.client.factory.class" : "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+        #         }
+        # # }
+
+        # conf = SparkConf().setAppName("MyApp")
+        #                   .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        #                 .set("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog")
+
+        # # Create a SparkSession object
+        # spark = SparkSession.builder.config(conf=conf).getOrCreate()
+        #
+        #     df.show()
+
+        # .config("spark.sql.catalog.iceberg_catalog.warehouse", 'funds_staging/') \
+
+        # self.spark = SparkSession \
+        #     .builder \
+        #     .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        #     .config("spark.sql.catalog.iceberg_catalog.warehouse", 's3://aihd1airas3aihgdp-raw/funds_raw/') \
+        #     .config("spark.sql.catalog.iceberg_catalog.io-impl", 'org.apache.iceberg.aws.s3.S3FileIO') \
+        #     .config("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog") \
+        #     .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+        #     .config("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory") \
+        #     .config("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar") \
+        #     .enableHiveSupport() \
+        #     .getOrCreate()
+        #
+        # self.spark.sql("show databases").show()
+        # self.spark.sql("show catalogs").show()
+        #
+        # self.spark.sql("use rl_funds_raw")
+        #
+        # self.spark.sql("show tables").show(truncate=False)
+        #
+        # df = self.spark.sql("select * from rl_funds_raw.product_test limit 10")
+        # df.show(10)
+
+        # self.spark = SparkSession \
+        #     .builder \
+        #     .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+        #     .config("spark.sql.catalog.iceberg_catalog.warehouse", 'funds_staging/') \
+        #     .enableHiveSupport() \
+        #     .getOrCreate()
+
+        self.spark = SparkSession \
+            .builder \
+            .config("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog") \
+            .config("spark.sql.catalog.iceberg_catalog.warehouse", "funds_staging/") \
+            .enableHiveSupport() \
+            .getOrCreate()
+
+        self.spark.sql("show databases").show()
+        self.spark.sql("show catalogs").show()
+
+        try:
+            df = self.spark.sql("select * from rl_funds_raw.product_test limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_raw.product_test %s' % str(error))
+
+        try:
+            df = self.spark.sql("select * from rl_funds_raw.morningstar_classes limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_raw.morningstar_classes %s' % str(error))
+
+        try:
+            df = self.spark.sql("select * from rl_funds_staging.morningstar_dividends limit 10")
+            df.show(10)
+        except Exception as error:
+            print('ERRROR rl_funds_staging.morningstar_dividends %s' % str(error))
+
+
+    # def _read_json_config(self, bucket, key):
+    #     logger.info(f"_read_json_config {bucket} {key}")
+    #     # _read_json_config -         aihd1airas3aihgdp - code -         producttest_tabla1 / emr / landing_to_raw.json
+    #     s3_client = boto3.client('s3')
+    #     response = s3_client.get_object(Bucket=bucket, Key=key)
+    #     content = response['Body']
+    #     json_object = json.loads(content.read())
+    #     return json_object
 
     def _set_vars(self):
         logger.info("_set_vars")
@@ -91,7 +191,7 @@ class ProcessingCoordinator:
 
     def _read_data(self):
         logger.info("_read_data")
-        # retocar esto
+
         if self.config['source']['filetype'] == "text":
             config_txt = self.config['source']['filetype_text']
             df = self.spark_tool_source.read_file(config_txt, self.s3_source_path)
