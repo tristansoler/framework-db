@@ -71,3 +71,12 @@ class GlueClientTool:
         except Exception as error:
             msg_error = f'Error in get_partitions: {str(error)}'
             raise msg_error
+
+    def _obtain_glue_columns(self, db, table):
+
+        response = self.glue_client.get_table(DatabaseName=db, Name=table)
+
+        schema = response['Table']['StorageDescriptor']['Columns']
+        columns = [column['Name'] for column in schema]
+
+        return columns
