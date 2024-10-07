@@ -19,6 +19,7 @@ def configure_logger(app_name: str, log_level: str = 'INFO') -> logging.Logger:
     log_level = validate_log_level(log_level)
     logger = logging.getLogger(app_name)
     logger.setLevel(log_level)
+    reset_logger_handlers(logger)
     formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=DATE_FORMAT)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
@@ -33,3 +34,9 @@ def validate_log_level(log_level: str) -> str:
         return log_level
     else:
         raise ValueError(f'Invalid log level: {log_level}. Choose one of: {valid_levels}')
+
+
+def reset_logger_handlers(logger: logging.Logger) -> None:
+    while logger.hasHandlers():
+        logger.handlers[0].close
+        logger.removeHandler(logger.handlers[0])
