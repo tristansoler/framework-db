@@ -9,17 +9,16 @@ Example usage:
     file_validator = FileValidator(
         logger,
         'path/to/file/my_file.csv',
-        'my_dataflow_name',
+        'dataflow_name',
         'source_bucket',
         'athena_bucket',
+        'config_bucket',
         'path/to/config/config.json'
     )
     file_validator.validate_file()
 """
 
-import os
 import re
-import json
 import zipfile
 from logging import Logger
 from pathlib import Path
@@ -28,6 +27,8 @@ import pandas as pd
 from pandas import DataFrame
 from src.dataplatform_tools.logger import configure_logger
 from src.dataplatform_tools.s3 import S3Client
+from src.dataplatform_tools.config import read_json_config_from_s3
+from src.dataplatform_tools.glue import GlueClientTool
 
 
 class FileValidator(object):
@@ -39,38 +40,41 @@ class FileValidator(object):
         data_flow: str,
         source_bucket: str,
         athena_bucket: str,
-        config_file: str
+        config_bucket: str,
+        config_key: str
     ) -> None:
+        # Input arguments
         self.file_key = file_key
         self.data_flow = data_flow
+        self.config_key = config_key
+        self.source_bucket = source_bucket
+        self.athena_bucket = athena_bucket
+        self.config_bucket = config_bucket
         # Logging
         self.logger = logger
         # AWS
         self.s3_client = S3Client(logger)
-        self.source_bucket = source_bucket
-        self.athena_bucket = athena_bucket
-        self.catalog = 'iceberg_catalog'
-        self.common_db = 'rl_funds_common'
-        self.controls_table = 'quality_controls'
-        self.raw_table = ''
+        self.glue_client = GlueClientTool()
+        # self.catalog = 'iceberg_catalog'
+        # self.common_db = 'rl_funds_common'
+        # self.controls_table = 'quality_controls'
         # File features
-        self.config = self.get_file_config(config_file)
+        self.config = self.get_file_config()
         self.file_extension = self.get_file_extension(file_key)
-        self.full_filename = self.get_filename(file_key, with_extension=True)
-        self.short_filename = self.get_filename(file_key, with_extension=False)
+        self.full_filename = self.get_file_name(file_key, with_extension=True)
+        self.short_filename = self.get_file_name(file_key, with_extension=False)
         self.file_contents = self.get_input_file_contents()
 
-    def get_file_config(self, config_file: str) -> dict:
-        # TODO: obtener fichero config de S3
-        if os.path.exists(config_file):
-            self.logger.info(f'Reading config file {config_file} for dataflow {self.data_flow}')
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-            if not config.get(self.data_flow):
-                raise FileNotFoundError(f'Dataflow {self.data_flow} not found in config file {config_file}')
-            return config[self.data_flow]
-        else:
-            raise FileNotFoundError(f'Config file {config_file} not found')
+    def get_file_config(self) -> dict:
+        try:
+            self.logger.info(
+                f'Reading config file {self.config_key} from bucket {self.config_bucket}'
+            )
+            config = read_json_config_from_s3(self.s3_client, self.config_bucket, self.config_key)
+            return config
+        except Exception as e:
+            self.logger.error(f'Error reading config file: {e}')
+            return {}
 
     def get_file_extension(self, file_key: str) -> str:
         try:
@@ -79,7 +83,7 @@ class FileValidator(object):
             self.logger.error(f'Extension of the file {file_key} could not be obtained. Error: {e}')
             return ''
 
-    def get_filename(self, file_key: str, with_extension: bool) -> str:
+    def get_file_name(self, file_key: str, with_extension: bool) -> str:
         try:
             if with_extension:
                 return Path(file_key).name
@@ -96,7 +100,6 @@ class FileValidator(object):
             )
             file_contents = {}
             if self.file_extension == 'zip':
-                # TODO: otros tipos de archivos comprimidos
                 with zipfile.ZipFile(s3_file_content, 'r') as z:
                     for filename in z.namelist():
                         with z.open(filename) as f:
@@ -112,15 +115,15 @@ class FileValidator(object):
         valid_extension = self.validate_extension()
         valid_filename = self.validate_filename()
         valid_csv = self.validate_csv_files()
-        # TODO: agregar resultados + registrar controles
+        # TODO: agregar resultados + registrar controles + mover ficheros
 
     def validate_extension(self) -> bool:
         self.logger.info(f'Validating extension of file {self.full_filename}')
-        if self.config['extension'] == self.file_extension:
-            if self.config['compressed']:
+        if self.config['source']['extension'] == self.file_extension:
+            if self.config['source']['compressed']:
                 # Validate extension of the files inside the compressed file
                 filenames = self.file_contents.keys()
-                expected_extension = self.config['uncompressed_extension']
+                expected_extension = self.config['source']['uncompressed_extension']
                 for filename in filenames:
                     # Assumes that all the files inside the compressed file have the same extension
                     extension = self.get_file_extension(filename)
@@ -134,11 +137,11 @@ class FileValidator(object):
 
     def validate_filename(self) -> bool:
         self.logger.info(f'Validating name of file {self.full_filename}')
-        main_pattern = self.convert_to_regex(self.config['filename_pattern'])
+        main_pattern = self.convert_to_regex(self.config['source']['filename_pattern'])
         if bool(re.match(main_pattern, self.short_filename)):
-            if self.config['compressed']:
+            if self.config['source']['compressed']:
                 filenames = self.file_contents.keys()
-                pattern = self.convert_to_regex(self.config['uncompressed_filename_pattern'])
+                pattern = self.convert_to_regex(self.config['source']['uncompressed_filename_pattern'])
                 for filename in filenames:
                     # Assumes that all the files inside the compressed file have the same pattern
                     if not bool(re.match(pattern, filename)):
@@ -155,10 +158,10 @@ class FileValidator(object):
                 try:
                     df = pd.read_csv(
                         content,
-                        delimiter=self.config['delimiter'],
-                        header=self.config['header_line']
+                        delimiter=self.config['source']['delimiter'],
+                        header=self.config['source']['header_line']
                     )
-                    expected_n_rows = content.getvalue().count(b'\n') - self.config['header_line']
+                    expected_n_rows = content.getvalue().count(b'\n') - self.config['source']['header_line']
                     expected_n_columns = self.get_expected_number_of_columns(content)
                     if df.shape != (expected_n_rows, expected_n_columns):
                         self.logger.error(f'Invalid delimiter and/or header line for {filename}')
@@ -172,9 +175,8 @@ class FileValidator(object):
 
     def validate_columns(self, df: DataFrame) -> bool:
         columns = list(df.columns)
-        # TODO: obtain columns from raw table
-        expected_columns = self.config['columns']
-        if self.config['ordered_columns']:
+        expected_columns = self.get_expected_columns()
+        if self.config['source']['ordered_columns']:
             if columns != expected_columns:
                 self.logger.error(f'Column names do not match. Expected: {expected_columns}. Found: {columns}')
                 return False
@@ -190,10 +192,19 @@ class FileValidator(object):
         self.logger.info('All column names are valid')
         return True
 
+    def get_expected_columns(self) -> list:
+        try:
+            db_name = self.config['target']['db_rl']
+            columns = self.glue_client.get_table_columns(db_name, self.data_flow)
+            return columns
+        except Exception as e:
+            self.logger.error(f'Error obtaining expected columns from Glue: {e}')
+            return []
+
     def get_expected_number_of_columns(self, csv_content: BytesIO) -> int:
         csv_content.seek(0)
         for i, line in enumerate(csv_content):
-            if i == self.config['header_line']:
+            if i == self.config['source']['header_line']:
                 return len(line.decode('utf-8').split(';'))
 
     @staticmethod
@@ -210,19 +221,21 @@ if __name__ == '__main__':
     file_validator = FileValidator(
         logger,
         'factset_plcartera/inbound/file_package_2024_09_01.zip',
-        'dataflow_with_compressed_file',
+        'dataflow_compressed_file',
         'aihd1airas3aihgdp-landing',
         '',
-        'src/validation/config.json'
+        'aihd1airas3aihgdp-landing',
+        'factset_plcartera/inbound/config_compressed_file.json'
     )
     file_validator.validate_file()
 
     file_validator = FileValidator(
         logger,
         'factset_plcartera/inbound/dummy_filename_2024_09_01.csv',
-        'dataflow_with_uncompressed_file',
+        'dataflow_uncompressed_file',
         'aihd1airas3aihgdp-landing',
         '',
-        'src/validation/config.json'
+        'aihd1airas3aihgdp-landing',
+        'factset_plcartera/inbound/config_uncompressed_file.json'
     )
     file_validator.validate_file()
