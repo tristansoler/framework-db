@@ -2,15 +2,26 @@
 File validator
 --------------
 
-Requirements:
-    - python==3.8.0
-    - pandas==1.5.3
+Example usage:
+    from src.validation.file_validator import FileValidator
+    from src.dataplatform_tools.logger import configure_logger
+    logger = configure_logger('MyAppName', 'INFO')
+    file_validator = FileValidator(
+        logger,
+        'path/to/file/my_file.csv',
+        'my_dataflow_name',
+        'source_bucket',
+        'athena_bucket',
+        'path/to/config/config.json'
+    )
+    file_validator.validate_file()
 """
 
 import os
 import re
 import json
 import zipfile
+from logging import Logger
 from pathlib import Path
 from io import BytesIO
 import pandas as pd
@@ -21,13 +32,21 @@ from src.dataplatform_tools.s3 import S3Client
 
 class FileValidator(object):
 
-    def __init__(self, file_key: str, data_flow: str, source_bucket: str, athena_bucket: str, config_file: str) -> None:
+    def __init__(
+        self,
+        logger: Logger,
+        file_key: str,
+        data_flow: str,
+        source_bucket: str,
+        athena_bucket: str,
+        config_file: str
+    ) -> None:
         self.file_key = file_key
         self.data_flow = data_flow
         # Logging
-        self.logger = configure_logger('File Validator', 'INFO')
+        self.logger = logger
         # AWS
-        self.s3_client = S3Client()
+        self.s3_client = S3Client(logger)
         self.source_bucket = source_bucket
         self.athena_bucket = athena_bucket
         self.catalog = 'iceberg_catalog'
@@ -187,7 +206,9 @@ class FileValidator(object):
 
 
 if __name__ == '__main__':
+    logger = configure_logger('File Validator', 'INFO')
     file_validator = FileValidator(
+        logger,
         'factset_plcartera/inbound/file_package_2024_09_01.zip',
         'dataflow_with_compressed_file',
         'aihd1airas3aihgdp-landing',
@@ -197,6 +218,7 @@ if __name__ == '__main__':
     file_validator.validate_file()
 
     file_validator = FileValidator(
+        logger,
         'factset_plcartera/inbound/dummy_filename_2024_09_01.csv',
         'dataflow_with_uncompressed_file',
         'aihd1airas3aihgdp-landing',
