@@ -1,13 +1,28 @@
+"""
+S3 Client
+---------
+
+Example usage:
+    from src.dataplatform_tools.s3 import S3Client
+    from src.dataplatform_tools.logger import configure_logger
+    logger = configure_logger('MyAppName', 'INFO')
+    s3_client = S3Client(logger)
+    file_contents = s3_client.get_file_content_from_s3(
+        'my_bucket_name',
+        'path/to/file/my_file.csv'
+    )
+"""
+
 import os
+from logging import Logger
 from io import BytesIO
 import boto3
-from src.dataplatform_tools.logger import configure_logger
 
 
 class S3Client(object):
 
-    def __init__(self) -> None:
-        self.logger = configure_logger('S3 Client', 'INFO')
+    def __init__(self, logger: Logger) -> None:
+        self.logger = logger
         self.profile_name = os.getenv('PROFILE_NAME', '')
         self.region = os.getenv('AWS_REGION_NAME', 'eu-west-1')
         self.session = self.configure_aws_session()
