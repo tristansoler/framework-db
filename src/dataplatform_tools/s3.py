@@ -24,10 +24,10 @@ class S3Client(object):
     def __init__(self, logger: Logger) -> None:
         self.logger = logger
         self.profile_name = os.getenv('PROFILE_NAME', '')
-        self.region = os.getenv('AWS_REGION_NAME', 'eu-west-1')
+        self.aws_region = os.getenv('AWS_REGION_NAME', 'eu-west-1')
         self.session = self.configure_aws_session()
-        self.s3_client = self.session.client('s3', region_name=self.region)
-        self.s3_resource = self.session.resource('s3', region_name=self.region)
+        self.s3_client = self.session.client('s3', region_name=self.aws_region)
+        self.s3_resource = self.session.resource('s3', region_name=self.aws_region)
 
     def configure_aws_session(self) -> boto3.session.Session:
         """Configure the AWS session to be used depending on the
@@ -35,10 +35,10 @@ class S3Client(object):
         """
         if self.profile_name:
             self.logger.info(f'Configuring AWS session using {self.profile_name} profile')
-            return boto3.session.Session(region_name=self.region, profile_name=self.profile_name)
+            return boto3.session.Session(region_name=self.aws_region, profile_name=self.profile_name)
         else:
             self.logger.info('Configuring AWS session using the default profile')
-            return boto3.session.Session(region_name=self.region)
+            return boto3.session.Session(region_name=self.aws_region)
 
     def get_file_content_from_s3(self, bucket_name: str, file_key: str) -> BytesIO:
         try:
