@@ -25,10 +25,14 @@ from pathlib import Path
 from io import BytesIO
 import pandas as pd
 from pandas import DataFrame
-from src.dataplatform_tools.logger import configure_logger
-from src.dataplatform_tools.s3 import S3Client
-from src.dataplatform_tools.config import read_json_config_from_s3
-from src.dataplatform_tools.glue import GlueClientTool
+# from src.dataplatform_tools.logger import configure_logger
+# from src.dataplatform_tools.s3 import S3Client
+# from src.dataplatform_tools.config import read_json_config_from_s3
+# from src.dataplatform_tools.glue import GlueClientTool
+from logger import configure_logger
+from s3 import S3Client
+from config import read_json_config_from_s3
+from glue import GlueClientTool
 
 
 class FileValidator(object):
@@ -54,7 +58,7 @@ class FileValidator(object):
         self.logger = logger
         # AWS
         self.s3_client = S3Client(logger)
-        self.glue_client = GlueClientTool()
+        self.glue_client = GlueClientTool(self.logger)
         # self.catalog = 'iceberg_catalog'
         # self.common_db = 'rl_funds_common'
         # self.controls_table = 'quality_controls'
@@ -165,6 +169,7 @@ class FileValidator(object):
                     expected_n_columns = self.get_expected_number_of_columns(content)
                     if df.shape != (expected_n_rows, expected_n_columns):
                         self.logger.error(f'Invalid delimiter and/or header line for {filename}')
+                        self.logger.error(f'{str(df.shape)} != ({str(expected_n_rows)}, {str(expected_n_columns)})')
                         return False
                     if not self.validate_columns(df):
                         return False

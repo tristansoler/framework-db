@@ -1,17 +1,13 @@
 import boto3
-# from src.dataplatform_tools.logger import configure_logger
-from logger import configure_logger
+from logging import Logger
+
 
 class GlueClientTool:
 
-    # def __init__(self, logger):
-    #     self.aws_region = 'eu-west-1'
-    #     self.logger = logger
-    #     self.glue_client = boto3.client('glue', self.aws_region)
-    def __init__(self):
+    def __init__(self, logger: Logger) -> None:
         self.aws_region = 'eu-west-1'
         self.glue_client = boto3.client('glue', self.aws_region)
-        self.logger = configure_logger('Glue Client', 'INFO')
+        self.logger = logger
 
     def create_partition(self, db, table, partition_field, filedate):
         try:

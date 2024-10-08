@@ -1,24 +1,15 @@
 from spark import SparkTool, SparkToolText, SparkToolParquet
 from glue import GlueClientTool
 from config import read_json_config_from_s3
-# from src.dataplatform_tools.logger import configure_logger
 from logger import configure_logger
-# import logging
+from src.validation.file_validator import FileValidator
+from src.dataplatform_tools.s3 import S3Client
+# from file_validator import FileValidator
+# from s3 import S3Client
 import os
-import sys
 import argparse
 
 from pyspark.sql import SparkSession
-
-
-# logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-#
-# logger = logging.getLogger()
-# handler = logging.FileHandler('landing_to_raw.log', 'w', 'utf-8')
-# handler.setFormatter(logging.Formatter('%(name)s %(message)s'))
-# logger.addHandler(handler)
-#
-# logger = logging.getLogger()
 
 
 class ProcessingCoordinator:
@@ -42,10 +33,13 @@ class ProcessingCoordinator:
         self.args = args_parser.parse_args()
         print(self.args)
 
-        self.config = read_json_config_from_s3("-".join([self.args.source_bucket.split('-')[0], 'code']),
-                                             "/".join([self.args.table,
-                                                       'emr',
-                                                       ".".join([os.path.basename(__file__).split(".")[0], 'json'])]))
+        s3_client = S3Client(self.logger)
+
+        self.config = read_json_config_from_s3(s3_client,
+                                               "-".join([self.args.source_bucket.split('-')[0], 'code']),
+                                               "/".join([self.args.table,
+                                                        'emr',
+                                                         ".".join([os.path.basename(__file__).split(".")[0], 'json'])]))
         print(type(self.config))
 
         self._set_vars()
@@ -163,6 +157,19 @@ class ProcessingCoordinator:
                                           options)
         return
 
+    def _validate_file(self):
+        self.logger.info("_validate_file")
+        file_validator = FileValidator(
+            self.logger,
+            'product_test/inbound/classes_20240925_prueba.csv',
+            'product_test',
+            'aihd1airas3aihgdp-landing',
+            '',
+            'aihd1airas3aihgdp-code',
+            'product_test/emr/landing_to_raw.json'
+        )
+        file_validator.validate_file()
+
     def process(self):
         """
         Método principal. Consiste en:
@@ -172,10 +179,11 @@ class ProcessingCoordinator:
         -creación de la partición
         """
         self.logger.info("process")
+        self._validate_file()
         df_original = self._read_data()
         df_final = self._transformations(df_original)
         self._write_data(df_final)
-        glue_tool = GlueClientTool()
+        glue_tool = GlueClientTool(self.logger)
         glue_tool.create_partition(self.db_target_rl,
                                    self.args.table,
                                    self.config['target']['partition_field'],
