@@ -25,14 +25,14 @@ from pathlib import Path
 from io import BytesIO
 import pandas as pd
 from pandas import DataFrame
-# from src.dataplatform_tools.logger import configure_logger
-# from src.dataplatform_tools.s3 import S3Client
-# from src.dataplatform_tools.config import read_json_config_from_s3
-# from src.dataplatform_tools.glue import GlueClientTool
-from logger import configure_logger
-from s3 import S3Client
-from config import read_json_config_from_s3
-from glue import GlueClientTool
+from src.dataplatform_tools.logger import configure_logger
+from src.dataplatform_tools.s3 import S3Client
+from src.dataplatform_tools.config import read_json_config_from_s3
+from src.dataplatform_tools.glue import GlueClientTool
+# from logger import configure_logger
+# from s3 import S3Client
+# from config import read_json_config_from_s3
+# from glue import GlueClientTool
 
 
 class FileValidator(object):
