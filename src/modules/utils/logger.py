@@ -1,3 +1,5 @@
+from modules.code.lazy_class_property import LazyClassProperty
+
 import logging
 import json
 import threading
@@ -30,9 +32,6 @@ class Logger:
                 except (FileNotFoundError, json.JSONDecodeError) as e:
                     raise RuntimeError(f"Failed to initialize logger due to error: {e}")
         return cls._instance
+    
 
-    def info(self, message: str):
-        self.logger.info(message)
-
-    def error(self, message: str):
-        self.logger.error(message)
+logger = Logger()._instance.logger
