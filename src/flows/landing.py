@@ -8,7 +8,7 @@ class ProcessingCoordinator:
         self.config = ConfigSetup.initialize(payload=payload)
         print(self.config.environment)
 
-        if self.config.environment == Enviroment.LOCAL:
+        if self.config.environment == Enviroment.REMOTE:
             print("LOCAL")
 
     def process(self):

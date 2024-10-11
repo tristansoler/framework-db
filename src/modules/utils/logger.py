@@ -1,5 +1,3 @@
-from modules.code.lazy_class_property import LazyClassProperty
-
 import logging
 import json
 import threading
