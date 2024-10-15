@@ -1,18 +1,31 @@
 from modules.storage.core_storage import Storage
 from typing import Type, TypeVar, get_type_hints
-from modules.config.versions.v1 import Flows, LandingToRaw, IncomingFileLandingToRaw, DateLocatedFilename, Parameters, CSVSpecs, Config
+from modules.config.versions.v1 import (
+    Flows,
+    LandingToRaw,
+    IncomingFileLandingToRaw,
+    DateLocatedFilename,
+    Parameters,
+    CSVSpecs,
+    Config,
+    OutputFile,
+    Partitions,
+    Validations
+)
 import threading
 import os
 import sys
 
 T = TypeVar('T')
 
+
 def config() -> Config:
-    
+
     return ConfigSetup()._instancia.config
 
+
 class ConfigSetup:
-    
+
     _instancia = None
     _lock = threading.Lock()
 
@@ -38,7 +51,7 @@ class ConfigSetup:
         json_config = ConfigSetup.read_config_file(is_local=False)
 
         self._instancia.config = ConfigSetup.v1(model=Config, parameters=parameters, json_file=json_config)
-    
+
     @classmethod
     def read_config_file(cls, is_local: bool) -> dict:
         # TODO: Pending
@@ -54,16 +67,14 @@ class ConfigSetup:
 
         return json
 
-
     @classmethod
     def v1(cls, model: Type[T], json_file: dict, parameters: dict = None) -> T:
-        
 
         fieldtypes = get_type_hints(model)
         kwargs = {}
 
         for field, field_type in fieldtypes.items():
-            if isinstance(field_type, type) and issubclass(field_type, (Flows, LandingToRaw, CSVSpecs, IncomingFileLandingToRaw, DateLocatedFilename)):
+            if isinstance(field_type, type) and issubclass(field_type, (Flows, LandingToRaw, CSVSpecs, IncomingFileLandingToRaw, DateLocatedFilename, OutputFile, Partitions, Validations)):
                 kwargs[field] = cls.v1(model=field_type, json_file=json_file[field])
             elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                 kwargs[field] = cls.v1(model=field_type, json_file=parameters)

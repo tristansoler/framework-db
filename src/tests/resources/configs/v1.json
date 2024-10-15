@@ -3,17 +3,33 @@
   "flows": {
     "landing_to_raw": {
       "incoming_file": {
-        "zipped": "zip",
+        "zipped": "",
         "file_format": "csv",
+        "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
+        "ordered_columns": true,
         "csv_specs": {
-          "header_position": 2,
+          "header_position": 0,
           "header": true,
           "encoding": "UTF-8",
-          "delimiter": "|",
+          "delimiter": ",",
           "date_located": "filename",
           "date_located_filename": {
-            "regex": "_DXDDSD()_.zip"
+            "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
           }
+        },
+        "validations": {
+            "validate_extension": true,
+            "validate_filename": true,
+            "validate_csv": true,
+            "validate_columns": true
+        }
+      },
+      "output_file": {
+        "database": "rl_funds_raw",
+        "table": "luxembourg_portfolio_returns",
+        "partitions": {
+            "datadate": true,
+            "insert_time": true
         }
       }
     },
