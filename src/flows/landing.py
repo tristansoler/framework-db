@@ -149,20 +149,18 @@ class FileValidator:
                 return len(line.decode(encoding).split(delimiter))
 
     def parse_columns(self, df: DataFrame) -> list:
-        if self.incoming_file_config.csv_specs.parse_columns == 'default':
-            # Replace whitespaces with _ and remove special characters
-            columns = [
+        # TODO: parametrizar en config
+        # Replace whitespaces with _ and remove special characters
+        columns = [
+            re.sub(
+                r'\s+', '_',
                 re.sub(
-                    r'\s+', '_',
-                    re.sub(
-                        r'[^A-Za-z0-9\s_]', '',
-                        column.lower().strip().replace('/', ' ')
-                    )
+                    r'[^A-Za-z0-9\s_]', '',
+                    column.lower().strip().replace('/', ' ')
                 )
-                for column in df.columns
-            ]
-        else:
-            columns = list(df.columns)
+            )
+            for column in df.columns
+        ]
         return columns
 
 
