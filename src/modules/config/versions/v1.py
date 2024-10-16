@@ -13,6 +13,10 @@ class DateLocated(Enum):
     COLUMN = "column"
 
 
+class ColumnParser(Enum):
+    DEFAULT = "default"
+
+
 @dataclass
 class DateLocatedFilename:
     regex: str
@@ -26,6 +30,8 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
+    ordered_columns: bool
+    parse_columns: ColumnParser
 
 
 class LandingFileFormat(Enum):
@@ -57,7 +63,6 @@ class IncomingFileLandingToRaw:
     zipped: str
     file_format: LandingFileFormat
     filename_pattern: str
-    ordered_columns: bool
     csv_specs: CSVSpecs
     validations: Validations
 

@@ -3,10 +3,9 @@
   "flows": {
     "landing_to_raw": {
       "incoming_file": {
-        "zipped": "tar",
+        "zipped": "",
         "file_format": "csv",
         "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
-        "ordered_columns": true,
         "csv_specs": {
           "header_position": 0,
           "header": true,
@@ -15,7 +14,9 @@
           "date_located": "filename",
           "date_located_filename": {
             "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
-          }
+          },
+          "ordered_columns": true,
+          "parse_columns": "default"
         },
         "validations": {
             "validate_extension": true,

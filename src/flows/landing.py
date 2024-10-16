@@ -110,12 +110,13 @@ class FileValidator:
 
     def validate_columns(self, filename: str, df: DataFrame) -> bool:
         try:
-            columns = list(df.columns)
+            columns = self.parse_columns(df)
+            # TODO: ignore partition columns
             expected_columns = self.catalogue.get_schema(
                 self.output_file_config.database_relation,
                 self.output_file_config.table
             )
-            if self.incoming_file_config.ordered_columns:
+            if self.incoming_file_config.csv_specs.ordered_columns:
                 assert columns == expected_columns
             else:
                 extra_columns = list(set(columns) - set(expected_columns))
@@ -146,6 +147,23 @@ class FileValidator:
                 encoding = self.incoming_file_config.csv_specs.encoding
                 delimiter = self.incoming_file_config.csv_specs.delimiter
                 return len(line.decode(encoding).split(delimiter))
+
+    def parse_columns(self, df: DataFrame) -> list:
+        if self.incoming_file_config.csv_specs.parse_columns == 'default':
+            # Replace whitespaces with _ and remove special characters
+            columns = [
+                re.sub(
+                    r'\s+', '_',
+                    re.sub(
+                        r'[^A-Za-z0-9\s_]', '',
+                        column.lower().strip().replace('/', ' ')
+                    )
+                )
+                for column in df.columns
+            ]
+        else:
+            columns = list(df.columns)
+        return columns
 
 
 class ProcessingCoordinator:
