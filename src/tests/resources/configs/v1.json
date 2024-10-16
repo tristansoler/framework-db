@@ -3,7 +3,7 @@
   "flows": {
     "landing_to_raw": {
       "incoming_file": {
-        "zipped": "",
+        "zipped": "tar",
         "file_format": "csv",
         "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
         "ordered_columns": true,
@@ -25,7 +25,8 @@
         }
       },
       "output_file": {
-        "database": "rl_funds_raw",
+        "database": "funds_raw",
+        "database_relation": "rl_funds_raw",
         "table": "luxembourg_portfolio_returns",
         "partitions": {
             "datadate": true,

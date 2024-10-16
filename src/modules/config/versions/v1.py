@@ -71,6 +71,7 @@ class Partitions:
 @dataclass
 class OutputFile:
     database: str
+    database_relation: str
     table: str
     partitions: Partitions
 
