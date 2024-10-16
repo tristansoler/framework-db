@@ -2,25 +2,37 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-
 class Enviroment(Enum):
     LOCAL = "local"
     REMOTE = "remote"
-
 
 class DateLocated(Enum):
     FILENAME = "filename"
     COLUMN = "column"
 
+class Technologies(Enum):
+    LAMBDA = "lambda"
+    EMR = "emr"
 
-class ColumnParser(Enum):
-    DEFAULT = "default"
+class LandingFileFormat(Enum):
+    CSV = "csv"
+    JSON = "json"
+    EXCEL = "xls"
 
+@dataclass
+class Hardware:
+    ram: int
+    cpu: Optional[int]
+    disk: Optional[int]
+
+@dataclass
+class ProcessingSpecifications:
+    technology: Technologies
+    hardware: Hardware
 
 @dataclass
 class DateLocatedFilename:
     regex: str
-
 
 @dataclass
 class CSVSpecs:
@@ -30,15 +42,6 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
-    ordered_columns: bool
-    parse_columns: ColumnParser
-
-
-class LandingFileFormat(Enum):
-    CSV = "csv"
-    JSON = "json"
-    EXCEL = "xls"
-
 
 @dataclass
 class Parameters:
@@ -46,7 +49,7 @@ class Parameters:
     source_file_path: str
     bucket_prefix: str
     file_name: str
-    file_date: str
+    file_date: Optional[str]
     region: str
 
 
@@ -63,6 +66,7 @@ class IncomingFileLandingToRaw:
     zipped: str
     file_format: LandingFileFormat
     filename_pattern: str
+    ordered_columns: bool
     csv_specs: CSVSpecs
     validations: Validations
 
@@ -76,7 +80,6 @@ class Partitions:
 @dataclass
 class OutputFile:
     database: str
-    database_relation: str
     table: str
     partitions: Partitions
 
@@ -90,7 +93,6 @@ class LandingToRaw:
 @dataclass
 class Flows:
     landing_to_raw: LandingToRaw
-
 
 @dataclass
 class Config:
