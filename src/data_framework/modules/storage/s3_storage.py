@@ -17,12 +17,7 @@ from data_framework.modules.storage.interface_storage import (
 class S3Storage(CoreStorageInterface):
     def __init__(self):
 
-        profile_name = os.getenv('PROFILE_NAME', '')
-        if profile_name:
-            session = boto3.session.Session(region_name=config().parameters.region, profile_name=profile_name)
-            self.s3 = session.client('s3', region_name=config().parameters.region)
-        else:
-            self.s3 = boto3.client('s3', region_name=config().parameters.region)
+        self.s3 = boto3.client('s3', region_name=config().parameters.region)
 
     def read_from_path(self, layer: Layer, key_path: str) -> ReadResponse:
         bucket = self._build_s3_bucket_name(layer=layer)

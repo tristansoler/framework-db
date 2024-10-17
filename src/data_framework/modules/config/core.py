@@ -80,12 +80,7 @@ class ConfigSetup:
         else:
             import boto3
 
-            profile_name = os.getenv('PROFILE_NAME', '')
-            if profile_name:
-                session = boto3.session.Session(profile_name=profile_name)
-                s3 = session.client('s3')
-            else:
-                s3 = boto3.client('s3')
+            s3 = boto3.client('s3')
             bucket = f'{bucket_prefix}-code'
             key_path = f'{dataflow}/config/transformations.json'
 
