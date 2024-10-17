@@ -26,7 +26,8 @@
           }
         },
         "output_file": {
-          "database": "rl_funds_raw",
+          "database": "funds_raw",
+          "database_relation": "rl_funds_raw",
           "table": "luxembourg_portfolio_returns",
           "partitions": {
             "datadate": true,
