@@ -1,7 +1,7 @@
 {
   "version": 1,
   "common": {
-    "flows": {
+    "processes": {
       "landing_to_raw": {
         "incoming_file": {
           "zipped": "",
@@ -36,7 +36,7 @@
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
           }
         }
       },
@@ -44,7 +44,7 @@
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
           }
         }
       },
@@ -52,7 +52,7 @@
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
           }
         }
       }

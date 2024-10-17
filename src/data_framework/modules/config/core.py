@@ -52,7 +52,7 @@ class ConfigSetup:
                 key = sys.argv[i].replace('--', '').replace('-', '_')
                 value = sys.argv[i+1]
                 parameters[key] = value
-        
+
         is_local = os.getenv('ENV') == 'local'
         dataflow = parameters.get('dataflow')
         bucket_prefix = parameters.get('bucket_prefix')
@@ -64,12 +64,10 @@ class ConfigSetup:
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
     @classmethod
-    def read_config_file(cls, dataflow: str, bucket_prefix: str, flow: str, is_local: bool) -> dict:
+    def read_config_file(cls, dataflow: str, bucket_prefix: str, process: str, flow: str, is_local: bool) -> dict:
         import json
 
         config_json: dict = None
-
-        environment = "remote"
 
         if is_local:
             from pathlib import Path
@@ -78,18 +76,25 @@ class ConfigSetup:
 
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
-            
-            environment = "local"
+
+            environment = Enviroment.LOCAL
         else:
             import boto3
 
-            s3 = boto3.client('s3')
-            bucket = f'{bucket_prefix}_code'
+            profile_name = os.getenv('PROFILE_NAME', '')
+            if profile_name:
+                session = boto3.session.Session(profile_name=profile_name)
+                s3 = session.client('s3')
+            else:
+                s3 = boto3.client('s3')
+            bucket = f'{bucket_prefix}-code'
             key_path = f'{dataflow}/config/transformations.json'
 
             response = s3.get_object(Bucket=bucket, Key=key_path)
 
             config_json = dict(json.loads(response['Body'].read()))
+
+            environment = Enviroment.REMOTE
 
         common_flow_json = current_flow_json = config_json.get('common')
         current_flow_json = config_json.get(flow, None)
@@ -105,10 +110,10 @@ class ConfigSetup:
         current_flow_json['environment'] = environment
 
         return current_flow_json
-    
+
     @classmethod
     def merged_current_dataflow_with_common(cls, current_dataflow: dict, common: dict) -> dict:
-        
+
         merged = current_dataflow.copy()
 
         for key, value in common.items():

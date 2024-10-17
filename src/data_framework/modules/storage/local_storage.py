@@ -1,13 +1,18 @@
 from data_framework.modules.storage.interface_storage import CoreStorageInterface
 from data_framework.modules.utils.logger import Logger
 
+
 class LocalStorage(CoreStorageInterface):
     def __init__(self):
         self.logger = Logger()._instance.logger
         self.logger.info(f'LocalStorage initialized')
 
+    def read_from_path(self, path: str):
+        # TODO: update local storage methods
+        pass
+
     def read(self, path: str):
-    
+
         self.logger.info(f'Reading: {path}')
         return ""
 
