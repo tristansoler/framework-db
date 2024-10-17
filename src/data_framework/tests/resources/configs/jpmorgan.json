@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "common": {
+    "processes": {
+      "landing_to_raw": {
+        "incoming_file": {
+          "zipped": "",
+          "file_format": "csv",
+          "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
+          "ordered_columns": true,
+          "csv_specs": {
+            "header_position": 0,
+            "header": true,
+            "encoding": "UTF-8",
+            "delimiter": ",",
+            "date_located": "filename",
+            "date_located_filename": {
+              "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
+            }
+          },
+          "validations": {
+              "validate_extension": true,
+              "validate_filename": true,
+              "validate_csv": true,
+              "validate_columns": true
+          }
+        },
+        "output_file": {
+          "database": "rl_funds_raw",
+          "table": "luxembourg_portfolio_returns",
+          "partitions": {
+              "datadate": true,
+              "insert_time": true
+          }
+        },
+        "processing_specifications": {
+          "technology": "lambda",
+          "hardware": {
+            "ram": 512
+          }
+        }
+      },
+      "raw_to_staging": {
+        "processing_specifications": {
+          "technology": "lambda",
+          "hardware": {
+            "ram": 512
+          }
+        }
+      },
+      "staging_to_common": {
+        "processing_specifications": {
+          "technology": "lambda",
+          "hardware": {
+            "ram": 512
+          }
+        }
+      }
+    }
+  }
+}

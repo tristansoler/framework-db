@@ -1,7 +1,6 @@
 from data_framework.modules.storage.interface_storage import CoreStorageInterface
 from data_framework.modules.utils.logger import Logger
 
-
 class LocalStorage(CoreStorageInterface):
     def __init__(self):
         self.logger = Logger()._instance.logger
