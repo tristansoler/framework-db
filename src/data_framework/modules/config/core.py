@@ -63,7 +63,7 @@ class ConfigSetup:
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
     @classmethod
-    def read_config_file(cls, dataflow: str, bucket_prefix: str, process: str, flow: str, is_local: bool) -> dict:
+    def read_config_file(cls, dataflow: str, bucket_prefix: str, flow: str, is_local: bool) -> dict:
         import json
 
         config_json: dict = None
