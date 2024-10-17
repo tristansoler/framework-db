@@ -6,10 +6,11 @@ from zipfile import ZipFile
 import tarfile
 import pandas as pd
 from pandas import DataFrame
-from modules.config.core import config
-from modules.utils.logger import logger
-from modules.storage.core_storage import Storage
-from modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.config.core import config
+from data_framework.modules.utils.logger import logger
+from data_framework.modules.storage.core_storage import Storage
+from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.storage.interface_storage import Layer, Database
 
 
 class FileValidator:
@@ -18,9 +19,9 @@ class FileValidator:
         self.config = config()
         self.logger = logger
         self.catalogue = CoreCatalogue._catalogue
-        self.incoming_file_config = self.config.flows.landing_to_raw.incoming_file
-        self.output_file_config = self.config.flows.landing_to_raw.output_file
-        self.validations = self.config.flows.landing_to_raw.incoming_file.validations
+        self.incoming_file_config = self.config.processes.landing_to_raw.incoming_file
+        self.output_file_config = self.config.processes.landing_to_raw.output_file
+        self.validations = self.config.processes.landing_to_raw.incoming_file.validations
         self.file_contents = file_contents
 
     def validate_file(self) -> None:
@@ -113,10 +114,10 @@ class FileValidator:
             columns = self.parse_columns(df)
             # TODO: ignore partition columns
             expected_columns = self.catalogue.get_schema(
-                self.output_file_config.database_relation,
+                self.output_file_config.database,
                 self.output_file_config.table
             )
-            if self.incoming_file_config.csv_specs.ordered_columns:
+            if self.incoming_file_config.ordered_columns:
                 assert columns == expected_columns
             else:
                 extra_columns = list(set(columns) - set(expected_columns))
@@ -171,8 +172,8 @@ class ProcessingCoordinator:
         self.logger = logger
         self.storage = Storage._storage
         self.catalogue = CoreCatalogue._catalogue
-        self.incoming_file_config = self.config.flows.landing_to_raw.incoming_file
-        self.output_file_config = self.config.flows.landing_to_raw.output_file
+        self.incoming_file_config = self.config.processes.landing_to_raw.incoming_file
+        self.output_file_config = self.config.processes.landing_to_raw.output_file
 
     def process(self) -> dict:
         try:
@@ -191,9 +192,9 @@ class ProcessingCoordinator:
                 # Obtain file date
                 file_date = self.obtain_file_date()
                 # Create partitions
-                partitions_path = self.create_partitions(file_date)
+                partitions = self.create_partitions(file_date)
                 # Save file in raw table
-                self.write_data(file_contents, partitions_path)
+                self.write_data(file_contents, partitions)
                 # Send response
                 response['success'] = True
                 response['file-date'] = file_date
@@ -207,7 +208,12 @@ class ProcessingCoordinator:
             return response
 
     def read_data(self) -> dict:
-        s3_file_content = BytesIO(self.storage.read(self.config.parameters.source_file_path))
+        s3_file_content = BytesIO(
+            self.storage.read_from_path(
+                layer=Layer.LANDING,
+                key_path=self.config.parameters.source_file_path
+            ).data
+        )
         file_contents = {}
         if self.incoming_file_config.zipped == 'zip':
             with ZipFile(s3_file_content, 'r') as z:
@@ -234,38 +240,44 @@ class ProcessingCoordinator:
             # TODO
             return ''
 
-    def create_partitions(self, file_date: str) -> str:
-        partitions = []
+    def create_partitions(self, file_date: str) -> dict:
+        partitions = {}
         if self.output_file_config.partitions.datadate:
             # Partition by date of the file
-            response = self.catalogue.create_partition(
-                self.output_file_config.database_relation,
-                self.output_file_config.table,
-                'datadate',
-                file_date
-            )
+            # TODO: uncomment after create_partition implementation
+            # response = self.catalogue.create_partition(
+            #     self.output_file_config.database,
+            #     self.output_file_config.table,
+            #     'datadate',
+            #     file_date
+            # )
             # TODO: validate response
-            partitions.append(f'datadate={file_date}')
+            partitions['datadate'] = file_date
         if self.output_file_config.partitions.insert_time:
             # Partition by insertion timestamp
             insert_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            response = self.catalogue.create_partition(
-                self.output_file_config.database_relation,
-                self.output_file_config.table,
-                'insert_time',
-                insert_time
-            )
+            # TODO: uncomment after create_partition implementation
+            # response = self.catalogue.create_partition(
+            #     self.output_file_config.database,
+            #     self.output_file_config.table,
+            #     'insert_time',
+            #     insert_time
+            # )
             # TODO: validate response
-            partitions.append(f'insert_time={insert_time}')
-        partitions_path = '/'.join(partitions)
-        return partitions_path
+            partitions['insert_time'] = insert_time
+        return partitions
 
-    def write_data(self, file_contents: dict, partitions_path: str) -> None:
-        for filename, content in file_contents.dict():
-            database = self.output_file_config.database
-            table = self.output_file_config.table
-            path = f'{database}/{table}/{partitions_path}/{filename}'
-            self.storage.write(path, content)
+    def write_data(self, file_contents: dict, partitions: dict) -> None:
+        for filename, content in file_contents.items():
+            self.storage.write(
+                layer=Layer.RAW,
+                # TODO: parametrizar database
+                database=Database.FUNDS,
+                table=self.output_file_config.table,
+                data=content,
+                partitions=partitions,
+                filename=filename
+            )
 
 
 if __name__ == '__main__':
