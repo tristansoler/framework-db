@@ -1,5 +1,5 @@
 import pytest
-from modules.utils.logger import Logger
+from data_framework.modules.utils.logger import Logger
 
 def test_logger():
     logger = Logger()

@@ -1,5 +1,5 @@
-from modules.config.core import ConfigSetup
-from modules.config.versions.v1 import Enviroment
+from data_framework.modules.config.core import ConfigSetup
+from data_framework.modules.config.versions.v1 import Enviroment
 
 class ProcessingCoordinator:
 

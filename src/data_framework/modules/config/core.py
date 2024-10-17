@@ -1,5 +1,5 @@
 from typing import Type, TypeVar, get_type_hints
-from modules.config.model.flows import (
+from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
     IncomingFileLandingToRaw,

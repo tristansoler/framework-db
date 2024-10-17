@@ -1,12 +1,12 @@
-from modules.code.lazy_class_property import LazyClassProperty
-from modules.catalogue.interface_catalogue import CatalogueInterface
+from data_framework.modules.code.lazy_class_property import LazyClassProperty
+from data_framework.modules.catalogue.interface_catalogue import CatalogueInterface
 from typing import Union
 
 class CoreCatalogue(object):
 
     @LazyClassProperty
     def _catalogue(cls) -> CatalogueInterface:
-        from modules.catalogue.integrations.aws_glue import CatalogueAWSGlue
+        from data_framework.modules.catalogue.integrations.aws_glue import CatalogueAWSGlue
 
         return CatalogueAWSGlue()
 

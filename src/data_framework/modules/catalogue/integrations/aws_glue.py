@@ -1,6 +1,6 @@
-from modules.catalogue.interface_catalogue import CatalogueInterface, SchemaResponse, GenericResponse
-from modules.utils.logger import logger
-from modules.config.core import config
+from data_framework.modules.catalogue.interface_catalogue import CatalogueInterface, SchemaResponse, GenericResponse
+from data_framework.modules.utils.logger import logger
+from data_framework.modules.config.core import config
 from typing import Union
 import boto3
 

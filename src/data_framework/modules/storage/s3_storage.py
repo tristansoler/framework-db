@@ -1,11 +1,11 @@
 import boto3
 import time
 from botocore.exceptions import ClientError
-from modules.storage.interface_storage import CoreStorageInterface
-from modules.utils.logger import logger
-from modules.config.core import config
-from modules.config.model.flows import Enviroment
-from modules.storage.interface_storage import (
+from data_framework.modules.storage.interface_storage import CoreStorageInterface
+from data_framework.modules.utils.logger import logger
+from data_framework.modules.config.core import config
+from data_framework.modules.config.model.flows import Enviroment
+from data_framework.modules.storage.interface_storage import (
     CoreStorageInterface,
     Database,
     Layer,

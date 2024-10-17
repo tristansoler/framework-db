@@ -1,10 +1,10 @@
-from modules.utils.logger import Logger
-from modules.config.core import config
+from data_framework.modules.utils.logger import Logger
+from data_framework.modules.config.core import config
 
-from modules.config.model.flows import Enviroment
+from data_framework.modules.config.model.flows import Enviroment
 
-from modules.code.lazy_class_property import LazyClassProperty
-from modules.storage.interface_storage import (
+from data_framework.modules.code.lazy_class_property import LazyClassProperty
+from data_framework.modules.storage.interface_storage import (
     CoreStorageInterface,
     Database,
     Layer,
@@ -17,10 +17,10 @@ class Storage:
     @LazyClassProperty
     def _storage(cls) -> CoreStorageInterface:
         if config().environment == Enviroment.REMOTE:
-            from modules.storage.s3_storage import S3Storage
+            from data_framework.modules.storage.s3_storage import S3Storage
             return S3Storage()
         else:
-            from modules.storage.local_storage import LocalStorage
+            from data_framework.modules.storage.local_storage import LocalStorage
             return LocalStorage()
     
     @classmethod
