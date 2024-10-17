@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Landing to Raw + AWS login",
+            "type": "python",
+            "request": "launch",
+            "cwd": "./src",
+            "program": "data_framework/flows/landing.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "sso_login",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--bucket-prefix", "aihd1airas3aihgdp",
+                "--region", "eu-west-1",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                // "ENV": "local"
+            }
+        },
+        {
+            "name": "Landing to Raw",
+            "type": "python",
+            "request": "launch",
+            "cwd": "./src",
+            "program": "data_framework/flows/landing.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--bucket-prefix", "aihd1airas3aihgdp",
+                "--region", "eu-west-1",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                // "ENV": "local"
+            }
+        }
+    ]
+}

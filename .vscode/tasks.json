@@ -1,0 +1,16 @@
+{
+    "version": "2.0.0",
+    "options": {
+        "env": {
+            "HTTPS_PROXY": "http://sgt%2FUSER:PASS@proxysgt.sgtech.corp:8080",
+            "HTTP_PROXY": "http://sgt%2FUSER:PASS@proxysgt.sgtech.corp:8080"
+        }
+    },
+    "tasks": [
+        {
+            "label": "sso_login",
+            "type": "shell",
+            "command": "aws sso login --profile SysOps-339712925210"
+        },
+    ]
+}
