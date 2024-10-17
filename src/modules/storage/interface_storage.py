@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from dataclasses import dataclass
 
 class Layer(Enum):
     LANDING = "landing"
     RAW = "raw"
     STAGING = "staging"
-    COMMON = "staging"
+    COMMON = "common"
+    BUSINESS = "business"
+    OUTPUT = "output"
 
 class Database(Enum):
-    FUND = "funds"
+    FUNDS = "funds"
 
 @dataclass
 class ReadResponse:

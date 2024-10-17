@@ -46,6 +46,8 @@ class CSVSpecs:
 @dataclass
 class Parameters:
     dataflow: str
+    flow: str
+    table: str
     source_file_path: str
     bucket_prefix: str
     file_name: str
@@ -63,24 +65,21 @@ class Validations:
 
 @dataclass
 class IncomingFileLandingToRaw:
-    zipped: str
+    zipped: Optional[str]
     file_format: LandingFileFormat
     filename_pattern: str
     ordered_columns: bool
     csv_specs: CSVSpecs
     validations: Validations
 
-
 @dataclass
 class Partitions:
     datadate: bool
     insert_time: bool
 
-
 @dataclass
 class OutputFile:
     database: str
-    database_relation: str
     table: str
     partitions: Partitions
 
@@ -92,11 +91,11 @@ class LandingToRaw:
 
 
 @dataclass
-class Flows:
+class Processes:
     landing_to_raw: LandingToRaw
 
 @dataclass
 class Config:
-    flows: Flows
+    processes: Processes
     environment: Enviroment
     parameters: Parameters

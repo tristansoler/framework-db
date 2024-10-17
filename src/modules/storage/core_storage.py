@@ -12,8 +12,6 @@ from modules.storage.interface_storage import (
     WriteResponse
 )
 
-
-
 class Storage:
 
     @LazyClassProperty

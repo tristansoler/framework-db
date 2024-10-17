@@ -1,7 +1,7 @@
 {
   "version": 1,
   "common": {
-    "flows": {
+    "processes": {
       "landing_to_raw": {
         "incoming_file": {
           "zipped": "",
@@ -19,24 +19,24 @@
             }
           },
           "validations": {
-              "validate_extension": true,
-              "validate_filename": true,
-              "validate_csv": true,
-              "validate_columns": true
+            "validate_extension": true,
+            "validate_filename": true,
+            "validate_csv": true,
+            "validate_columns": true
           }
         },
         "output_file": {
           "database": "rl_funds_raw",
           "table": "luxembourg_portfolio_returns",
           "partitions": {
-              "datadate": true,
-              "insert_time": true
+            "datadate": true,
+            "insert_time": true
           }
         },
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
           }
         }
       },
@@ -44,7 +44,7 @@
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
           }
         }
       },
@@ -52,7 +52,26 @@
         "processing_specifications": {
           "technology": "lambda",
           "hardware": {
-            "ram" 512
+            "ram": 512
+          }
+        }
+      }
+    }
+  },
+  "dividend_prod": {
+    "processes": {
+      "landing_to_raw": {
+        "incoming_file": {
+          "filename_pattern": "DIVIDENDS_(\\d{4})_(\\d{2})_(\\d{2})"
+        },
+        "output_file": {
+          "database": "rl_funds_raw",
+          "table": "luxembourg_portfolio_returns"
+        },
+        "processing_specifications": {
+          "technology": "lambda",
+          "hardware": {
+            "ram": 512
           }
         }
       }
