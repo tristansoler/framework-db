@@ -9,7 +9,6 @@ from data_framework.modules.storage.interface_storage import (
     WriteResponse
 )
 
-
 class Storage:
 
     @LazyClassProperty

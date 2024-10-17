@@ -56,10 +56,9 @@ class ConfigSetup:
         is_local = os.getenv('ENV') == 'local'
         dataflow = parameters.get('dataflow')
         bucket_prefix = parameters.get('bucket_prefix')
-        process = parameters.get('process')
         flow = parameters.get('flow')
 
-        json_config = ConfigSetup.read_config_file(dataflow=dataflow, bucket_prefix=bucket_prefix, process=process, flow=flow, is_local=is_local)
+        json_config = ConfigSetup.read_config_file(dataflow=dataflow, bucket_prefix=bucket_prefix, flow=flow, is_local=is_local)
 
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
