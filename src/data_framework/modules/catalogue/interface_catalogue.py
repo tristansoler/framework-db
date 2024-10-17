@@ -6,16 +6,29 @@ from dataclasses import dataclass
 class Column:
     name: str
     type: str
+    order: int
+    ispartitioned: bool
     
 @dataclass
 class Schema:
     columns: (Column)
     
-    def get_column_names(self) -> (str):
-        [column.name for column in self.columns]
+    # def get_column_names(self) -> (str):
+    #     [column.name for column in self.columns]
 
-    def get_type_columns(self) -> (str):
-        [column.type for column in self.columns]
+    # def get_type_columns(self) -> (str):
+    #     [column.type for column in self.columns]
+    def get_column_names(self, partitioned=False) -> (str):
+        if partitioned:
+            return [column.name for column in self.columns]
+        else:
+            return [column.name for column in self.columns if column.ispartitioned == False]
+
+    def get_type_columns(self, partitioned=False) -> (str):
+        if partitioned:
+            return [column.type for column in self.columns]
+        else:
+            return [column.type for column in self.columns if column.ispartitioned == False]
 
 @dataclass
 class SchemaResponse:
