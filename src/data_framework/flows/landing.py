@@ -245,24 +245,24 @@ class ProcessingCoordinator:
         if self.output_file_config.partitions.datadate:
             # Partition by date of the file
             # TODO: uncomment after create_partition implementation
-            # response = self.catalogue.create_partition(
-            #     self.output_file_config.database,
-            #     self.output_file_config.table,
-            #     'datadate',
-            #     file_date
-            # )
+            response = self.catalogue.create_partition(
+                self.output_file_config.database,
+                self.output_file_config.table,
+                'datadate',
+                file_date
+            )
             # TODO: validate response
             partitions['datadate'] = file_date
         if self.output_file_config.partitions.insert_time:
             # Partition by insertion timestamp
             insert_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             # TODO: uncomment after create_partition implementation
-            # response = self.catalogue.create_partition(
-            #     self.output_file_config.database,
-            #     self.output_file_config.table,
-            #     'insert_time',
-            #     insert_time
-            # )
+            response = self.catalogue.create_partition(
+                self.output_file_config.database,
+                self.output_file_config.table,
+                'insert_time',
+                insert_time
+            )
             # TODO: validate response
             partitions['insert_time'] = insert_time
         return partitions
