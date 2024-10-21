@@ -112,18 +112,16 @@ class FileValidator:
     def validate_columns(self, filename: str, df: DataFrame) -> bool:
         try:
             columns = self.parse_columns(df)
-            # TODO: ignore partition columns
-            expected_columns = self.catalogue.get_schema(
+            # Obtain expected columns from raw table
+            response = self.catalogue.get_schema(
                 self.output_file_config.database,
                 self.output_file_config.table
             )
-            if self.incoming_file_config.ordered_columns:
-                assert columns == expected_columns
-            else:
-                extra_columns = list(set(columns) - set(expected_columns))
-                missing_columns = list(set(expected_columns) - set(columns))
-                diff_columns = extra_columns + missing_columns
-                assert len(diff_columns) == 0
+            expected_columns = response.schema.get_column_names(partitioned=False)
+            extra_columns = list(set(columns) - set(expected_columns))
+            missing_columns = list(set(expected_columns) - set(columns))
+            diff_columns = extra_columns + missing_columns
+            assert len(diff_columns) == 0
         except AssertionError:
             self.logger.info(f'Columns of the file {filename} are invalid')
             return False
@@ -244,27 +242,26 @@ class ProcessingCoordinator:
         partitions = {}
         if self.output_file_config.partitions.datadate:
             # Partition by date of the file
-            # TODO: uncomment after create_partition implementation
-            # response = self.catalogue.create_partition(
-            #     self.output_file_config.database,
-            #     self.output_file_config.table,
-            #     'datadate',
-            #     file_date
-            # )
-            # TODO: validate response
-            partitions['datadate'] = file_date
+            # TODO: create_partition does not work when the table has more than one partition field
+            response = self.catalogue.create_partition(
+                self.output_file_config.database,
+                self.output_file_config.table,
+                'data_date',
+                file_date
+            )
+            if response.success:
+                partitions['datadate'] = file_date
         if self.output_file_config.partitions.insert_time:
             # Partition by insertion timestamp
             insert_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            # TODO: uncomment after create_partition implementation
-            # response = self.catalogue.create_partition(
-            #     self.output_file_config.database,
-            #     self.output_file_config.table,
-            #     'insert_time',
-            #     insert_time
-            # )
-            # TODO: validate response
-            partitions['insert_time'] = insert_time
+            response = self.catalogue.create_partition(
+                self.output_file_config.database,
+                self.output_file_config.table,
+                'insert_time',
+                insert_time
+            )
+            if response.success:
+                partitions['insert_time'] = insert_time
         return partitions
 
     def write_data(self, file_contents: dict, partitions: dict) -> None:

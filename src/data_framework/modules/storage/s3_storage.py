@@ -1,10 +1,7 @@
 import boto3
-import os
 from botocore.exceptions import ClientError
-from data_framework.modules.storage.interface_storage import CoreStorageInterface
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
-from data_framework.modules.config.model.flows import Enviroment
 from data_framework.modules.storage.interface_storage import (
     CoreStorageInterface,
     Database,
@@ -38,7 +35,7 @@ class S3Storage(CoreStorageInterface):
 
     def read(self, layer: Layer, database: Database, table: str) -> ReadResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
-        key_path = self._build_s3_key_path(database=database, table=table)
+        key_path = self._build_s3_key_path(layer=layer, database=database, table=table)
 
         response: ReadResponse = None
         try:

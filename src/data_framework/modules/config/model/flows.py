@@ -68,7 +68,6 @@ class IncomingFileLandingToRaw:
     zipped: Optional[str]
     file_format: LandingFileFormat
     filename_pattern: str
-    ordered_columns: bool
     csv_specs: CSVSpecs
     validations: Validations
 

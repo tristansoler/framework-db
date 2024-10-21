@@ -3,25 +3,15 @@ from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
 from typing import Union
 import boto3
-import os
-
-# TODO: recoger el config, la zona..
 
 
 class CatalogueAWSGlue(CatalogueInterface):
 
-    def __init__(self, logger: Logger):
+    def __init__(self):
 
         self.logger = logger
-        # self.config = config()
-        profile_name = os.getenv('PROFILE_NAME', '')
-        if profile_name:
-            aws_session = boto3.session.Session(region_name="eu-west-1", profile_name=profile_name)
-            self.glue_client = aws_session.client('glue', 'eu-west-1')
-        else:
-            self.glue_client = boto3.client('glue', 'eu-west-1')
-
-        logger.info('CatalogueAWSGlue')
+        self.config = config()
+        self.glue_client = boto3.client('glue', region_name=config().parameters.region)
 
     def create_partition(self, database: str, table: str, partition_field: str, partition_value: Union[str, int])\
             -> GenericResponse:
@@ -34,7 +24,7 @@ class CatalogueAWSGlue(CatalogueInterface):
         :return: GenericResponse
         """
         try:
-            
+
             response = self.get_schema(database, table)
             l_cols_part = [column.name for column in response.schema.columns if column.ispartitioned is True]
 
@@ -44,7 +34,7 @@ class CatalogueAWSGlue(CatalogueInterface):
                              f' {partition_field} is not a field in table {table}.')
                 self.logger.info(msg_error)
                 return GenericResponse(success=success, error=msg_error)
-                
+
             else:
                 l_partitions_table = self.glue_client.get_partitions(DatabaseName=database, TableName=table)
                 l_partitions_table_values = [elem['Values'] for elem in l_partitions_table['Partitions']]
@@ -69,7 +59,6 @@ class CatalogueAWSGlue(CatalogueInterface):
                         'Parameters': {}
                     }
                     partition_desc_l = [partition_desc]
-                    self.logger.info(f'Partitions:{str(partition_desc_l)}')
 
                     response_gc = self.glue_client.batch_create_partition(
                         DatabaseName=database,
@@ -91,7 +80,8 @@ class CatalogueAWSGlue(CatalogueInterface):
 
         except Exception as error:
             msg_error = f'Error in create_partition: {str(error)}'
-            raise msg_error
+            response = GenericResponse(success=False, error=msg_error)
+            return response
 
     def get_schema(self, database: str, table: str) -> SchemaResponse:
         """
@@ -134,4 +124,4 @@ class CatalogueAWSGlue(CatalogueInterface):
 
         except Exception as error:
             msg_error = f'Error in get_schema: {str(error)}'
-            raise msg_error
+            raise Exception(msg_error)

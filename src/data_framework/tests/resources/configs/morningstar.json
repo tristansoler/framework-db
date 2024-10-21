@@ -7,7 +7,6 @@
           "zipped": "",
           "file_format": "csv",
           "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
-          "ordered_columns": true,
           "csv_specs": {
             "header_position": 0,
             "header": true,
