@@ -25,7 +25,6 @@ class FileValidator:
         self.file_contents = file_contents
 
     def validate_file(self) -> None:
-        # TODO: control metrics
         is_valid = True
         if self.validations.validate_extension:
             valid_extension = self.validate_extension()
@@ -148,7 +147,7 @@ class FileValidator:
                 return len(line.decode(encoding).split(delimiter))
 
     def parse_columns(self, df: DataFrame) -> list:
-        # TODO: parametrizar en config
+        # TODO: definir un estándar y parametrizar en config
         # Replace whitespaces with _ and remove special characters
         columns = [
             re.sub(
@@ -235,41 +234,38 @@ class ProcessingCoordinator:
             year, month, day = match.groups()
             return f'{year}-{month}-{day}'
         elif self.incoming_file_config.csv_specs.date_located == 'column':
-            # TODO
+            # TODO: implementar
             return ''
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
-        if self.output_file_config.partitions.datadate:
-            # Partition by date of the file
-            # TODO: create_partition does not work when the table has more than one partition field
-            response = self.catalogue.create_partition(
-                self.output_file_config.database,
-                self.output_file_config.table,
-                'datadate',
-                file_date
-            )
-            if response.success:
-                partitions['datadate'] = file_date
-        if self.output_file_config.partitions.insert_time:
-            # Partition by insertion timestamp
-            insert_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            response = self.catalogue.create_partition(
-                self.output_file_config.database,
-                self.output_file_config.table,
-                'insert_time',
-                insert_time
-            )
-            if response.success:
-                partitions['insert_time'] = insert_time
+        # TODO: ¿cómo parametrizar los nombres de las particiones en este diccionario?
+        partition_values = {
+            'datadate': file_date,
+            'insert_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        for partition_field, active in self.output_file_config.partitions.__dict__.items():
+            partition_value = partition_values.get(partition_field)
+            if active and partition_value:
+                # TODO: create_partition solo funciona con una única partición
+                response = self.catalogue.create_partition(
+                    self.output_file_config.database,
+                    self.output_file_config.table,
+                    partition_field,
+                    partition_value
+                )
+                if response.success:
+                    partitions[partition_field] = partition_value
         return partitions
 
     def write_data(self, file_contents: dict, partitions: dict) -> None:
         for filename, content in file_contents.items():
+            # TODO: si la cabecera no está en la primera línea, no habría que apuntar a la línea de cabecera?
+            content.seek(0)
             self.storage.write(
                 layer=Layer.RAW,
                 # TODO: parametrizar database
-                database=Database.FUNDS,
+                database=Database.FUNDS_RAW,
                 table=self.output_file_config.table,
                 data=content,
                 partitions=partitions,
