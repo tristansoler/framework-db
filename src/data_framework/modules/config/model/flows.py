@@ -2,22 +2,27 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+
 class Enviroment(Enum):
     LOCAL = "local"
     REMOTE = "remote"
+
 
 class DateLocated(Enum):
     FILENAME = "filename"
     COLUMN = "column"
 
+
 class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
+
 
 class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
     EXCEL = "xls"
+
 
 @dataclass
 class Hardware:
@@ -25,14 +30,17 @@ class Hardware:
     cpu: Optional[int]
     disk: Optional[int]
 
+
 @dataclass
 class ProcessingSpecifications:
     technology: Technologies
     hardware: Hardware
 
+
 @dataclass
 class DateLocatedFilename:
     regex: str
+
 
 @dataclass
 class CSVSpecs:
@@ -42,6 +50,7 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
+
 
 @dataclass
 class Parameters:
@@ -71,10 +80,12 @@ class IncomingFileLandingToRaw:
     csv_specs: CSVSpecs
     validations: Validations
 
+
 @dataclass
 class Partitions:
     datadate: bool
     insert_time: bool
+
 
 @dataclass
 class OutputFile:
@@ -92,6 +103,7 @@ class LandingToRaw:
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
+
 
 @dataclass
 class Config:
