@@ -246,7 +246,7 @@ class ProcessingCoordinator:
             response = self.catalogue.create_partition(
                 self.output_file_config.database,
                 self.output_file_config.table,
-                'data_date',
+                'datadate',
                 file_date
             )
             if response.success:
