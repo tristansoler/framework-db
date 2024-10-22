@@ -65,12 +65,17 @@ class ConfigSetup:
     @classmethod
     def read_config_file(cls, dataflow: str, bucket_prefix: str, flow: str, is_local: bool) -> dict:
         import json
+        from pathlib import Path
 
         config_json: dict = None
+        
+
+        path_absolute = Path(__file__).resolve()
+
+        environment = Enviroment.REMOTE
 
         if is_local:
-            from pathlib import Path
-            path_absolute = Path(__file__).resolve()
+            
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
 
             file = open(path_config)
@@ -78,17 +83,13 @@ class ConfigSetup:
 
             environment = Enviroment.LOCAL
         else:
-            import boto3
+            import zipfile
 
-            s3 = boto3.client('s3')
-            bucket = f'{bucket_prefix}-code'
-            key_path = f'{dataflow}/config/transformations.json'
-
-            response = s3.get_object(Bucket=bucket, Key=key_path)
-
-            config_json = dict(json.loads(response['Body'].read()))
-
-            environment = Enviroment.REMOTE
+            transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + f'/transformation.zip'
+            archive = zipfile.ZipFile(transformation_path, 'r')
+            config_file = archive.open('config.json')
+            config_json = dict(json.loads(config_file.read()))
+            config_file.close()
 
         common_flow_json = current_flow_json = config_json.get('common')
         current_flow_json = config_json.get(flow, None)
