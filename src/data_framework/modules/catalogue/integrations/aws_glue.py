@@ -105,14 +105,17 @@ class CatalogueAWSGlue(CatalogueInterface):
                 l_types = [column['Type'] for column in l_columns]
                 l_ispartitioned = [False for column in l_columns]
 
-                l_partition_keys = response_gc['Table']['PartitionKeys']
-                l_partition_keys_names = [column['Name'] for column in l_partition_keys]
-                l_partition_keys_types = [column['Type'] for column in l_partition_keys]
-                l_partition_keys_ispartitioned = [True for column in l_partition_keys]
+                try:
+                    l_partition_keys = response_gc['Table']['PartitionKeys']
+                    l_partition_keys_names = [column['Name'] for column in l_partition_keys]
+                    l_partition_keys_types = [column['Type'] for column in l_partition_keys]
+                    l_partition_keys_ispartitioned = [True for column in l_partition_keys]
+                    l_names.extend(l_partition_keys_names)
+                    l_types.extend(l_partition_keys_types)
+                    l_ispartitioned.extend(l_partition_keys_ispartitioned)
+                except Exception as error:
+                    self.logger.info('La tabla no tiene Particiones')
 
-                l_names.extend(l_partition_keys_names)
-                l_types.extend(l_partition_keys_types)
-                l_ispartitioned.extend(l_partition_keys_ispartitioned)
                 n_cols = len(l_names)
                 l_order = [number+1 for number in range(n_cols)]
 
