@@ -9,7 +9,6 @@ from data_framework.modules.config.model.flows import (
     CSVSpecs,
     Config,
     OutputFile,
-    Partitions,
     Validations,
     ProcessingSpecifications,
     Hardware,
@@ -36,7 +35,7 @@ class ConfigSetup:
 
     _models = (
         Processes, LandingToRaw, RawToStaging, CSVSpecs, IncomingFileLandingToRaw,
-        DateLocatedFilename, OutputFile, Partitions, Validations, ProcessingSpecifications,
+        DateLocatedFilename, OutputFile, Validations, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration
     )
 
