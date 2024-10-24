@@ -30,6 +30,13 @@ class WriteResponse:
     error: str
 
 
+@dataclass
+class ListResponse:
+    success: bool
+    error: str
+    result: list
+
+
 class CoreStorageInterface(ABC):
 
     @abstractmethod
@@ -50,4 +57,8 @@ class CoreStorageInterface(ABC):
         partitions: str,
         filename: str
     ) -> WriteResponse:
+        pass
+
+    @abstractmethod
+    def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         pass

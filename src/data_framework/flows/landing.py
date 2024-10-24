@@ -1,4 +1,5 @@
 import re
+import hashlib
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -46,10 +47,11 @@ class FileValidator:
                 assert extension == expected_extension
                 # Validate extension of the files inside the compressed file
                 expected_extension = self.incoming_file_config.file_format
-                for filename in self.file_contents.keys():
-                    # Assumes that all the files inside the compressed file have the same extension
-                    extension = Path(filename).suffix.strip('.').lower()
-                    assert extension == expected_extension
+                for filename, file_data in self.file_contents.items():
+                    if file_data['validate']:
+                        # Assumes that all the files inside the compressed file have the same extension
+                        extension = Path(filename).suffix.strip('.').lower()
+                        assert extension == expected_extension
             else:
                 # Uncompressed file
                 expected_extension = self.incoming_file_config.file_format
@@ -70,9 +72,10 @@ class FileValidator:
             filename = Path(self.config.parameters.source_file_path).name.split('.')[0]
             assert bool(re.match(pattern, filename))
             if self.incoming_file_config.zipped:
-                for filename in self.file_contents.keys():
-                    # Assumes that all the files inside the compressed file follow the same pattern
-                    assert bool(re.match(pattern, filename))
+                for filename, file_data in self.file_contents.items():
+                    if file_data['validate']:
+                        # Assumes that all the files inside the compressed file follow the same pattern
+                        assert bool(re.match(pattern, filename))
         except AssertionError:
             self.logger.info(f'Name of the file {self.config.parameters.source_file_path} is invalid')
             return False
@@ -84,29 +87,30 @@ class FileValidator:
             return True
 
     def validate_csv(self) -> bool:
-        for filename, content in self.file_contents.items():
-            try:
-                df = pd.read_csv(
-                    content,
-                    dtype=str,
-                    delimiter=self.incoming_file_config.csv_specs.delimiter,
-                    header=self.incoming_file_config.csv_specs.header_position,
-                    encoding=self.incoming_file_config.csv_specs.encoding
-                )
-                expected_n_rows = self.get_expected_number_of_rows(content)
-                expected_n_columns = self.get_expected_number_of_columns(content)
-                assert df.shape == (expected_n_rows, expected_n_columns)
-            except AssertionError:
-                self.logger.info(f'Header and/or separator of the file {filename} are invalid')
-                return False
-            except Exception as e:
-                self.logger.error(f'Error validating header and separator of the file {filename}: {e}')
-                return False
-            else:
-                self.logger.info(f'Header and separator of the file {filename} are valid')
-                if self.validations.validate_columns:
-                    return self.validate_columns(filename, df)
-                return True
+        for filename, file_data in self.file_contents.items():
+            if file_data['validate']:
+                try:
+                    df = pd.read_csv(
+                        file_data['content'],
+                        dtype=str,
+                        delimiter=self.incoming_file_config.csv_specs.delimiter,
+                        header=self.incoming_file_config.csv_specs.header_position,
+                        encoding=self.incoming_file_config.csv_specs.encoding
+                    )
+                    expected_n_rows = self.get_expected_number_of_rows(file_data['content'])
+                    expected_n_columns = self.get_expected_number_of_columns(file_data['content'])
+                    assert df.shape == (expected_n_rows, expected_n_columns)
+                except AssertionError:
+                    self.logger.info(f'Header and/or separator of the file {filename} are invalid')
+                    return False
+                except Exception as e:
+                    self.logger.error(f'Error validating header and separator of the file {filename}: {e}')
+                    return False
+                else:
+                    self.logger.info(f'Header and separator of the file {filename} are valid')
+                    if self.validations.validate_columns:
+                        return self.validate_columns(filename, df)
+                    return True
 
     def validate_columns(self, filename: str, df: DataFrame) -> bool:
         try:
@@ -177,6 +181,7 @@ class ProcessingCoordinator:
             # Build generic response
             response = {
                 'success': None,
+                'continue': None,
                 'file-name': Path(self.config.parameters.source_file_path).name,
                 'file-date': None
             }
@@ -188,16 +193,21 @@ class ProcessingCoordinator:
             if is_valid:
                 # Obtain file date
                 file_date = self.obtain_file_date()
-                # Create partitions
-                partitions = self.create_partitions(file_date)
-                # Save file in raw table
-                self.write_data(file_contents, partitions)
+                # Compare with the previous file
+                process_file = self.compare_with_previous_file(file_contents)
+                if process_file:
+                    # Create partitions
+                    partitions = self.create_partitions(file_date)
+                    # Save file in raw table
+                    self.write_data(file_contents, partitions)
                 # Send response
                 response['success'] = True
                 response['file-date'] = file_date
+                response['continue'] = process_file
                 return response
             else:
                 response['success'] = False
+                response['continue'] = False
                 return response
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
@@ -211,20 +221,31 @@ class ProcessingCoordinator:
                 key_path=self.config.parameters.source_file_path
             ).data
         )
-        file_contents = {}
+        filename = Path(self.config.parameters.source_file_path).name
+        file_contents = {
+            filename: {
+                'content': s3_file_content,
+                'validate': True
+            }
+        }
         if self.incoming_file_config.zipped == 'zip':
+            file_contents[filename]['validate'] = False
             with ZipFile(s3_file_content, 'r') as z:
                 for filename in z.namelist():
                     with z.open(filename) as f:
-                        file_contents[filename] = BytesIO(f.read())
+                        file_contents[filename] = {
+                            'content': BytesIO(f.read()),
+                            'validate': True
+                        }
         elif self.incoming_file_config.zipped == 'tar':
+            file_contents[filename]['validate'] = False
             with tarfile.open(fileobj=s3_file_content, mode='r') as t:
                 for filename in t.getnames():
                     content = t.extractfile(filename).read()
-                    file_contents[filename] = BytesIO(content)
-        else:
-            filename = Path(self.config.parameters.source_file_path).name
-            file_contents[filename] = s3_file_content
+                    file_contents[filename] = {
+                        'content': BytesIO(content),
+                        'validate': True
+                    }
         return file_contents
 
     def obtain_file_date(self) -> str:
@@ -236,6 +257,56 @@ class ProcessingCoordinator:
         elif self.incoming_file_config.csv_specs.date_located == 'column':
             # TODO: implementar
             return ''
+
+    def compare_with_previous_file(self, file_contents: dict) -> bool:
+        prefix = f'{config().parameters.dataflow}/processed'
+        response = self.storage.list_files(Layer.LANDING, prefix)
+        if response.success:
+            incoming_filename = Path(self.config.parameters.source_file_path).name
+            last_file_key = self.get_last_processed_file_key(incoming_filename, response.result)
+            if last_file_key:
+                self.logger.info('Comparing with last processed file')
+                incoming_file_content = file_contents[incoming_filename]['content']
+                last_file_content = BytesIO(
+                    self.storage.read_from_path(
+                        layer=Layer.LANDING,
+                        key_path=last_file_key
+                    ).data
+                )
+                incoming_file_hash = self.get_file_hash(incoming_file_content)
+                last_file_hash = self.get_file_hash(last_file_content)
+                if incoming_file_hash == last_file_hash:
+                    self.logger.info('Incoming file and last processed file are the same')
+                    return False
+        return True
+
+    def get_last_processed_file_key(self, incoming_filename: str, file_keys: str) -> str:
+        date_pattern = r'insert_date=(\d{4}-\d{2}-\d{2})/insert_time=(\d{2}:\d{2}:\d{2})'
+        matching_files = []
+        for file_key in file_keys:
+            if file_key.endswith(incoming_filename):
+                match = re.search(date_pattern, file_key)
+                if match:
+                    insert_date = match.group(1)
+                    insert_time = match.group(2)
+                    insert_datetime = datetime.strptime(
+                        f'{insert_date} {insert_time}',
+                        '%Y-%m-%d %H:%M:%S'
+                    )
+                    matching_files.append((insert_datetime, file_key))
+        if len(matching_files) > 0:
+            matching_files.sort(reverse=True, key=lambda x: x[0])
+            return matching_files[0][1]
+        else:
+            return ''
+
+    def get_file_hash(self, file_content: BytesIO, chunk_size: int = 8000):
+        file_content.seek(0)
+        hasher = hashlib.md5()
+        while chunk := file_content.read(chunk_size):
+            hasher.update(chunk)
+        hash_code = hasher.hexdigest()
+        return hash_code
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
@@ -251,19 +322,20 @@ class ProcessingCoordinator:
         return partitions
 
     def write_data(self, file_contents: dict, partitions: dict) -> None:
-        for filename, content in file_contents.items():
-            # TODO: si la cabecera no está en la primera línea, no habría que apuntar a la línea de cabecera?
-            content.seek(0)
-            # TODO: revisar
-            database_enum = [db for db in Database if db.value == self.output_file_config.database][0]
-            self.storage.write(
-                layer=Layer.RAW,
-                database=database_enum,
-                table=self.output_file_config.table,
-                data=content,
-                partitions=partitions,
-                filename=filename
-            )
+        for filename, file_data in file_contents.items():
+            if file_data['validate']:
+                # TODO: si la cabecera no está en la primera línea, no habría que apuntar a la línea de cabecera?
+                file_data['content'].seek(0)
+                # TODO: revisar
+                database_enum = [db for db in Database if db.value == self.output_file_config.database][0]
+                self.storage.write(
+                    layer=Layer.RAW,
+                    database=database_enum,
+                    table=self.output_file_config.table,
+                    data=file_data['content'],
+                    partitions=partitions,
+                    filename=filename
+                )
 
 
 if __name__ == '__main__':

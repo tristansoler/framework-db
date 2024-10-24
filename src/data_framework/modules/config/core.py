@@ -77,7 +77,7 @@ class ConfigSetup:
         else:
             import zipfile
 
-            transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + f'/transformation.zip'
+            transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
             archive = zipfile.ZipFile(transformation_path, 'r')
             config_file = archive.open('config.json')
             config_json = dict(json.loads(config_file.read()))
