@@ -5,7 +5,6 @@ from pathlib import Path
 from zipfile import ZipFile
 import tarfile
 import pandas as pd
-import copy
 from pandas import DataFrame
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
@@ -183,9 +182,8 @@ class ProcessingCoordinator:
             }
             # Read file from S3
             file_contents = self.read_data()
-            copy_file_contents = copy.deepcopy(file_contents)
             # Apply controls
-            file_validator = FileValidator(copy_file_contents)
+            file_validator = FileValidator(file_contents)
             is_valid = file_validator.validate_file()
             if is_valid:
                 # Obtain file date

@@ -2,6 +2,7 @@ from typing import Type, TypeVar, get_type_hints
 from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
+    RawToStaging,
     IncomingFileLandingToRaw,
     DateLocatedFilename,
     Parameters,
@@ -12,7 +13,9 @@ from data_framework.modules.config.model.flows import (
     Validations,
     ProcessingSpecifications,
     Hardware,
-    Enviroment
+    Enviroment,
+    SparkConfiguration,
+    CustomConfiguration
 )
 import threading
 import os
@@ -32,9 +35,9 @@ class ConfigSetup:
     _lock = threading.Lock()
 
     _models = (
-        Processes, LandingToRaw, CSVSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, RawToStaging, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, OutputFile, Partitions, Validations, ProcessingSpecifications,
-        Hardware, LandingToRaw
+        Hardware, SparkConfiguration, CustomConfiguration
     )
 
     def __new__(cls, *args, **kwargs):
@@ -55,32 +58,22 @@ class ConfigSetup:
 
         is_local = os.getenv('ENV') == 'local'
         dataflow = parameters.get('dataflow')
-        bucket_prefix = parameters.get('bucket_prefix')
-        flow = parameters.get('flow')
-
-        json_config = ConfigSetup.read_config_file(dataflow=dataflow, bucket_prefix=bucket_prefix, flow=flow, is_local=is_local)
+        json_config = ConfigSetup.read_config_file(dataflow=dataflow, is_local=is_local)
 
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
     @classmethod
-    def read_config_file(cls, dataflow: str, bucket_prefix: str, flow: str, is_local: bool) -> dict:
+    def read_config_file(cls, dataflow: str, is_local: bool) -> dict:
         import json
         from pathlib import Path
 
         config_json: dict = None
-
-
         path_absolute = Path(__file__).resolve()
-
         environment = Enviroment.REMOTE
-
         if is_local:
-
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
-
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
-
             environment = Enviroment.LOCAL
         else:
             import zipfile
@@ -90,10 +83,8 @@ class ConfigSetup:
             config_file = archive.open('config.json')
             config_json = dict(json.loads(config_file.read()))
             config_file.close()
-
-        common_flow_json = current_flow_json = config_json.get('common')
-        current_flow_json = config_json.get(flow, None)
-
+        common_flow_json = config_json.get('common')
+        current_flow_json = config_json.get(dataflow, None)
         if current_flow_json is None:
             current_flow_json = common_flow_json
         else:
@@ -101,9 +92,7 @@ class ConfigSetup:
                 current_dataflow=current_flow_json,
                 common=common_flow_json
             )
-
         current_flow_json['environment'] = environment
-
         return current_flow_json
 
     @classmethod
@@ -114,8 +103,8 @@ class ConfigSetup:
         for key, value in common.items():
             if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
                 merged[key] = cls.merged_current_dataflow_with_common(merged[key], value)
-        else:
-            merged[key] = value
+            else:
+                merged[key] = value
 
         return merged
 
