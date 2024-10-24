@@ -65,7 +65,6 @@ class SparkDataProcess(DataProcessInterface):
         self,
         database_source: str,
         table_source: str,
-        where_source: str,
         database_target: str,
         table_target: str
     ) -> DataFrame:
@@ -73,7 +72,6 @@ class SparkDataProcess(DataProcessInterface):
         query = cast.get_query_datacast(
             database_source,
             table_source,
-            where_source,
             database_target,
             table_target
         )
