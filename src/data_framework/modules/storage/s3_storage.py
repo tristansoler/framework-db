@@ -7,7 +7,8 @@ from data_framework.modules.storage.interface_storage import (
     Database,
     Layer,
     ReadResponse,
-    WriteResponse
+    WriteResponse,
+    ListResponse
 )
 
 
@@ -18,16 +19,11 @@ class S3Storage(CoreStorageInterface):
 
     def read_from_path(self, layer: Layer, key_path: str) -> ReadResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
-        response: ReadResponse = None
         try:
             response = self.s3.get_object(Bucket=bucket, Key=key_path)
             logger.info(f'Successfully read from path: {key_path}')
             s3_data = response['Body'].read()
-            response = ReadResponse(
-                data=s3_data,
-                success=True,
-                error=None
-            )
+            response = ReadResponse(data=s3_data, success=True, error=None)
         except ClientError as error:
             logger.error(f'Failed to read: {error}')
             response = ReadResponse(error=error, success=False, data=None)
@@ -36,28 +32,14 @@ class S3Storage(CoreStorageInterface):
     def read(self, layer: Layer, database: Database, table: str) -> ReadResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
         key_path = self._build_s3_key_path(database=database, table=table)
-
-        response: ReadResponse = None
         try:
             response = self.s3.get_object(Bucket=bucket, Key=key_path)
             logger.info(f'Successfully read from path: {key_path}')
             s3_data = response['Body'].read()
-
-            response = ReadResponse(
-                data=s3_data,
-                success=True,
-                error=None
-            )
-
+            response = ReadResponse(data=s3_data, success=True, error=None)
         except ClientError as error:
             logger.error(f'Failed to read: {error}')
-
-            response = ReadResponse(
-                error=error,
-                success=False,
-                data=None
-            )
-
+            response = ReadResponse(error=error, success=False, data=None)
         return response
 
     def _build_s3_bucket_name(self, layer: Layer) -> str:
@@ -92,11 +74,7 @@ class S3Storage(CoreStorageInterface):
             partitions=partitions,
             filename=filename
         )
-
         logger.info(f'Writing to S3 path: {key_path}')
-
-        response: ReadResponse = None
-
         try:
             self.s3.put_object(Bucket=bucket, Key=key_path, Body=data)
             logger.info(f'Successfully wrote to path: {key_path}')
@@ -104,5 +82,19 @@ class S3Storage(CoreStorageInterface):
         except ClientError as error:
             logger.error(f'Failed to write: {error}')
             response = WriteResponse(success=False, error=error)
-
         return response
+
+    def list_files(self, layer: Layer, prefix: str) -> ListResponse:
+        bucket = self._build_s3_bucket_name(layer=layer)
+        logger.info(f'Listing files from bucket {bucket} with prefix {prefix}')
+        try:
+            list_response = self.s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+            status_code = list_response['ResponseMetadata']['HTTPStatusCode']
+            if status_code == 200:
+                file_keys = [obj['Key'] for obj in list_response['Contents']]
+                return ListResponse(error=None, success=True, result=file_keys)
+            else:
+                return ListResponse(error=f'Status code: {status_code}', success=False, result=[])
+        except ClientError as error:
+            logger.error(f'Error listing files: {error}')
+            return ListResponse(error=error, success=False, result=[])

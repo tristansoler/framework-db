@@ -6,8 +6,10 @@ from data_framework.modules.storage.interface_storage import (
     Database,
     Layer,
     ReadResponse,
-    WriteResponse
+    WriteResponse,
+    ListResponse
 )
+
 
 class Storage:
 
@@ -46,3 +48,7 @@ class Storage:
             partitions=partitions,
             filename=filename
         )
+
+    @classmethod
+    def list_files(cls, layer: Layer, prefix: str) -> ListResponse:
+        return cls._storage.list_files(layer=layer, prefix=prefix)
