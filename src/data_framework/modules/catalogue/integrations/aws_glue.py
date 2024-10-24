@@ -114,7 +114,7 @@ class CatalogueAWSGlue(CatalogueInterface):
                     l_types.extend(l_partition_keys_types)
                     l_ispartitioned.extend(l_partition_keys_ispartitioned)
                 except Exception as error:
-                    self.logger.info('La tabla no tiene Particiones')
+                    self.logger.info(f"La tabla '{database}'.'{table}' no tiene Particiones")
 
                 n_cols = len(l_names)
                 l_order = [number+1 for number in range(n_cols)]
