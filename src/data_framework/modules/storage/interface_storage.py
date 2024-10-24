@@ -14,6 +14,7 @@ class Layer(Enum):
 
 class Database(Enum):
     FUNDS_RAW = "funds_raw"
+    FUNDS_STAGING = "funds_staging"
 
 
 @dataclass

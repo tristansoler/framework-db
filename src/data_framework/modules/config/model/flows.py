@@ -1,6 +1,7 @@
+from data_framework.modules.storage.interface_storage import Database
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 
 class Enviroment(Enum):
@@ -32,9 +33,23 @@ class Hardware:
 
 
 @dataclass
+class CustomConfiguration:
+    parameter: str
+    value: str
+
+
+@dataclass
+class SparkConfiguration:
+    default_catalog: bool
+    warehouse: Database
+    custom_configuration: List[CustomConfiguration]
+
+
+@dataclass
 class ProcessingSpecifications:
     technology: Technologies
     hardware: Hardware
+    spark_configuration: SparkConfiguration
 
 
 @dataclass
@@ -55,7 +70,7 @@ class CSVSpecs:
 @dataclass
 class Parameters:
     dataflow: str
-    flow: str
+    process: str
     table: str
     source_file_path: str
     bucket_prefix: str
@@ -101,8 +116,14 @@ class LandingToRaw:
 
 
 @dataclass
+class RawToStaging:
+    processing_specifications: ProcessingSpecifications
+
+
+@dataclass
 class Processes:
     landing_to_raw: LandingToRaw
+    raw_to_staging: RawToStaging
 
 
 @dataclass
