@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
+from pyspark.sql import DataFrame
 
 
 class DataProcessInterface(ABC):
 
     @abstractmethod
-    def update(self, flowdata: str, table_name: str):
-        # Abstract class to define the basic storage interface
-        pass
-
-    @abstractmethod
-    def delete(self, df: any, flowdata: str, table_name: str):
-        # Abstract method to write data to a specific location
-        pass
-
-    @abstractmethod
     def merge(self):
+        pass
+
+    @abstractmethod
+    def datacast(
+        database_source: str,
+        table_source: str,
+        where_source: str,
+        database_target: str,
+        table_target: str
+    ) -> DataFrame:
         pass

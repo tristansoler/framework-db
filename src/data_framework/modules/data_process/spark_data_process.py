@@ -42,14 +42,6 @@ class SparkDataProcess(DataProcessInterface):
         #     .enableHiveSupport() \
         #     .getOrCreate()
 
-    def update(self, flowdata: str, table_name: str):
-        # Abstract class to define the basic storage interface
-        pass
-
-    def delete(self, df: DataFrame, flowdata: str, table_name: str):
-        # Abstract method to write data to a specific location
-        pass
-
     def merge(self, df: DataFrame, table_name: str):
         # df.createOrReplaceTempView("data_to_merge")
         # # TODO: Recuperar de la configuración los PKs para poder crear el SQL
@@ -77,9 +69,13 @@ class SparkDataProcess(DataProcessInterface):
         database_target: str,
         table_target: str
     ) -> DataFrame:
-
         cast = Cast()
-        query = cast.get_query_datacast(database_source, table_source, where_source, database_target, table_target)
+        query = cast.get_query_datacast(
+            database_source,
+            table_source,
+            where_source,
+            database_target,
+            table_target
+        )
         df_result = self.spark.sql(query)
-
         return df_result
