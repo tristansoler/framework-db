@@ -113,7 +113,7 @@ class FileValidator:
             columns = self.parse_columns(df)
             # Obtain expected columns from raw table
             response = self.catalogue.get_schema(
-                self.output_file_config.database,
+                self.output_file_config.database_relation,
                 self.output_file_config.table
             )
             expected_columns = response.schema.get_column_names(partitioned=False)
@@ -239,33 +239,26 @@ class ProcessingCoordinator:
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
-        # TODO: ¿cómo parametrizar los nombres de las particiones en este diccionario?
-        partition_values = {
-            'datadate': file_date,
-            'insert_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        for partition_field, active in self.output_file_config.partitions.__dict__.items():
-            partition_value = partition_values.get(partition_field)
-            if active and partition_value:
-                # TODO: create_partition solo funciona con una única partición
-                response = self.catalogue.create_partition(
-                    self.output_file_config.database,
-                    self.output_file_config.table,
-                    partition_field,
-                    partition_value
-                )
-                if response.success:
-                    partitions[partition_field] = partition_value
+        partition_field = self.output_file_config.partition_field
+        response = self.catalogue.create_partition(
+            self.output_file_config.database_relation,
+            self.output_file_config.table,
+            partition_field,
+            file_date
+        )
+        if response.success:
+            partitions[partition_field] = file_date
         return partitions
 
     def write_data(self, file_contents: dict, partitions: dict) -> None:
         for filename, content in file_contents.items():
             # TODO: si la cabecera no está en la primera línea, no habría que apuntar a la línea de cabecera?
             content.seek(0)
+            # TODO: revisar
+            database_enum = [db for db in Database if db.value == self.output_file_config.database][0]
             self.storage.write(
                 layer=Layer.RAW,
-                # TODO: parametrizar database
-                database=Database.FUNDS_RAW,
+                database=database_enum,
                 table=self.output_file_config.table,
                 data=content,
                 partitions=partitions,

@@ -97,22 +97,18 @@ class IncomingFileLandingToRaw:
 
 
 @dataclass
-class Partitions:
-    datadate: bool
-    insert_time: bool
-
-
-@dataclass
 class OutputFile:
-    database: str
+    database: Database
+    database_relation: str
     table: str
-    partitions: Partitions
+    partition_field: str
 
 
 @dataclass
 class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
     output_file: OutputFile
+    processing_specifications: ProcessingSpecifications
 
 
 @dataclass
