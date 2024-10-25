@@ -6,7 +6,7 @@
           "incoming_file": {
             "zipped": "",
             "file_format": "csv",
-            "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
+            "filename_pattern": "^LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})$",
             "csv_specs": {
               "header_position": 0,
               "header": true,
