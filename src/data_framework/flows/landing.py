@@ -69,6 +69,10 @@ class FileValidator:
     def validate_filename(self) -> bool:
         try:
             pattern = self.incoming_file_config.filename_pattern
+            if not pattern.endswith('$'):
+                pattern = pattern + '$'
+            if not pattern.startswith('^'):
+                pattern = '^' + pattern
             filename = Path(self.config.parameters.source_file_path).name.split('.')[0]
             assert bool(re.match(pattern, filename))
             if self.incoming_file_config.zipped:
