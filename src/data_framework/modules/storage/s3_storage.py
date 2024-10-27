@@ -64,8 +64,8 @@ class S3Storage(CoreStorageInterface):
         database: Database,
         table: str,
         data: bytes,
-        partitions: dict,
-        filename: str
+        filename: str,
+        partitions: dict = None
     ) -> WriteResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
         key_path = self._build_s3_key_path(
@@ -91,7 +91,7 @@ class S3Storage(CoreStorageInterface):
             list_response = self.s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
             status_code = list_response['ResponseMetadata']['HTTPStatusCode']
             if status_code == 200:
-                file_keys = [obj['Key'] for obj in list_response['Contents']]
+                file_keys = [obj['Key'] for obj in list_response.get('Contents', [])]
                 return ListResponse(error=None, success=True, result=file_keys)
             else:
                 return ListResponse(error=f'Status code: {status_code}', success=False, result=[])
