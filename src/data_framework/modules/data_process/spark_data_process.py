@@ -77,3 +77,7 @@ class SparkDataProcess(DataProcessInterface):
         )
         df_result = self.spark.sql(query)
         return df_result
+
+    def execute_query(self, query):
+        df_result = self.spark.sql(query)
+        return df_result
