@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional, List
 
 
-class Enviroment(Enum):
+class Environment(Enum):
     LOCAL = "local"
     REMOTE = "remote"
 
@@ -155,5 +155,5 @@ class Processes:
 @dataclass
 class Config:
     processes: Processes
-    environment: Enviroment
+    environment: Environment
     parameters: Parameters

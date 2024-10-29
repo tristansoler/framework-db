@@ -13,13 +13,12 @@ from data_framework.modules.config.model.flows import (
     Validations,
     ProcessingSpecifications,
     Hardware,
-    Enviroment,
+    Environment,
     SparkConfiguration,
     CustomConfiguration,
     OutputReport
 )
 import threading
-import os
 import sys
 
 T = TypeVar('T')
@@ -57,7 +56,7 @@ class ConfigSetup:
                 value = sys.argv[i+1]
                 parameters[key] = value
 
-        is_local = os.getenv('ENV') == 'local'
+        is_local = parameters.get('environment') == Environment.LOCAL.value
         dataflow = parameters.get('dataflow')
         json_config = ConfigSetup.read_config_file(dataflow=dataflow, is_local=is_local)
 
@@ -70,12 +69,12 @@ class ConfigSetup:
 
         config_json: dict = None
         path_absolute = Path(__file__).resolve()
-        environment = Enviroment.REMOTE
+        environment = Environment.REMOTE
         if is_local:
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
-            environment = Enviroment.LOCAL
+            environment = Environment.LOCAL
         else:
             import zipfile
 

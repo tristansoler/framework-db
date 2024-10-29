@@ -1,5 +1,5 @@
 from data_framework.modules.config.core import config
-from data_framework.modules.config.model.flows import Enviroment
+from data_framework.modules.config.model.flows import Environment
 from data_framework.modules.code.lazy_class_property import LazyClassProperty
 from data_framework.modules.storage.interface_storage import (
     CoreStorageInterface,
@@ -15,20 +15,16 @@ class Storage:
 
     @LazyClassProperty
     def _storage(cls) -> CoreStorageInterface:
-        if config().environment == Enviroment.REMOTE:
-            from data_framework.modules.storage.s3_storage import S3Storage
+        if config().environment == Environment.REMOTE:
+            from data_framework.modules.storage.integrations.s3_storage import S3Storage
             return S3Storage()
         else:
-            from data_framework.modules.storage.local_storage import LocalStorage
+            from data_framework.modules.storage.integrations.local_storage import LocalStorage
             return LocalStorage()
 
     @classmethod
-    def read_from_path(cls, layer: Layer, key_path: str) -> ReadResponse:
-        return cls._storage.read_from_path(layer=layer, key_path=key_path)
-
-    @classmethod
-    def read(cls, layer: Layer, database: Database, table: str) -> ReadResponse:
-        return cls._storage.read(layer=layer, database=database, table=table)
+    def read(cls, layer: Layer, key_path: str) -> ReadResponse:
+        return cls._storage.read(layer=layer, key_path=key_path)
 
     @classmethod
     def write(
