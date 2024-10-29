@@ -18,10 +18,10 @@
               }
             },
             "validations": {
-                "validate_extension": true,
-                "validate_filename": true,
-                "validate_csv": true,
-                "validate_columns": true
+              "validate_extension": true,
+              "validate_filename": true,
+              "validate_csv": true,
+              "validate_columns": true
             }
           },
           "output_file": {
@@ -36,14 +36,14 @@
               "ram": 512
             },
             "spark_configuration": {
-                "default_catalog": true,
-                "warehouse": "funds_raw",
-                "custom_configuration": [
-                    {
-                        "parameter": "",
-                        "value": ""
-                    }
-                ]
+              "default_catalog": true,
+              "warehouse": "funds_raw",
+              "custom_configuration": [
+                {
+                  "parameter": "",
+                  "value": ""
+                }
+              ]
             }
           }
         },
@@ -59,12 +59,12 @@
             "database_relation": "rl_funds_staging",
             "table": "portfolio_returns",
             "primary_keys": [
-                "country",
-                "account_number",
-                "base_currency",
-                "position_date",
-                "security_number_full",
-                "trading_currency"
+              "country",
+              "account_number",
+              "base_currency",
+              "position_date",
+              "security_number_full",
+              "trading_currency"
             ]
           },
           "processing_specifications": {
@@ -73,14 +73,14 @@
               "ram": 512
             },
             "spark_configuration": {
-                "default_catalog": true,
-                "warehouse": "funds_staging",
-                "custom_configuration": [
-                    {
-                        "parameter": "",
-                        "value": ""
-                    }
-                ]
+              "default_catalog": true,
+              "warehouse": "funds_staging",
+              "custom_configuration": [
+                {
+                  "parameter": "",
+                  "value": ""
+                }
+              ]
             }
           }
         },
@@ -109,20 +109,20 @@
             }
           }],
           "processing_specifications": {
-              "technology": "lambda",
-              "hardware": {
-              "ram": 512
-              },
-              "spark_configuration": {
-                  "default_catalog": true,
-                  "warehouse": "funds_raw",
-                  "custom_configuration": [
-                      {
-                          "parameter": "",
-                          "value": ""
-                      }
-                  ]
-              }
+            "technology": "lambda",
+            "hardware": {
+            "ram": 512
+            },
+            "spark_configuration": {
+              "default_catalog": true,
+              "warehouse": "funds_raw",
+              "custom_configuration": [
+                {
+                  "parameter": "",
+                  "value": ""
+                }
+              ]
+            }
           }
         }
       }
