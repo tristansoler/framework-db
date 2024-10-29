@@ -17,21 +17,8 @@ class S3Storage(CoreStorageInterface):
 
         self.s3 = boto3.client('s3', region_name=config().parameters.region)
 
-    def read_from_path(self, layer: Layer, key_path: str) -> ReadResponse:
+    def read(self, layer: Layer, key_path: str) -> ReadResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
-        try:
-            response = self.s3.get_object(Bucket=bucket, Key=key_path)
-            logger.info(f'Successfully read from path: {key_path}')
-            s3_data = response['Body'].read()
-            response = ReadResponse(data=s3_data, success=True, error=None)
-        except ClientError as error:
-            logger.error(f'Failed to read: {error}')
-            response = ReadResponse(error=error, success=False, data=None)
-        return response
-
-    def read(self, layer: Layer, database: Database, table: str) -> ReadResponse:
-        bucket = self._build_s3_bucket_name(layer=layer)
-        key_path = self._build_s3_key_path(database=database, table=table)
         try:
             response = self.s3.get_object(Bucket=bucket, Key=key_path)
             logger.info(f'Successfully read from path: {key_path}')

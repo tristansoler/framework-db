@@ -219,12 +219,13 @@ class ProcessingCoordinator:
             return response
 
     def read_data(self) -> dict:
-        s3_file_content = BytesIO(
-            self.storage.read_from_path(
-                layer=Layer.LANDING,
-                key_path=self.config.parameters.source_file_path
-            ).data
+        response = self.storage.read(
+            layer=Layer.LANDING,
+            key_path=self.config.parameters.source_file_path
         )
+        if not response.success:
+            raise response.error
+        s3_file_content = BytesIO(response.data)
         filename = Path(self.config.parameters.source_file_path).name
         file_contents = {
             filename: {
@@ -272,7 +273,7 @@ class ProcessingCoordinator:
                 self.logger.info('Comparing with last processed file')
                 incoming_file_content = file_contents[incoming_filename]['content']
                 last_file_content = BytesIO(
-                    self.storage.read_from_path(
+                    self.storage.read(
                         layer=Layer.LANDING,
                         key_path=last_file_key
                     ).data

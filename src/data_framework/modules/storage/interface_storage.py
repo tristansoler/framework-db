@@ -40,11 +40,7 @@ class ListResponse:
 class CoreStorageInterface(ABC):
 
     @abstractmethod
-    def read_from_path(self, layer: Layer, key_path: str) -> ReadResponse:
-        pass
-
-    @abstractmethod
-    def read(self, layer: Layer, database: Database, table: str) -> ReadResponse:
+    def read(self, layer: Layer, key_path: str) -> ReadResponse:
         pass
 
     @abstractmethod
