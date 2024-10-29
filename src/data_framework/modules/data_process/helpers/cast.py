@@ -12,7 +12,7 @@ Además del casteo se añade columna para devolver los posibles problemas de cas
 # timestamp TODO
 
 # TODO: Está hecho para query en Athena. Cuando funcione spark hay que cambiar las funciones de casteo.
-# Todo: ¿cómo se van a pasar los datos de la bd y de las tablas? Quizás no hace falta pasar la bd y tabla origen, 
+# Todo: ¿cómo se van a pasar los datos de la bd y de las tablas? Quizás no hace falta pasar la bd y tabla origen,
 # si tenemos un df origen tenemos las columnas origen.
 """
 
@@ -20,6 +20,7 @@ from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from functools import reduce
+from typing import Any
 
 
 class Cast():
@@ -41,7 +42,6 @@ class Cast():
                 f"(case when lower({col}) not in ({l_true}, {l_false})  then '{col}: valor {coltype} inválido' end) as {col}_control_cast"
         return q
 
-
     def build_query_datacast(self, l_columns, l_types, tabla, where=None):
         d_cols_types = dict(zip(l_columns, l_types))
         l_columns_no_string =  [f"{key}_control_cast" for key, val in d_cols_types.items() if val != 'string']
@@ -60,13 +60,19 @@ class Cast():
 
         return query
 
-    
     def get_query_datacast_simple(self, l_cols_source, l_types_target, table, where_source):
         query = self.build_query_datacast(l_cols_source, l_types_target, table, where_source)
         return query
 
-
-    def get_query_datacast(self, database_source, table_source, database_target, table_target):
+    def get_query_datacast(
+        self,
+        database_source: str,
+        table_source: str,
+        database_target: str,
+        table_target: str,
+        partition_field: str = None,
+        partition_value: str = None
+    ) -> Any:
 
         catalogue = CoreCatalogue._catalogue
         schema_source = catalogue.get_schema(database_source, table_source)
@@ -75,8 +81,16 @@ class Cast():
         schema_target = catalogue.get_schema(database_target, table_target)
         l_types_target = schema_target.schema.get_type_columns()
 
-        where_source = f"datadate = '{self.config.parameters.file_date}'"
+        if partition_field and partition_value:
+            where_source = f"{partition_field} = '{partition_value}'"
+        else:
+            where_source = ""
 
-        query = self.get_query_datacast_simple(l_cols_source, l_types_target, f"{database_source}.{table_source}", where_source)
+        query = self.get_query_datacast_simple(
+            l_cols_source,
+            l_types_target,
+            f"{database_source}.{table_source}",
+            where_source
+        )
 
         return query

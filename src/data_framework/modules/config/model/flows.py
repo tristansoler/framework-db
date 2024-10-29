@@ -104,23 +104,27 @@ class IncomingFileLandingToRaw:
 
 
 @dataclass
-class OutputFile:
+class DatabaseTable:
     database: Database
     database_relation: str
     table: str
-    partition_field: str
+    partition_field: Optional[str]
+    primary_keys: Optional[list]
 
 
 @dataclass
 class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
-    output_file: OutputFile
+    output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
 
 
 @dataclass
 class RawToStaging:
+    incoming_file: DatabaseTable
+    output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
+
 
 @dataclass
 class OutputReport:
