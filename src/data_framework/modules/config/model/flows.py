@@ -68,6 +68,13 @@ class CSVSpecs:
 
 
 @dataclass
+class CSVSpecsReport:
+    header: bool
+    encoding: str
+    delimiter: str
+
+
+@dataclass
 class Parameters:
     dataflow: str
     process: str
@@ -115,11 +122,30 @@ class LandingToRaw:
 class RawToStaging:
     processing_specifications: ProcessingSpecifications
 
+@dataclass
+class OutputReport:
+    name: Database
+    database_relation: str
+    table: str
+    columns: str
+    columns_alias: str
+    where: str
+    file_format: str
+    filename_pattern: str
+    csv_specs: CSVSpecsReport
+
+
+@dataclass
+class ToOutput:
+    output_reports: List[OutputReport]
+    processing_specifications: ProcessingSpecifications
+
 
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
     raw_to_staging: RawToStaging
+    to_output: ToOutput
 
 
 @dataclass
