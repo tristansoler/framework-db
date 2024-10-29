@@ -9,7 +9,7 @@ class Launcher:
         module_name = f'transformation.dataflow.{dataflow}.{process}'
 
         if process == 'landing_to_raw':
-            module_name = f'data_framework.flows.landing'
+            module_name = f'data_framework.dataflow.landing'
 
         self._execute(module_name=module_name, common_module_name=common_module_name)
 
