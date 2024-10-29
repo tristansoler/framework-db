@@ -5,8 +5,8 @@ class Launcher:
 
     def main(self, dataflow: str, process: str):
 
-        common_module_name = f'transformation.common.{process}'
-        module_name = f'transformation.{dataflow}.{process}'
+        common_module_name = f'transformation.dataflow.default.{process}'
+        module_name = f'transformation.dataflow.{dataflow}.{process}'
 
         if process == 'landing_to_raw':
             module_name = f'data_framework.flows.landing'
