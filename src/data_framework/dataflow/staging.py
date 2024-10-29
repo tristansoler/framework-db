@@ -1,4 +1,4 @@
-from data_framework.modules.config.core import config
+from data_framework.modules.config.core import config, Config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from typing import Any
@@ -11,7 +11,7 @@ class RawToStaging:
         return self.__df
     
     @property
-    def config(self):
+    def config(self) -> Config:
         return self.__config
     
     @property
@@ -19,7 +19,7 @@ class RawToStaging:
         return self.__logger
     
     @property
-    def data_process(self):
+    def data_process(self) -> CoreDataProcess:
         return self.__data_process
 
     def __init__(self):
@@ -33,6 +33,7 @@ class RawToStaging:
     def read(self) -> Any:
         partition = f'{self.__incoming_file_config.partition_field}={self.__config.parameters.file_date}'
         input_table = f'{self.__incoming_file_config.database_relation}.{self.__incoming_file_config.table}'
+
         response = self.__data_process.datacast(
             self.__incoming_file_config.database_relation,
             self.__incoming_file_config.table,
