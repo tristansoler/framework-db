@@ -69,7 +69,7 @@ class ConfigSetup:
 
         config_json: dict = None
         path_absolute = Path(__file__).resolve()
-        environment = Environment.REMOTE
+        environment = Environment.DEVELOP
         if is_local:
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
             file = open(path_config)
