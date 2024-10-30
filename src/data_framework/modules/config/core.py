@@ -18,6 +18,7 @@ from data_framework.modules.config.model.flows import (
     CustomConfiguration,
     OutputReport
 )
+from data_framework.modules.storage.interface_storage import Database
 import threading
 import sys
 
@@ -60,6 +61,8 @@ class ConfigSetup:
         dataflow = parameters.get('dataflow')
         json_config = ConfigSetup.read_config_file(dataflow=dataflow, is_local=is_local)
 
+        print(json_config)
+
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
     @classmethod
@@ -69,12 +72,12 @@ class ConfigSetup:
 
         config_json: dict = None
         path_absolute = Path(__file__).resolve()
-        environment = Environment.REMOTE
+
         if is_local:
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
-            environment = Environment.LOCAL
+            #environment = Environment.LOCAL
         else:
             import zipfile
 
@@ -83,7 +86,11 @@ class ConfigSetup:
             config_file = archive.open('config.json')
             config_json = dict(json.loads(config_file.read()))
             config_file.close()
-        common_flow_json = config_json.get('common')
+
+           # environment = Environment.DEVELOP
+
+
+        common_flow_json = config_json.get('default')
         current_flow_json = config_json.get(dataflow, None)
         if current_flow_json is None:
             current_flow_json = common_flow_json
@@ -92,7 +99,7 @@ class ConfigSetup:
                 current_dataflow=current_flow_json,
                 common=common_flow_json
             )
-        current_flow_json['environment'] = environment
+        current_flow_json['environment'] = "develop"
         return current_flow_json
 
     @classmethod

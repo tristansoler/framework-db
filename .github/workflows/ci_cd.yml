@@ -1,0 +1,16 @@
+name: Deploy changes 
+
+on:
+  push: 
+    branches: 
+      - '*'
+
+jobs:
+  cd: 
+    uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/workflows/ci_cd.yml@main
+    secrets: inherit
+    with:
+      runner: python-runner
+      repository: ${{ github.repository }}
+      branch: ${{ github.ref_name }}
+      forced_deployment: ${{ inputs.forced_deployment || false }}

@@ -5,13 +5,13 @@ class Launcher:
 
     def main(self, dataflow: str, process: str):
 
-        common_module_name = f'transformation.common.{process}'
-        module_name = f'transformation.{dataflow}.{process}'
+        common_module_name = f'transformation.dataflow.default.{process}'
+        module_name = f'transformation.dataflow.{dataflow}.{process}'
 
         if process == 'landing_to_raw':
-            module_name = f'data_framework.flows.landing'
+            module_name = f'data_framework.dataflow.landing'
 
-        self._execute(module_name=module_name, common_module_name=common_module_name)
+        self._execute(module_name=module_name, default_module_name=common_module_name)
 
     def get_parameters(self) -> dict:
         parameters = {}
@@ -22,7 +22,7 @@ class Launcher:
         
         return parameters
 
-    def _execute(self, module_name: str, common_module_name: str):
+    def _execute(self, module_name: str, default_module_name: str):
 
         class_name = 'ProcessingCoordinator'
 
@@ -30,8 +30,8 @@ class Launcher:
             print(f'Importing {module_name}')
             module = import_module(module_name)
         except ModuleNotFoundError:
-            print(f'Module {module_name} not found. Importing {common_module_name}')
-            module = import_module(common_module_name)
+            print(f'Module {module_name} not found. Importing {default_module_name}')
+            module = import_module(default_module_name)
 
         try:
             print(f'Importing class {class_name}')
