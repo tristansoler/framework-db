@@ -197,17 +197,17 @@ class ProcessingCoordinator:
             if is_valid:
                 # Obtain file date
                 file_date = self.obtain_file_date()
-                # Compare with the previous file
-                process_file = self.compare_with_previous_file(file_contents)
-                if process_file:
-                    # Create partitions
-                    partitions = self.create_partitions(file_date)
-                    # Save file in raw table
-                    self.write_data(file_contents, partitions)
+                # # Compare with the previous file
+                # process_file = self.compare_with_previous_file(file_contents)
+                # if process_file:
+                # Create partitions
+                partitions = self.create_partitions(file_date)
+                # Save file in raw table
+                self.write_data(file_contents, partitions)
                 # Send response
                 response['success'] = True
                 response['file-date'] = file_date
-                response['continue'] = process_file
+                response['continue'] = True
                 return response
             else:
                 response['success'] = False

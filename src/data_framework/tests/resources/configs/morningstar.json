@@ -51,7 +51,7 @@
       }
     }
   },
-  "dividends_prod": {
+  "dividend_prod": {
     "processes": {
       "landing_to_raw": {
         "incoming_file": {
@@ -63,7 +63,7 @@
       }
     }
   },
-  "dividends_correction": {
+  "dividend_correction": {
     "processes": {
       "landing_to_raw": {
         "incoming_file": {

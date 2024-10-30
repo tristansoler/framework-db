@@ -57,24 +57,22 @@ class ConfigSetup:
                 value = sys.argv[i+1]
                 parameters[key] = value
 
-        is_local = parameters.get('environment') == Environment.LOCAL.value
+        local_file = parameters.get('local_file')
         dataflow = parameters.get('dataflow')
-        json_config = ConfigSetup.read_config_file(dataflow=dataflow, is_local=is_local)
-
-        print(json_config)
+        json_config = ConfigSetup.read_config_file(dataflow=dataflow, local_file=local_file)
 
         self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
 
     @classmethod
-    def read_config_file(cls, dataflow: str, is_local: bool) -> dict:
+    def read_config_file(cls, dataflow: str, local_file: str) -> dict:
         import json
         from pathlib import Path
 
         config_json: dict = None
         path_absolute = Path(__file__).resolve()
 
-        if is_local:
-            path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{dataflow}.json'
+        if local_file != None:
+            path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{local_file}.json'
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
             #environment = Environment.LOCAL
@@ -89,29 +87,30 @@ class ConfigSetup:
 
            # environment = Environment.DEVELOP
 
-
         common_flow_json = config_json.get('default')
         current_flow_json = config_json.get(dataflow, None)
         if current_flow_json is None:
             current_flow_json = common_flow_json
         else:
-            current_flow_json = cls.merged_current_dataflow_with_common(
+            current_flow_json = cls.merged_current_dataflow_with_default(
                 current_dataflow=current_flow_json,
-                common=common_flow_json
+                default=common_flow_json
             )
+        
         current_flow_json['environment'] = "develop"
         return current_flow_json
 
     @classmethod
-    def merged_current_dataflow_with_common(cls, current_dataflow: dict, common: dict) -> dict:
+    def merged_current_dataflow_with_default(cls, current_dataflow: dict, default: dict) -> dict:
 
         merged = current_dataflow.copy()
 
-        for key, value in common.items():
+        for key, value in default.items():
             if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-                merged[key] = cls.merged_current_dataflow_with_common(merged[key], value)
+                merged[key] = cls.merged_current_dataflow_with_default(merged[key], value)
             else:
-                merged[key] = value
+                if merged.get(key) == None:    
+                    merged[key] = value
 
         return merged
 
