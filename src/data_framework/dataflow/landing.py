@@ -216,7 +216,8 @@ class ProcessingCoordinator:
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
             response['success'] = False
-            return response
+
+        exit(0)
 
     def read_data(self) -> dict:
         response = self.storage.read(
