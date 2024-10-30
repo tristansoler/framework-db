@@ -1,85 +1,78 @@
 {
-    "version": 1,
-    "common": {
-      "processes": {
-        "landing_to_raw": {
-          "incoming_file": {
-            "zipped": "",
-            "file_format": "csv",
-            "filename_pattern": "LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2})",
-            "csv_specs": {
-              "header_position": 0,
-              "header": true,
-              "encoding": "UTF-8",
-              "delimiter": ",",
-              "date_located": "filename",
-              "date_located_filename": {
-                "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
+  "version": 1,
+  "default": {
+    "processes": {
+      "landing_to_raw": {
+        "incoming_file": {
+          "zipped": "zip",
+          "file_format": "csv",
+          "filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})",
+          "csv_specs": {
+            "header_position": 0,
+            "header": true,
+            "encoding": "UTF-8",
+            "delimiter": ";",
+            "date_located": "filename",
+            "date_located_filename": {
+              "regex": "(\\d{4})(\\d{2})(\\d{2})"
+            }
+          },
+          "validations": {
+            "validate_extension": true,
+            "validate_filename": true,
+            "validate_csv": true,
+            "validate_columns": true
+          }
+        },
+        "output_file": {
+          "database": "funds_raw",
+          "table": "product_test",
+          "partitions": {
+            "datadate": true,
+            "insert_time": false
+          }
+        },
+        "processing_specifications": {
+          "technology": "emr",
+          "hardware": {
+            "ram": 512
+          },
+          "spark_configuration": {
+            "default_catalog": true,
+            "warehouse": "funds_raw",
+            "custom_configuration": [
+              {
+                "parameter": "",
+                "value": ""
               }
-            },
-            "validations": {
-                "validate_extension": true,
-                "validate_filename": true,
-                "validate_csv": true,
-                "validate_columns": true
-            }
-          },
-          "output_file": {
-            "database": "funds_raw",
-            "database_relation": "rl_funds_raw",
-            "table": "luxembourg_portfolio_returns",
-            "partition_field": "data_date"
-          },
-          "processing_specifications": {
-            "technology": "lambda",
-            "hardware": {
-              "ram": 512
-            },
-            "spark_configuration": {
-                "default_catalog": true,
-                "warehouse": "funds_raw",
-                "custom_configuration": [
-                    {
-                        "parameter": "",
-                        "value": ""
-                    }
-                ]
-            }
-          }
-        },
-        "raw_to_staging": {
-          "processing_specifications": {
-            "technology": "emr",
-            "hardware": {
-              "ram": 512
-            },
-            "spark_configuration": {
-                "default_catalog": true,
-                "warehouse": "funds_staging",
-                "custom_configuration": [
-                    {
-                        "parameter": "",
-                        "value": ""
-                    }
-                ]
-            }
-          }
-        },
-        "staging_to_common": {
-          "processing_specifications": {
-            "technology": "lambda",
-            "hardware": {
-              "ram": 512
-            }
+            ]
           }
         }
       }
-    },
-    "jpm_portfolio_returns": {
-      "processes": {
-        "landing_to_raw": {},
-        "raw_to_staging": {},
-        "staging_to_common": {}
+    }
+  },
+  "dividends_prod": {
+    "processes": {
+      "landing_to_raw": {
+        "incoming_file": {
+          "filename_pattern": "^RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD\\.$"
+        },
+        "output_file": {
+          "table": "morningstar_dividend_prod"
+        }
+      }
+    }
+  },
+  "dividends_correction": {
+    "processes": {
+      "landing_to_raw": {
+        "incoming_file": {
+          "filename_pattern": "^RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION\\.$"
+        },
+        "output_file": {
+          "table": "morningstar_dividend_correction"
+        }
       }
     }
   }
+}

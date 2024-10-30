@@ -15,7 +15,7 @@ class Storage:
 
     @LazyClassProperty
     def _storage(cls) -> CoreStorageInterface:
-        if config().environment == Environment.REMOTE:
+        if config().environment != Environment.LOCAL:
             from data_framework.modules.storage.integrations.s3_storage import S3Storage
             return S3Storage()
         else:

@@ -148,8 +148,8 @@ class ToOutput:
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
-    raw_to_staging: RawToStaging
-    to_output: ToOutput
+    raw_to_staging: Optional[RawToStaging]
+    to_output: Optional[ToOutput]
 
 
 @dataclass
