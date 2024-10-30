@@ -55,7 +55,8 @@
     "processes": {
       "landing_to_raw": {
         "incoming_file": {
-          "filename_pattern": "^RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD\\.$"
+          "filename_pattern": "^RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.ZIP",
+          "filename_unzipped_pattern": ""
         },
         "output_file": {
           "table": "morningstar_dividend_prod"
@@ -67,7 +68,8 @@
     "processes": {
       "landing_to_raw": {
         "incoming_file": {
-          "filename_pattern": "^RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION\\.$"
+          "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.ZIP",
+          "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.csv"
         },
         "output_file": {
           "table": "morningstar_dividend_correction"

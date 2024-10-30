@@ -99,6 +99,7 @@ class IncomingFileLandingToRaw:
     zipped: Optional[str]
     file_format: LandingFileFormat
     filename_pattern: str
+    filename_unzipped_pattern: Optional[str]
     csv_specs: CSVSpecs
     validations: Validations
 

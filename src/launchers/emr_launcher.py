@@ -15,9 +15,9 @@ class Launcher:
 
     def get_parameters(self) -> dict:
         parameters = {}
-        for i in range(1, len(sys.argv), 2):
-            key = sys.argv[i].replace('--', '').replace('-', '_')
-            value = sys.argv[i+1]
+        for parameter_index in range(1, len(sys.argv), 2):
+            key = sys.argv[parameter_index].replace('--', '').replace('-', '_')
+            value = sys.argv[parameter_index+1]
             parameters[key] = value
         
         return parameters
