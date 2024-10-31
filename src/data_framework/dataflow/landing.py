@@ -13,7 +13,6 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
 
-
 class FileValidator:
 
     def __init__(self, file_contents: dict):
@@ -24,12 +23,11 @@ class FileValidator:
         self.output_file_config = self.config.processes.landing_to_raw.output_file
         self.validations = self.config.processes.landing_to_raw.incoming_file.validations
         self.file_contents = file_contents
+        self.file_name = Path(self.config.parameters.source_file_path).name
 
     def validate_file(self) -> None:
         is_valid = True
-        if self.validations.validate_extension:
-            valid_extension = self.validate_extension()
-            is_valid = is_valid and valid_extension
+
         if self.validations.validate_filename:
             valid_filename = self.validate_filename()
             is_valid = is_valid and valid_filename
@@ -38,57 +36,30 @@ class FileValidator:
             is_valid = is_valid and valid_csv
         return is_valid
 
-    def validate_extension(self) -> bool:
-        try:
-            extension = Path(self.config.parameters.source_file_path).suffix.strip('.').lower()
-            if self.incoming_file_config.zipped:
-                # Compressed file
-                expected_extension = self.incoming_file_config.zipped
-                assert extension == expected_extension
-                # Validate extension of the files inside the compressed file
-                expected_extension = self.incoming_file_config.file_format
-                for filename, file_data in self.file_contents.items():
-                    if file_data['validate']:
-                        # Assumes that all the files inside the compressed file have the same extension
-                        extension = Path(filename).suffix.strip('.').lower()
-                        assert extension == expected_extension
-            else:
-                # Uncompressed file
-                expected_extension = self.incoming_file_config.file_format
-                assert extension == expected_extension
-        except AssertionError:
-            self.logger.info(f'Extension of the file {self.config.parameters.source_file_path} is invalid')
-            return False
-        except Exception as e:
-            self.logger.error(f'Error validating extension of the file {self.config.parameters.source_file_path}: {e}')
-            return False
-        else:
-            self.logger.info(f'Extension of the file {self.config.parameters.source_file_path} is valid')
-            return True
-
     def validate_filename(self) -> bool:
+        return_value = False
+        
         try:
             pattern = self.incoming_file_config.filename_pattern
-            if not pattern.endswith('$'):
-                pattern = pattern + '$'
-            if not pattern.startswith('^'):
-                pattern = '^' + pattern
-            filename = Path(self.config.parameters.source_file_path).name.split('.')[0]
-            assert bool(re.match(pattern, filename))
+            assert bool(
+                re.match(pattern, self.file_name)
+            ), f"Name of the file '{self.file_name}' is invalid"
+
             if self.incoming_file_config.zipped:
                 for filename, file_data in self.file_contents.items():
                     if file_data['validate']:
-                        # Assumes that all the files inside the compressed file follow the same pattern
-                        assert bool(re.match(pattern, filename))
-        except AssertionError:
-            self.logger.info(f'Name of the file {self.config.parameters.source_file_path} is invalid')
-            return False
-        except Exception as e:
-            self.logger.error(f'Error validating name of the file {self.config.parameters.source_file_path}: {e}')
-            return False
+                        assert bool(
+                            re.match(self.incoming_file_config.filename_unzipped_pattern, filename)
+                        ), f"The name of the unzipped file '{filename}' is incorrect"
+        except AssertionError as error:
+            self.logger.error(error)
+        except Exception as error:
+            self.logger.error(f"Error validating name of the file '{self.file_name}': {error}")
         else:
-            self.logger.info(f'Name of the file {self.config.parameters.source_file_path} is valid')
-            return True
+            self.logger.info(f"Name of the file '{self.file_name}' is valid")
+            return_value = True
+
+        return return_value
 
     def validate_csv(self) -> bool:
         for filename, file_data in self.file_contents.items():
@@ -105,7 +76,7 @@ class FileValidator:
                     expected_n_columns = self.get_expected_number_of_columns(file_data['content'])
                     assert df.shape == (expected_n_rows, expected_n_columns)
                 except AssertionError:
-                    self.logger.info(f'Header and/or separator of the file {filename} are invalid')
+                    self.logger.error(f'Header and/or separator of the file {filename} are invalid')
                     return False
                 except Exception as e:
                     self.logger.error(f'Error validating header and separator of the file {filename}: {e}')
@@ -130,7 +101,7 @@ class FileValidator:
             diff_columns = extra_columns + missing_columns
             assert len(diff_columns) == 0
         except AssertionError:
-            self.logger.info(f'Columns of the file {filename} are invalid')
+            self.logger.error(f'Columns of the file {filename} are invalid')
             return False
         except Exception as e:
             self.logger.error(f'Error validating columns of the file {filename}: {e}')
@@ -181,14 +152,17 @@ class ProcessingCoordinator:
         self.output_file_config = self.config.processes.landing_to_raw.output_file
 
     def process(self) -> dict:
+        
+        # Build generic response
+        response = {
+            'success': False,
+            'continue': False,
+            'file_name': None,
+            'file_date': None
+        }
+        
         try:
-            # Build generic response
-            response = {
-                'success': None,
-                'continue': None,
-                'file-name': Path(self.config.parameters.source_file_path).name,
-                'file-date': None
-            }
+            response['file_name'] = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Apply controls
@@ -197,26 +171,23 @@ class ProcessingCoordinator:
             if is_valid:
                 # Obtain file date
                 file_date = self.obtain_file_date()
-                # Compare with the previous file
-                process_file = self.compare_with_previous_file(file_contents)
-                if process_file:
-                    # Create partitions
-                    partitions = self.create_partitions(file_date)
-                    # Save file in raw table
-                    self.write_data(file_contents, partitions)
+                # # Compare with the previous file
+                # process_file = self.compare_with_previous_file(file_contents)
+                # if process_file:
+                # Create partitions
+                partitions = self.create_partitions(file_date)
+                # Save file in raw table
+                self.write_data(file_contents, partitions)
                 # Send response
                 response['success'] = True
-                response['file-date'] = file_date
-                response['continue'] = process_file
-                return response
-            else:
-                response['success'] = False
-                response['continue'] = False
-                return response
+                response['file_date'] = file_date
+                response['continue'] = True
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
-            response['success'] = False
-            return response
+
+        self.logger.debug(response)
+
+        return response
 
     def read_data(self) -> dict:
         response = self.storage.read(
