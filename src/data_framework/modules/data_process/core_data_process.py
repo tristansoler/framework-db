@@ -50,3 +50,17 @@ class CoreDataProcess(object):
             partition_field=partition_field,
             partition_value=partition_value
         )
+
+    @classmethod
+    def read_table(cls, database: str, table: str) -> ReadResponse:
+        return cls._data_process.read_table(database=database, table=table)
+
+    @classmethod
+    def read_table_with_filter(cls, database: str, table: str, _filter: str) -> ReadResponse:
+        return cls._data_process.read_table_with_filter(
+            database=database, table=table, _filter=_filter
+        )
+
+    @classmethod
+    def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
+        return cls._data_process.join(df_1=df_1, df_2=df_2, on=on, how=how)

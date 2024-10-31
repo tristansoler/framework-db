@@ -33,3 +33,15 @@ class DataProcessInterface(ABC):
         partition_value: str = None
     ) -> ReadResponse:
         pass
+
+    @abstractmethod
+    def read_table(self, database: str, table: str) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def join(self, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
+        pass

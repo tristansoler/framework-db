@@ -44,6 +44,9 @@ class SparkDataProcess(DataProcessInterface):
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'{self.catalog}.{database}.{table}'
 
+    def _build_simple_table_name(self, database: str, table: str) -> str:
+        return f'{database}.{table}'
+
     def merge(self, df: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
         try:
             table_name = self._build_complete_table_name(database, table)
@@ -95,3 +98,37 @@ class SparkDataProcess(DataProcessInterface):
     def _execute_query(self, query: str) -> DataFrame:
         df_result = self.spark.sql(query)
         return df_result
+
+    def read_table(self, database: str, table: str) -> ReadResponse:
+        try:
+            table_name = self._build_simple_table_name(database, table)
+            query = f"SELECT * FROM {table_name}"
+            df = self._execute_query(query)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
+        try:
+            table_name = self._build_simple_table_name(database, table)
+            query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            df = self._execute_query(query)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def join(self, df_1: DataFrame, df_2: DataFrame, on: List[str], how: str) -> ReadResponse:
+        try:
+            if how not in ['inner', 'left', 'right', 'outer']:
+                raise ValueError(
+                    f'Invalid parameter value: how={how}. Allowed values: inner, left, right, outer'
+                )
+            # TODO: join por columnas diferentes en cada df -> similar a left_on y right_on en pandas
+            df_result = df_1.join(df_2, on=on, how=how)
+            # TODO: revisar tipo de respuesta. ¿TransformationResponse?
+            response = ReadResponse(success=True, error=None, data=df_result)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
