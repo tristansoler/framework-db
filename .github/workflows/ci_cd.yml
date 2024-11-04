@@ -53,7 +53,7 @@ jobs:
               LAST_FOLDER=last
               ;;
             "feature"*)
-              LAST_FOLDER=feature/${{ github.ref_name }}
+              LAST_FOLDER=${{ github.ref_name }}
               ;;              
             "release"*)
               LAST_FOLDER=last
