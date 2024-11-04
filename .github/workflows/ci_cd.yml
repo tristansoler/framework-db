@@ -21,7 +21,7 @@ jobs:
     outputs:
       ENVIRONMENT: ${{ steps.set_environment.outputs.ENVIRONMENT }}
       FORCED_DEPLOYMENT: ${{ inputs.forced_deployment || false }}
-      LAST_FOLDER: ${{ steps.set_environment.outputs.LAST_FOLDER }}
+      LAST_FOLDER: ${{ steps.set_version_folder.outputs.LAST_FOLDER }}
     permissions:
       contents: write
     steps:
