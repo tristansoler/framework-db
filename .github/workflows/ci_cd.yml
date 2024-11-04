@@ -1,16 +1,124 @@
-name: Deploy changes 
+name: Deploy changes
 
 on:
+  workflow_call:
+    inputs:
+      forced_deployment:
+        description: Deploy all resources in the cloud
+        required: true
+        type: boolean
   push: 
     branches: 
-      - '*'
+      - main
+      - 'release/**'
+      - develop     
+
 
 jobs:
-  cd: 
-    uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/workflows/ci_cd.yml@main
-    secrets: inherit
+  parameters:
+    name: Set parameters
+    runs-on: python-runner
+    outputs:
+      ENVIRONMENT: ${{ steps.set_environment.outputs.ENVIRONMENT }}
+      FORCED_DEPLOYMENT: ${{ inputs.forced_deployment || false }}
+    permissions:
+      contents: write
+    steps:
+      - name: Set environment
+        id: set_environment
+        run: |
+          case ${{ github.ref_name }} in
+            develop)
+              ENVIRONMENT=DEV
+              ;;
+            "feature"*)
+              ENVIRONMENT=DEV
+              ;;              
+            "release"*)
+              ENVIRONMENT=PRE
+              ;;
+            main)
+              ENVIRONMENT=PRO
+              ;;
+          esac
+          echo "The environment is: $ENVIRONMENT"
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
+
+  fortify:
+    name: Fortify
+    needs: [parameters]
+    uses: santander-group-shared-assets/gln-detect-asm-ssdlc-workflows/.github/workflows/sast-fortify.yml@v4.2.0
+    if: ${{ needs.parameters.outputs.forced_deployment == false }}
     with:
-      runner: python-runner
-      repository: ${{ github.repository }}
-      branch: ${{ github.ref_name }}
-      forced_deployment: ${{ inputs.forced_deployment || false }}
+      runs-on: python-runner
+      timeout-minutes: 30
+      tools_and_versions: >
+        python:3.10.11
+      ssc_url: "https://ssc.santander.fortifyhosted.com"
+      sc_controller_url: "https://scsastctrl.santander.fortifyhosted.com/scancentral-ctrl"
+      component: santander-group-wealth-ng_aih-dataplatform-python-data_framework
+      version: 1
+      build_tool: "none"
+      criteria: "High"
+    secrets:
+      fortify_client_auth_token_hosted: ${{ secrets.FORTIFY_CLIENT_AUTH_TOKEN_HOSTED }}
+      fortify_user: ${{ secrets.FORTIFY_USER }}
+      fortify_password: ${{ secrets.FORTIFY_PASSWORD }}
+
+  sonar:
+    name: Sonar
+    needs: [parameters]
+    if: ${{ needs.parameters.outputs.forced_deployment == false }}
+    runs-on: python-runner
+    environment: ${{ needs.parameters.outputs.ENVIRONMENT }}
+    steps:
+      - name: Clone original repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref_name }}
+
+      - name: SonarQube Scan
+        uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/code-analyze-sonar_qube_scan@main
+        with:
+              sonar-url: https://sonar-com.sgtech.gs.corp
+              sonar-token: ${{ secrets.SGT79_SONAR_PRO_TOKEN }}
+              sonar-project-key: wel:wel:aih-gdp:${{ needs.parameters.outputs.DATAFLOW }}
+              sonar-project-version: ${{ vars.DATAFLOW_VERSION }}
+
+  aws-s3-upload:
+    runs-on: python-runner
+    needs: [ parameters ]
+    environment: ${{ needs.parameters.outputs.ENVIRONMENT }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.ref_name }}
+      - name: Zip files
+        run: |
+          rm -fr src/data_framework/tests
+          mv src/data_framework data_framework
+          zip data_framework.zip data_framework
+      - name: AWS Login
+        id: login
+        uses: santander-group-wealth-ng/wmi-awslz-actions-workflows/.github/actions/AWSlogin@main
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          assume_role: ${{ secrets.AWS_ASSUME_ROLE }}
+          session_name: ${{ secrets.AWS_SESSION_NAME }}
+      - name: Upload file Data Framework
+        with:
+          MODIFY_FILE: data_framework.zip
+          AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
+          AWS_S3_PATH_TARGET: product/libs/data_framework/last/
+        uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
+      - name: Upload file Launcher
+        with:
+          MODIFY_FILE: src/launchers/emr_launcher.py
+          AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
+          AWS_S3_PATH_TARGET: product/libs/data_framework/last/
+        uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
+      
