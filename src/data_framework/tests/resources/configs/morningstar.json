@@ -26,11 +26,9 @@
         },
         "output_file": {
           "database": "funds_raw",
+		      "database_relation": "rl_funds_raw",
           "table": "product_test",
-          "partitions": {
-            "datadate": true,
-            "insert_time": false
-          }
+          "partition_field": "data_date"
         },
         "processing_specifications": {
           "technology": "emr",
@@ -51,7 +49,7 @@
       }
     }
   },
-  "dividend_prod": {
+  "morningstar_dividend_prod": {
     "processes": {
       "landing_to_raw": {
         "incoming_file": {
@@ -64,7 +62,7 @@
       }
     }
   },
-  "dividend_correction": {
+  "morningstar_dividend_correction": {
     "processes": {
       "landing_to_raw": {
         "incoming_file": {
