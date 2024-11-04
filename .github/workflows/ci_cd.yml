@@ -100,7 +100,7 @@ jobs:
         run: |
           rm -fr src/data_framework/tests
           mv src/data_framework data_framework
-          zip data_framework.zip data_framework
+          zip -r data_framework.zip data_framework
       - name: AWS Login
         id: login
         uses: santander-group-wealth-ng/wmi-awslz-actions-workflows/.github/actions/AWSlogin@main
