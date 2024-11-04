@@ -21,6 +21,7 @@ jobs:
     outputs:
       ENVIRONMENT: ${{ steps.set_environment.outputs.ENVIRONMENT }}
       FORCED_DEPLOYMENT: ${{ inputs.forced_deployment || false }}
+      LAST_FOLDER: ${{ steps.set_environment.outputs.LAST_FOLDER }}
     permissions:
       contents: write
     steps:
@@ -43,6 +44,27 @@ jobs:
           esac
           echo "The environment is: $ENVIRONMENT"
           echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_OUTPUT
+      - name: Set version folder
+        id: set_version_folder
+        run: |
+          case ${{ github.ref_name }} in
+            develop)
+              LAST_FOLDER=last
+              ;;
+            "feature"*)
+              LAST_FOLDER=feature/${{ github.ref_name }}
+              ;;              
+            "release"*)
+              LAST_FOLDER=last
+              VERSION_FOLDER=version/1
+              ;;
+            main)
+              LAST_FOLDER=last
+              VERSION_FOLDER=version/1
+              ;;
+          esac
+          echo "last folder is: $LAST_FOLDER"
+          echo "LAST_FOLDER=$LAST_FOLDER" >> $GITHUB_OUTPUT
 
   fortify:
     name: Fortify
@@ -113,12 +135,12 @@ jobs:
         with:
           MODIFY_FILE: data_framework.zip
           AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
-          AWS_S3_PATH_TARGET: product/libs/data_framework/last
+          AWS_S3_PATH_TARGET: product/libs/data_framework/${{ needs.parameters.outputs.LAST_FOLDER }}
         uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
       - name: Upload file Launcher
         with:
           MODIFY_FILE: src/launchers/emr_launcher.py
           AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
-          AWS_S3_PATH_TARGET: product/libs/data_framework/last
+          AWS_S3_PATH_TARGET: product/libs/data_framework/${{ needs.parameters.outputs.LAST_FOLDER }}
         uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
       
