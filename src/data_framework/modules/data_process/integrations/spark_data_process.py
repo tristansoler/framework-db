@@ -8,6 +8,18 @@ from data_framework.modules.config.core import config
 from data_framework.modules.data_process.helpers.cast import Cast
 from typing import List
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.types import (
+    StructType,
+    StructField,
+    IntegerType,
+    StringType,
+    DoubleType,
+    BooleanType,
+    DateType,
+    FloatType,
+    TimestampType,
+    DecimalType
+)
 
 
 class SparkDataProcess(DataProcessInterface):
@@ -33,8 +45,8 @@ class SparkDataProcess(DataProcessInterface):
         # Add custom configurations
         for custom_config in spark_config.custom_configuration:
             spark_session = spark_session.config(
-                custom_config['parameter'],
-                custom_config['value']
+                custom_config.parameter,
+                custom_config.value
             )
         # Create Spark session
         spark_session = spark_session.enableHiveSupport().getOrCreate()
@@ -43,6 +55,9 @@ class SparkDataProcess(DataProcessInterface):
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'{self.catalog}.{database}.{table}'
+
+    def _build_simple_table_name(self, database: str, table: str) -> str:
+        return f'{database}.{table}'
 
     def merge(self, df: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
         try:
@@ -95,3 +110,80 @@ class SparkDataProcess(DataProcessInterface):
     def _execute_query(self, query: str) -> DataFrame:
         df_result = self.spark.sql(query)
         return df_result
+
+    def read_table(self, database: str, table: str) -> ReadResponse:
+        try:
+            table_name = self._build_simple_table_name(database, table)
+            query = f"SELECT * FROM {table_name}"
+            df = self._execute_query(query)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
+        try:
+            table_name = self._build_simple_table_name(database, table)
+            query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            df = self._execute_query(query)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def join(self, df_1: DataFrame, df_2: DataFrame, on: List[str], how: str) -> ReadResponse:
+        try:
+            if how not in ['inner', 'left', 'right', 'outer']:
+                raise ValueError(
+                    f'Invalid parameter value: how={how}. Allowed values: inner, left, right, outer'
+                )
+            # TODO: join por columnas diferentes en cada df -> similar a left_on y right_on en pandas
+            df_result = df_1.join(df_2, on=on, how=how)
+            # TODO: revisar tipo de respuesta. ¿TransformationResponse?
+            response = ReadResponse(success=True, error=None, data=df_result)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def create_dataframe(self, schema: dict, rows: List[dict]) -> ReadResponse:
+        try:
+            spark_schema = self._parse_schema(schema)
+            df_result = self.spark.createDataFrame(rows, spark_schema)
+            response = ReadResponse(success=True, error=None, data=df_result)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def _parse_schema(self, schema: dict) -> StructType:
+        parsed_types = {
+            'int': IntegerType(),
+            'string': StringType(),
+            'double': DoubleType(),
+            'float': FloatType(),
+            'decimal': DecimalType(),
+            'bool': BooleanType(),
+            'date': DateType(),
+            'timestamp': TimestampType()
+        }
+        parsed_fields = []
+        for field, field_info in schema.items():
+            _type = field_info['type']
+            is_null = field_info['is_null']
+            parsed_type = parsed_types.get(_type)
+            if not parsed_type:
+                raise ValueError(f'Invalid type: {_type}. Allowed types: {list(parsed_types.keys())}')
+            parsed_fields.append(
+                StructField(field, parsed_type, is_null)
+            )
+        spark_schema = StructType(parsed_fields)
+        return spark_schema
+
+    def append_rows_to_dataframe(self, df: DataFrame, new_rows: List[dict]) -> ReadResponse:
+        try:
+            spark_schema = df.schema
+            new_df = self.spark.createDataFrame(new_rows, spark_schema)
+            df_result = df.unionByName(new_df)
+            response = ReadResponse(success=True, error=None, data=df_result)
+        except Exception as e:
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
