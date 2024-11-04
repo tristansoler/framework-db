@@ -64,3 +64,11 @@ class CoreDataProcess(object):
     @classmethod
     def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
         return cls._data_process.join(df_1=df_1, df_2=df_2, on=on, how=how)
+
+    @classmethod
+    def create_dataframe(cls, schema: dict, rows: List[dict]) -> ReadResponse:
+        return cls._data_process.create_dataframe(schema=schema, rows=rows)
+
+    @classmethod
+    def append_rows_to_dataframe(cls, df: Any, new_rows: List[dict]) -> ReadResponse:
+        return cls._data_process.append_rows_to_dataframe(df=df, new_rows=new_rows)
