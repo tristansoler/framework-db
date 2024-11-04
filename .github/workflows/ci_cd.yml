@@ -113,12 +113,12 @@ jobs:
         with:
           MODIFY_FILE: data_framework.zip
           AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
-          AWS_S3_PATH_TARGET: product/libs/data_framework/last/
+          AWS_S3_PATH_TARGET: product/libs/data_framework/last
         uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
       - name: Upload file Launcher
         with:
           MODIFY_FILE: src/launchers/emr_launcher.py
           AWS_S3_BUCKET_TARGET: s3://${{secrets.AWS_ACCOUNT_NAME}}-code
-          AWS_S3_PATH_TARGET: product/libs/data_framework/last/
+          AWS_S3_PATH_TARGET: product/libs/data_framework/last
         uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
       
