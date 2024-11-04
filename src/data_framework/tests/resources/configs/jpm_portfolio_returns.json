@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "common": {
+    "default": {
       "processes": {
         "landing_to_raw": {
           "incoming_file": {

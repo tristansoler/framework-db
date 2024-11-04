@@ -1,4 +1,4 @@
-from typing import Type, TypeVar, get_type_hints
+from typing import Type, TypeVar, Union, get_type_hints, get_origin, get_args
 from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
@@ -18,7 +18,6 @@ from data_framework.modules.config.model.flows import (
     CustomConfiguration,
     OutputReport
 )
-from data_framework.modules.storage.interface_storage import Database
 import threading
 import sys
 
@@ -96,7 +95,6 @@ class ConfigSetup:
                 current_dataflow=current_flow_json,
                 default=common_flow_json
             )
-        
         current_flow_json['environment'] = "develop"
         return current_flow_json
 
@@ -109,7 +107,7 @@ class ConfigSetup:
             if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
                 merged[key] = cls.merged_current_dataflow_with_default(merged[key], value)
             else:
-                if merged.get(key) == None:    
+                if merged.get(key) is None:
                     merged[key] = value
 
         return merged
@@ -125,6 +123,15 @@ class ConfigSetup:
                 kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
             elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                 kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
+            elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):
+                field_model = [model for model in cls._models if model in get_args(field_type)][0]
+                kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
+            elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
+                field_model = [model for model in cls._models if model in get_args(field_type)][0]
+                kwargs[field] = [
+                    cls.parse_to_model(model=field_model, json_file=field_item)
+                    for field_item in json_file.get(field)
+                ]
             else:
                 kwargs[field] = json_file.get(field)
         return model(**kwargs)
