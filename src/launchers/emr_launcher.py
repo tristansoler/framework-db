@@ -31,11 +31,8 @@ class Launcher:
         except ModuleNotFoundError:
             module = import_module(default_module_name)
 
-        print(f'Importing {module_name}')
-
         try:
             _class = getattr(module, class_name)
-            print(f'Importing class {class_name}')
         except AttributeError:
             print(f'Class {class_name} not found in {module.__name__}')
 
