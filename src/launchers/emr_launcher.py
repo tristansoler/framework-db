@@ -27,22 +27,20 @@ class Launcher:
         class_name = 'ProcessingCoordinator'
 
         try:
-            print(f'Importing {module_name}')
             module = import_module(module_name)
         except ModuleNotFoundError:
-            print(f'Module {module_name} not found. Importing {default_module_name}')
             module = import_module(default_module_name)
 
+        print(f'Importing {module_name}')
+
         try:
-            print(f'Importing class {class_name}')
             _class = getattr(module, class_name)
+            print(f'Importing class {class_name}')
         except AttributeError:
             print(f'Class {class_name} not found in {module.__name__}')
 
-        print('Executing process')
-
         response = _class().process()
-        if response.get('success') == False:
+        if response != None and response.get('success') == False:
             exit(1)
 
 if __name__ == '__main__':
