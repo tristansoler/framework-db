@@ -109,7 +109,7 @@ class DatabaseTable:
     database: Database
     database_relation: str
     table: str
-    partition_field: Optional[str]
+    partition_field: str = "datadate"
     primary_keys: Optional[list]
 
 
