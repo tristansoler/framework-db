@@ -3,7 +3,6 @@ from dataclasses import fields, field
 from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
-    RawToStaging,
     ToOutput,
     IncomingFileLandingToRaw,
     DateLocatedFilename,
@@ -17,7 +16,8 @@ from data_framework.modules.config.model.flows import (
     Environment,
     SparkConfiguration,
     CustomConfiguration,
-    OutputReport
+    OutputReport,
+    GenericProcesss
 )
 import threading
 import sys
@@ -36,7 +36,7 @@ class ConfigSetup:
     _lock = threading.Lock()
 
     _models = (
-        Processes, LandingToRaw, RawToStaging, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, GenericProcesss, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, Validations, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration, OutputReport
     )
