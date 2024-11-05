@@ -48,6 +48,7 @@ class RawToStaging:
             self.__incoming_file_config.partition_field,
             self.__config.parameters.file_date
         )
+        
         if response.success:
             df = response.data
             self.__logger.info(f'Read {df.count()} rows from {input_table} with partition {partition}')

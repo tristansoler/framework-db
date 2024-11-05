@@ -50,11 +50,20 @@
       "raw_to_staging": {
         "incoming_file": {
           "database": "funds_raw",
-          "database_relation": "rl_funds_raw"
+          "primary_keys": [
+            "performanceid",
+            "datadate",
+            "paydate"
+          ]
         },
         "output_file": {
           "database": "funds_staging",
-          "database_relation": "rl_funds_staging"
+          "table": "morningstar_dividends",
+          "primary_keys": [
+            "performanceid",
+            "datadate",
+            "paydate"
+          ]
         },
         "processing_specifications": {
           "technology": "emr",
@@ -64,39 +73,6 @@
           "spark_configuration": {
             "default_catalog": true,
             "warehouse": "funds_staging",
-            "custom_configuration": [
-              {
-                "parameter": "",
-                "value": ""
-              }
-            ]
-          }
-        }
-      },
-      "to_output": {
-        "output_reports": [{
-          "name" : "prueba1",
-          "database_relation": "rl_funds_staging",
-          "table": "morningstar_dividends",
-          "columns": ["secid", "performanceid", "currencyiso"],
-          "columns_alias": ["id", "performance_id", "currency_ISO"],
-          "where": "1=1",
-          "file_format": "csv",
-          "filename_pattern": "fichero_output_{}",
-          "csv_specs": {
-            "header": true,
-            "encoding": "UTF-8",
-            "delimiter": ","
-          }
-        }],
-        "processing_specifications": {
-          "technology": "lambda",
-          "hardware": {
-          "ram": 512
-          },
-          "spark_configuration": {
-            "default_catalog": true,
-            "warehouse": "funds_raw",
             "custom_configuration": [
               {
                 "parameter": "",
@@ -116,18 +92,7 @@
           "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.TXT"
         },
         "output_file": {
-          "table": "morningstar_dividend_prod",
-          "partition_field": "datadate"
-        }
-      },
-      "raw_to_staging": {
-        "incoming_file": {
-          "table": "morningstar_dividend_prod",
-          "partition_field": "datadate"
-        },
-        "output_file": {
-          "table": "morningstar_dividends",
-          "primary_keys": []
+          "table": "morningstar_dividend_prod"
         }
       }
     }
@@ -146,12 +111,7 @@
       },
       "raw_to_staging": {
         "incoming_file": {
-          "table": "morningstar_dividend_correction",
-          "partition_field": "datadate"
-        },
-        "output_file": {
-          "table": "morningstar_dividends",
-          "primary_keys": []
+          "table": "morningstar_dividend_correction"
         }
       }
     }
