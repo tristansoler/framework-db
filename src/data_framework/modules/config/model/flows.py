@@ -111,6 +111,10 @@ class DatabaseTable:
     primary_keys: Optional[list]
     partition_field: str = "datadate"
 
+    @property
+    def database_relation(self) -> str:
+        return f'rl_{self.database}'
+
 @dataclass
 class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
