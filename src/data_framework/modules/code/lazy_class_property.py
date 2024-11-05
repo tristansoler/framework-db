@@ -6,6 +6,5 @@ class LazyClassProperty:
 
     def __get__(self, instance, owner):
         if not hasattr(owner, self.attr_name):
-            print(f"Instancing '{self.func.__name__}'...")
             setattr(owner, self.attr_name, self.func(owner))
         return getattr(owner, self.attr_name)
