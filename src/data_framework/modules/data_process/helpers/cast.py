@@ -75,11 +75,12 @@ class Cast():
     ) -> Any:
 
         catalogue = CoreCatalogue._catalogue
+        partitioned=True
         schema_source = catalogue.get_schema(database_source, table_source)
-        l_cols_source = schema_source.schema.get_column_names()
+        l_cols_source = schema_source.schema.get_column_names(partitioned)
 
         schema_target = catalogue.get_schema(database_target, table_target)
-        l_types_target = schema_target.schema.get_type_columns()
+        l_types_target = schema_target.schema.get_type_columns(partitioned)
 
         if partition_field and partition_value:
             where_source = f"{partition_field} = '{partition_value}'"
