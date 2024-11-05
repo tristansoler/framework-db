@@ -24,7 +24,7 @@ class CoreDataProcess(object):
             pass
 
     @classmethod
-    def merge(cls, df: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(cls, dataframe: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
         return cls._data_process.merge(
             df=df,
             database=database,
