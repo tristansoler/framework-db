@@ -123,7 +123,7 @@ class LandingToRaw:
 
 
 @dataclass
-class RawToStaging:
+class GenericProcesss:
     incoming_file: DatabaseTable
     output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
@@ -148,7 +148,9 @@ class ToOutput:
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
-    raw_to_staging: Optional[RawToStaging] = None
+    raw_to_staging: Optional[GenericProcesss] = None
+    staging_to_common: Optional[GenericProcesss] = None
+    staging_to_business: Optional[GenericProcesss] = None
     to_output: Optional[ToOutput] = None
 
 @dataclass
