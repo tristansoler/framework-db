@@ -17,7 +17,8 @@ from data_framework.modules.config.model.flows import (
     SparkConfiguration,
     CustomConfiguration,
     OutputReport,
-    GenericProcesss
+    GenericProcesss,
+    SourceTables
 )
 import threading
 import sys
@@ -125,6 +126,14 @@ class ConfigSetup:
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
+                elif isinstance(field_type, type) and issubclass(field_type, (SourceTables)):
+                    tables = {}
+
+                    for table_name, config in  json_file:
+                        tables[table_name] = DatabaseTable(**json_file.get(table_name)))
+
+                        
+                    kwargs[field] = tables
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                     kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):

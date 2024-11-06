@@ -93,6 +93,11 @@ class Validations:
     validate_csv: bool
     validate_columns: bool
 
+@dataclass
+class SourceTables:
+    tables: (str, DatabaseTable)
+
+    def table(table_name str) -> DatabaseTable:
 
 @dataclass
 class IncomingFileLandingToRaw:
