@@ -13,6 +13,7 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
 
+
 class FileValidator:
 
     def __init__(self, file_contents: dict):
@@ -38,7 +39,7 @@ class FileValidator:
 
     def validate_filename(self) -> bool:
         return_value = False
-        
+
         try:
             pattern = self.incoming_file_config.filename_pattern
             assert bool(
@@ -152,7 +153,7 @@ class ProcessingCoordinator:
         self.output_file_config = self.config.processes.landing_to_raw.output_file
 
     def process(self) -> dict:
-        
+
         # Build generic response
         response = {
             'success': False,
@@ -160,7 +161,7 @@ class ProcessingCoordinator:
             'file_name': None,
             'file_date': None
         }
-        
+
         try:
             response['file_name'] = Path(self.config.parameters.source_file_path).name
             # Read file from S3

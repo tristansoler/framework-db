@@ -1,5 +1,5 @@
 from data_framework.modules.storage.interface_storage import Database
-from dataclasses import dataclass, fields, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, List
 
@@ -40,7 +40,7 @@ class CustomConfiguration:
 
 @dataclass
 class SparkConfiguration:
-    default_catalog: bool
+    catalog: str
     warehouse: Database
     custom_configuration: List[CustomConfiguration]
 
@@ -49,7 +49,7 @@ class SparkConfiguration:
 class ProcessingSpecifications:
     technology: Technologies
     hardware: Hardware
-    spark_configuration: SparkConfiguration
+    spark_configuration: Optional[SparkConfiguration] = None
 
 
 @dataclass
@@ -145,6 +145,7 @@ class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
 
+
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
@@ -152,6 +153,7 @@ class Processes:
     staging_to_common: Optional[GenericProcesss] = None
     staging_to_business: Optional[GenericProcesss] = None
     to_output: Optional[ToOutput] = None
+
 
 @dataclass
 class Config:

@@ -37,16 +37,6 @@
             "technology": "emr",
             "hardware": {
               "ram": 512
-            },
-            "spark_configuration": {
-              "default_catalog": true,
-              "warehouse": "funds_raw",
-              "custom_configuration": [
-                {
-                  "parameter": "",
-                  "value": ""
-                }
-              ]
             }
           }
         },
@@ -74,7 +64,7 @@
               "ram": 512
             },
             "spark_configuration": {
-              "default_catalog": true,
+              "catalog": "iceberg_catalog",
               "warehouse": "funds_staging",
               "custom_configuration": [
                 {

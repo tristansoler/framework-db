@@ -122,7 +122,6 @@ class ConfigSetup:
 
         try:
             for field, field_type in fieldtypes.items():
-
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
@@ -134,25 +133,22 @@ class ConfigSetup:
                         kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-                    
                     if json_file:
                         kwargs[field] = [
                             cls.parse_to_model(model=field_model, json_file=field_item)
                             for field_item in json_file.get(field)
                         ]
                 else:
-                    
                     default_value = None
                     if hasattr(model, field):
                         default_value = getattr(model, field)
-
                     kwargs[field] = json_file.get(field, default_value)
         except Exception as e:
             import traceback
             expection = type(e).__name__
             error = str(e)
             trace = traceback.format_exc()
-            
+
             # Imprimir la información de la excepción
             print(
                 f"""
