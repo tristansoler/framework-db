@@ -69,7 +69,7 @@ class SparkDataProcess(DataProcessInterface):
             sql_update_with_pks = '\n'.join([
                 f'AND {view_name}.{field} = {table_name}.{field}' for field in primary_keys
             ])
-            
+
             merge_query = f"""
                 MERGE INTO {table_name}
                 USING {view_name} ON
