@@ -59,14 +59,17 @@ class SparkDataProcess(DataProcessInterface):
     def _build_simple_table_name(self, database: str, table: str) -> str:
         return f'{database}.{table}'
 
-    def merge(self, df: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(self, dataframe: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
         try:
             table_name = self._build_complete_table_name(database, table)
             view_name = 'data_to_merge'
-            df.createOrReplaceTempView(view_name)
+
+            dataframe.createOrReplaceTempView(view_name)
+
             sql_update_with_pks = '\n'.join([
                 f'AND {view_name}.{field} = {table_name}.{field}' for field in primary_keys
             ])
+            
             merge_query = f"""
                 MERGE INTO {table_name}
                 USING {view_name} ON
@@ -76,7 +79,9 @@ class SparkDataProcess(DataProcessInterface):
                 WHEN NOT MATCHED THEN
                 INSERT *
             """
+
             self._execute_query(merge_query)
+
             response = WriteResponse(success=True, error=None)
         except Exception as e:
             response = WriteResponse(success=False, error=e)

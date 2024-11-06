@@ -1,5 +1,5 @@
 from data_framework.modules.storage.interface_storage import Database
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, field
 from enum import Enum
 from typing import Optional, List
 
@@ -107,11 +107,13 @@ class IncomingFileLandingToRaw:
 @dataclass
 class DatabaseTable:
     database: Database
-    database_relation: str
     table: str
-    partition_field: Optional[str]
     primary_keys: Optional[list]
+    partition_field: str = "datadate"
 
+    @property
+    def database_relation(self) -> str:
+        return f'rl_{self.database}'
 
 @dataclass
 class LandingToRaw:
@@ -121,16 +123,14 @@ class LandingToRaw:
 
 
 @dataclass
-class RawToStaging:
+class GenericProcesss:
     incoming_file: DatabaseTable
     output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
 
-
 @dataclass
 class OutputReport:
     name: Database
-    database_relation: str
     table: str
     columns: str
     columns_alias: str
@@ -145,13 +145,13 @@ class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
 
-
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
-    raw_to_staging: Optional[RawToStaging]
-    to_output: Optional[ToOutput]
-
+    raw_to_staging: Optional[GenericProcesss] = None
+    staging_to_common: Optional[GenericProcesss] = None
+    staging_to_business: Optional[GenericProcesss] = None
+    to_output: Optional[ToOutput] = None
 
 @dataclass
 class Config:

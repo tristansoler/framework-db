@@ -19,7 +19,7 @@ class WriteResponse:
 class DataProcessInterface(ABC):
 
     @abstractmethod
-    def merge(self, df: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(self, dataframe: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
         pass
 
     @abstractmethod

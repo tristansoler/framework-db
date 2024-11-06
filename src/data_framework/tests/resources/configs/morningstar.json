@@ -27,7 +27,7 @@
         "output_file": {
           "database": "funds_raw",
 		      "database_relation": "rl_funds_raw",
-          "table": "product_test",
+          "table": "default_table",
           "partition_field": "data_date"
         },
         "processing_specifications": {
@@ -38,6 +38,41 @@
           "spark_configuration": {
             "default_catalog": true,
             "warehouse": "funds_raw",
+            "custom_configuration": [
+              {
+                "parameter": "",
+                "value": ""
+              }
+            ]
+          }
+        }
+      },
+      "raw_to_staging": {
+        "incoming_file": {
+          "database": "funds_raw",
+          "primary_keys": [
+            "performanceid",
+            "datadate",
+            "paydate"
+          ]
+        },
+        "output_file": {
+          "database": "funds_staging",
+          "table": "morningstar_dividends",
+          "primary_keys": [
+            "performanceid",
+            "datadate",
+            "paydate"
+          ]
+        },
+        "processing_specifications": {
+          "technology": "emr",
+          "hardware": {
+            "ram": 512
+          },
+          "spark_configuration": {
+            "default_catalog": true,
+            "warehouse": "funds_staging",
             "custom_configuration": [
               {
                 "parameter": "",
@@ -70,6 +105,12 @@
           "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.TXT"
         },
         "output_file": {
+          "table": "morningstar_dividend_correction",
+          "partition_field": "datadate"
+        }
+      },
+      "raw_to_staging": {
+        "incoming_file": {
           "table": "morningstar_dividend_correction"
         }
       }

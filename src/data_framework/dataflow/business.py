@@ -40,18 +40,16 @@ class RawToStaging:
         partition = f'{self.__incoming_file_config.partition_field}={self.__config.parameters.file_date}'
         input_table = f'{self.__incoming_file_config.database_relation}.{self.__incoming_file_config.table}'
 
-        response = self.__data_process.datacast(
-            self.__incoming_file_config.database_relation,
-            self.__incoming_file_config.table,
-            self.__output_file_config.database_relation,
-            self.__output_file_config.table,
-            self.__incoming_file_config.partition_field,
-            self.__config.parameters.file_date
+        response = self.__data_process.read_table_with_filter(
+            database=self.__incoming_file_config.database_relation,
+            table=self.__incoming_file_config.table,
+            _filter=partition
         )
         
         if response.success:
             df = response.data
             self.__logger.info(f'Read {df.count()} rows from {input_table} with partition {partition}')
+            
             return df
         else:
             self.__logger.error(f'Error reading data from {input_table} with partition {partition}: {response.error}')
