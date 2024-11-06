@@ -6,6 +6,8 @@ Además del casteo se añade columna para devolver los posibles problemas de cas
 # string - ok
 # int - ok
 # double - ok
+# float - ok
+# decimal - ok
 # date - ok
 # boolean - ok
 # datetime TODO
@@ -23,28 +25,30 @@ from functools import reduce
 from typing import Any
 
 
-class Cast():
+class Cast:
 
     def __init__(self):
-
         self.logger = logger
         self.config = config()
 
     def decode_cast(self, col, coltype):
-        q =  f'{col}'
-        if coltype in ('int', 'double', 'date'):
-            q = f"try_cast({col} AS {coltype.upper()}) as {col}, "\
-                f"case when try_cast({col} AS {coltype.upper()}) is null then '{col}: valor {coltype} inválido' end as {col}_control_cast"
+        q = f'{col}'
+        if coltype in ('int', 'double', 'float', 'date') or coltype.startswith('decimal'):
+            q = f"try_cast({col} AS {coltype.upper()}) as {col}, " \
+                f"case when try_cast({col} AS {coltype.upper()}) is null " \
+                f"then '{col}: valor {coltype} inválido' end as {col}_control_cast"
         elif coltype == 'boolean':
             l_true = "'true', 't', 'yes', 'y', 'si', 's', '1'"
             l_false = "'false', 'f', 'no', 'n', '0'"
-            q = f"(case when lower({col}) in ({l_true}) then true when lower({col}) in ({l_false}) then false else null end) as {col}, "\
-                f"(case when lower({col}) not in ({l_true}, {l_false})  then '{col}: valor {coltype} inválido' end) as {col}_control_cast"
+            q = f"(case when lower({col}) in ({l_true}) then true " \
+                f"when lower({col}) in ({l_false}) then false else null end) as {col}, " \
+                f"(case when lower({col}) not in ({l_true}, {l_false}) " \
+                f"then '{col}: valor {coltype} inválido' end) as {col}_control_cast"
         return q
 
     def build_query_datacast(self, l_columns, l_types, tabla, where=None):
         d_cols_types = dict(zip(l_columns, l_types))
-        l_columns_no_string =  [f"{key}_control_cast" for key, val in d_cols_types.items() if val != 'string']
+        l_columns_no_string = [f"{key}_control_cast" for key, val in d_cols_types.items() if val != 'string']
 
         l_decode_cols = [self.decode_cast(key, val) for key, val in d_cols_types.items()]
         decode_cols = reduce(lambda a, b: a + ', ' + b, l_decode_cols)
@@ -52,7 +56,7 @@ class Cast():
         if where:
             subquery = f"{subquery} where {where}"
 
-        columns_query =  reduce(lambda a, b: a + ', ' + b, l_columns)
+        columns_query = reduce(lambda a, b: a + ', ' + b, l_columns)
         columns_query_control = ", ' | ', ".join(l_columns_no_string)
         columns_query = f"{columns_query}, concat({columns_query_control}) as control_cast"
 
@@ -75,7 +79,7 @@ class Cast():
     ) -> Any:
 
         catalogue = CoreCatalogue._catalogue
-        partitioned=True
+        partitioned = True
         schema_source = catalogue.get_schema(database_source, table_source)
         l_cols_source = schema_source.schema.get_column_names(partitioned)
 
