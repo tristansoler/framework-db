@@ -81,14 +81,15 @@ class ConfigSetup:
 
             transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
             archive = zipfile.ZipFile(transformation_path, 'r')
-            config_file = archive.open('config.json')
+            config_file = archive.open('transformation.json')
             config_json = dict(json.loads(config_file.read()))
             config_file.close()
 
            # environment = Environment.DEVELOP
 
-        common_flow_json = config_json.get('default')
-        current_flow_json = config_json.get(dataflow, None)
+        dataflows = config_json.get('dataflows')
+        common_flow_json = dataflows.get('default')
+        current_flow_json = dataflows.get(dataflow, None)
         if current_flow_json is None:
             current_flow_json = common_flow_json
         else:

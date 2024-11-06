@@ -1,5 +1,8 @@
 {
-    "version": 1,
+  "data_framework": {
+    "core_version": "last"
+  },
+  "dataflows": {
     "default": {
       "processes": {
         "landing_to_raw": {
@@ -134,4 +137,5 @@
         "staging_to_common": {}
       }
     }
+  }
   }

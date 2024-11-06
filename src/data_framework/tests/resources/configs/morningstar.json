@@ -1,117 +1,121 @@
 {
-  "version": 1,
-  "default": {
-    "processes": {
-      "landing_to_raw": {
-        "incoming_file": {
-          "zipped": "zip",
-          "file_format": "csv",
-          "filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})",
-          "csv_specs": {
-            "header_position": 0,
-            "header": true,
-            "encoding": "UTF-8",
-            "delimiter": ";",
-            "date_located": "filename",
-            "date_located_filename": {
-              "regex": "(\\d{4})(\\d{2})(\\d{2})"
+  "data_framework": {
+    "core_version": "last"
+  },
+  "dataflows": {
+    "default": {
+      "processes": {
+        "landing_to_raw": {
+          "incoming_file": {
+            "zipped": "zip",
+            "file_format": "csv",
+            "filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})",
+            "csv_specs": {
+              "header_position": 0,
+              "header": true,
+              "encoding": "UTF-8",
+              "delimiter": ";",
+              "date_located": "filename",
+              "date_located_filename": {
+                "regex": "(\\d{4})(\\d{2})(\\d{2})"
+              }
+            },
+            "validations": {
+              "validate_extension": true,
+              "validate_filename": true,
+              "validate_csv": true,
+              "validate_columns": true
             }
           },
-          "validations": {
-            "validate_extension": true,
-            "validate_filename": true,
-            "validate_csv": true,
-            "validate_columns": true
+          "output_file": {
+            "database": "funds_raw",
+            "database_relation": "rl_funds_raw",
+            "table": "default_table",
+            "partition_field": "data_date"
+          },
+          "processing_specifications": {
+            "technology": "emr",
+            "hardware": {
+              "ram": 512
+            },
+            "spark_configuration": {
+              "default_catalog": true,
+              "warehouse": "funds_raw",
+              "custom_configuration": [
+                {
+                  "parameter": "",
+                  "value": ""
+                }
+              ]
+            }
           }
         },
-        "output_file": {
-          "database": "funds_raw",
-		      "database_relation": "rl_funds_raw",
-          "table": "default_table",
-          "partition_field": "data_date"
-        },
-        "processing_specifications": {
-          "technology": "emr",
-          "hardware": {
-            "ram": 512
-          },
-          "spark_configuration": {
-            "default_catalog": true,
-            "warehouse": "funds_raw",
-            "custom_configuration": [
-              {
-                "parameter": "",
-                "value": ""
-              }
+        "raw_to_staging": {
+          "incoming_file": {
+            "database": "funds_raw",
+            "primary_keys": [
+              "performanceid",
+              "datadate",
+              "paydate"
             ]
-          }
-        }
-      },
-      "raw_to_staging": {
-        "incoming_file": {
-          "database": "funds_raw",
-          "primary_keys": [
-            "performanceid",
-            "datadate",
-            "paydate"
-          ]
-        },
-        "output_file": {
-          "database": "funds_staging",
-          "table": "morningstar_dividends",
-          "primary_keys": [
-            "performanceid",
-            "datadate",
-            "paydate"
-          ]
-        },
-        "processing_specifications": {
-          "technology": "emr",
-          "hardware": {
-            "ram": 512
           },
-          "spark_configuration": {
-            "default_catalog": true,
-            "warehouse": "funds_staging",
-            "custom_configuration": [
-              {
-                "parameter": "",
-                "value": ""
-              }
+          "output_file": {
+            "database": "funds_staging",
+            "table": "morningstar_dividends",
+            "primary_keys": [
+              "performanceid",
+              "datadate",
+              "paydate"
             ]
+          },
+          "processing_specifications": {
+            "technology": "emr",
+            "hardware": {
+              "ram": 512
+            },
+            "spark_configuration": {
+              "default_catalog": true,
+              "warehouse": "funds_staging",
+              "custom_configuration": [
+                {
+                  "parameter": "",
+                  "value": ""
+                }
+              ]
+            }
           }
         }
       }
-    }
-  },
-  "morningstar_dividend_prod": {
-    "processes": {
-      "landing_to_raw": {
-        "incoming_file": {
-          "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.ZIP",
-          "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.TXT"
-        },
-        "output_file": {
-          "table": "morningstar_dividend_prod"
+    },
+    "morningstar_dividend_prod": {
+      "processes": {
+        "landing_to_raw": {
+          "incoming_file": {
+            "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.ZIP",
+            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.TXT"
+          },
+          "output_file": {
+            "table": "morningstar_dividend_prod"
+          }
         }
       }
-    }
-  },
-  "morningstar_dividend_correction": {
-    "processes": {
-      "landing_to_raw": {
-        "incoming_file": {
-          "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.ZIP",
-          "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.TXT"
+    },
+    "morningstar_dividend_correction": {
+      "processes": {
+        "landing_to_raw": {
+          "incoming_file": {
+            "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.ZIP",
+            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.TXT"
+          },
+          "output_file": {
+            "table": "morningstar_dividend_correction",
+            "partition_field": "datadate"
+          }
         },
-        "output_file": {
-          "table": "morningstar_dividend_correction",
-          "partition_field": "datadate"
-        }
-      },
-      "raw_to_staging": {
-        "incoming_file": {
-          "table": "morningstar_dividend_correction"
+        "raw_to_staging": {
+          "incoming_file": {
+            "table": "morningstar_dividend_correction"
+          }
         }
       }
     }
