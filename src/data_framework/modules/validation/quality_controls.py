@@ -43,17 +43,17 @@ class QualityControls:
             control_table = '{table}' AND
             active_control_indicator
         """
-        response_rules = self.__data_process.read_table_with_filter(
+        response_rules = self.data_process.read_table(
             self.controls_database, self.dataset_table, _filter
         )
         if response_rules.success:
-            response_master = self.__data_process.read_table(
+            response_master = self.data_process.read_table(
                 self.controls_database, self.master_table
             )
             if response_master.success:
                 df_rules = response_rules.data
                 df_master = response_master.data
-                df_rules = self.__data_process.join(
+                df_rules = self.data_process.join(
                     df_rules, df_master, on=['control_master_id'], how='left'
                 )
                 # TODO: sobrescribir umbrales de controls_master con los de controls_dataset
@@ -80,9 +80,9 @@ class QualityControls:
             'control_master_id': {'type': 'string', 'is_null': True},
             'Control_Result': {'type': 'string', 'is_null': False},
         }
-        response = self.__data_process.create_dataframe(schema, results)
+        response = self.data_process.create_dataframe(schema, results)
         if response.success:
             df_results = response.data
-            
+
         else:
             raise response.error

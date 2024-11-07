@@ -35,11 +35,7 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def read_table(self, database: str, table: str) -> ReadResponse:
-        pass
-
-    @abstractmethod
-    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
+    def read_table(self, database: str, table: str, _filter: str) -> ReadResponse:
         pass
 
     @abstractmethod

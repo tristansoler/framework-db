@@ -115,13 +115,22 @@ class DatabaseTable:
     def database_relation(self) -> str:
         return f'rl_{self.database}'
 
+    @property
+    def full_name(self) -> str:
+        return f'{self.database_relation}.{self.table}'
+
 
 @dataclass
 class TableDict:
     tables: Tuple[str, DatabaseTable]
 
-    def table(self, table_name: str) -> Union[DatabaseTable, None]:
-        return self.tables.get(table_name)
+    def table(self, table_key: str) -> Union[DatabaseTable, None]:
+        table_info = self.tables.get(table_key)
+        if not table_info:
+            raise ValueError(
+                f'Table key {table_key} not found. Available table keys: {list(self.tables.keys())}'
+            )
+        return table_info
 
 
 @dataclass

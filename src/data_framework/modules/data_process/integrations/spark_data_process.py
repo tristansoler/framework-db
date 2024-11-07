@@ -113,20 +113,13 @@ class SparkDataProcess(DataProcessInterface):
         df_result = self.spark.sql(query)
         return df_result
 
-    def read_table(self, database: str, table: str) -> ReadResponse:
+    def read_table(self, database: str, table: str, _filter: str = None) -> ReadResponse:
         try:
             table_name = self._build_simple_table_name(database, table)
-            query = f"SELECT * FROM {table_name}"
-            df = self._execute_query(query)
-            response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
-
-    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
-        try:
-            table_name = self._build_simple_table_name(database, table)
-            query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            if _filter:
+                query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            else:
+                query = f"SELECT * FROM {table_name}"
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
