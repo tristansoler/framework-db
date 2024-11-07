@@ -39,8 +39,9 @@ class RawToStaging:
         self.__source_tables = self.__config.processes.raw_to_staging.source_tables
         self.__target_tables = self.__config.processes.raw_to_staging.target_tables
 
-    def read_table_with_casting(self, input_table_key: str, casting_table_key: str) -> Any:
+    def read_table_with_casting(self, input_table_key: str, casting_table_key: str = None) -> Any:
         input_table = self.source_tables.table(input_table_key)
+        casting_table_key = casting_table_key if casting_table_key else input_table_key
         casting_table = self.target_tables.table(casting_table_key)
         partition = f'{input_table.partition_field}={self.config.parameters.file_date}'
         response = self.data_process.datacast(
