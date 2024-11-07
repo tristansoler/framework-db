@@ -1,5 +1,4 @@
 from typing import Type, TypeVar, Union, get_type_hints, get_origin, get_args
-from dataclasses import fields, field
 from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
@@ -13,12 +12,11 @@ from data_framework.modules.config.model.flows import (
     Validations,
     ProcessingSpecifications,
     Hardware,
-    Environment,
     SparkConfiguration,
     CustomConfiguration,
     OutputReport,
-    GenericProcesss,
-    SourceTables
+    GenericProcess,
+    TableDict
 )
 import threading
 import sys
@@ -37,7 +35,7 @@ class ConfigSetup:
     _lock = threading.Lock()
 
     _models = (
-        Processes, LandingToRaw, GenericProcesss, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, Validations, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration, OutputReport
     )
@@ -126,14 +124,11 @@ class ConfigSetup:
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
-                elif isinstance(field_type, type) and issubclass(field_type, (SourceTables)):
+                elif isinstance(field_type, type) and issubclass(field_type, (TableDict)) and json_file:
                     tables = {}
-
-                    for table_name, config in  json_file:
-                        tables[table_name] = DatabaseTable(**json_file.get(table_name)))
-
-                        
-                    kwargs[field] = tables
+                    for table_name, config in json_file.get(field, {}).items():
+                        tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config)
+                    kwargs[field] = TableDict(tables)
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                     kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):

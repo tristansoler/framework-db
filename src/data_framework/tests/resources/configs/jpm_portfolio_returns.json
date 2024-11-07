@@ -40,26 +40,30 @@
                 }
               },
               "raw_to_staging": {
-                "incoming_file": {
-                  "database": "funds_raw",
-                  "table": "luxembourg_portfolio_returns",
-                  "partition_field": "data_date"
+                "source_tables": {
+                    "luxembourg_portfolio_returns": {
+                      "database": "funds_raw",
+                      "table": "luxembourg_portfolio_returns",
+                      "partition_field": "data_date"
+                    }
                 },
-                "output_file": {
-                  "database": "funds_staging",
-                  "table": "luxembourg_portfolio_returns"
-                },
-                "output_file_2": {
-                  "database": "funds_staging",
-                  "table": "portfolio_returns",
-                  "primary_keys": [
-                    "country",
-                    "account_number",
-                    "base_currency",
-                    "position_date",
-                    "security_number_full",
-                    "trading_currency"
-                  ]
+                "target_tables": {
+                    "luxembourg_portfolio_returns": {
+                      "database": "funds_staging",
+                      "table": "luxembourg_portfolio_returns"
+                    },
+                    "portfolio_returns": {
+                      "database": "funds_staging",
+                      "table": "portfolio_returns",
+                      "primary_keys": [
+                        "country",
+                        "account_number",
+                        "base_currency",
+                        "position_date",
+                        "security_number_full",
+                        "trading_currency"
+                      ]
+                    }
                 },
                 "processing_specifications": {
                   "technology": "emr",
