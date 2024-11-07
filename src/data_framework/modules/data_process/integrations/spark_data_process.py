@@ -69,8 +69,8 @@ class SparkDataProcess(DataProcessInterface):
             dataframe = dataframe.select(*table_columns)
             # Perform merge
             dataframe.createOrReplaceTempView(view_name)
-            sql_update_with_pks = '\n'.join([
-                f'AND {view_name}.{field} = {table_name}.{field}' for field in primary_keys
+            sql_update_with_pks = '\n AND '.join([
+                f' {view_name}.{field} = {table_name}.{field}' for field in primary_keys
             ])
             merge_query = f"""
                 MERGE INTO {table_name}
