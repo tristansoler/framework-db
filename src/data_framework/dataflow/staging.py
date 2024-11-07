@@ -40,9 +40,17 @@ class RawToStaging:
         self.__source_tables = self.__config.processes.raw_to_staging.source_tables
         self.__target_tables = self.__config.processes.raw_to_staging.target_tables
 
-    def read_table_with_casting(self, name_of_raw_table: str, name_of_staging_table_to_casting: str = None) -> Any:
+    def read_table_with_casting(
+        self,
+        name_of_raw_table: str,
+        name_of_staging_table_to_casting: str = None
+    ) -> Any:
         input_table = self.source_tables.table(name_of_raw_table)
-        name_of_staging_table_to_casting = name_of_staging_table_to_casting if name_of_staging_table_to_casting else name_of_raw_table
+        name_of_staging_table_to_casting = (
+            name_of_staging_table_to_casting
+            if name_of_staging_table_to_casting
+            else name_of_raw_table
+        )
         casting_table = self.target_tables.table(name_of_staging_table_to_casting)
 
         partition = f'{input_table.partition_field}={self.config.parameters.file_date}'
@@ -55,7 +63,7 @@ class RawToStaging:
             input_table.partition_field,
             self.config.parameters.file_date
         )
-        
+
         if response.success:
             df = response.data
             self.logger.info(f'Read {df.count()} rows from {input_table.full_name} with partition {partition}')
