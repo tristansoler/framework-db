@@ -51,7 +51,7 @@
                 ]
             }
           },
-          "output_tables": {
+          "target_tables": {
             "morningstar_dividends": {
                 "database": "funds_staging",
                 "table": "morningstar_dividends",
@@ -107,8 +107,10 @@
           }
         },
         "raw_to_staging": {
-          "incoming_file": {
-            "table": "morningstar_dividend_correction"
+          "source_tables": {
+            "table_name_1": {
+              "table": "morningstar_dividend_correction"
+            }
           }
         }
       }
