@@ -164,3 +164,7 @@ cython_debug/
 
 ### VSCode ###
 # .vscode
+
+# Custom
+metastore_db
+derby.log
