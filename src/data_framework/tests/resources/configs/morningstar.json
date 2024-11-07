@@ -37,36 +37,30 @@
             "technology": "emr",
             "hardware": {
               "ram": 512
-            },
-            "spark_configuration": {
-              "default_catalog": true,
-              "warehouse": "funds_raw",
-              "custom_configuration": [
-                {
-                  "parameter": "",
-                  "value": ""
-                }
-              ]
             }
           }
         },
         "raw_to_staging": {
-          "incoming_file": {
-            "database": "funds_raw",
-            "primary_keys": [
-              "performanceid",
-              "datadate",
-              "paydate"
-            ]
+          "source_tables": {
+            "table_name_1": {
+                "database": "funds_raw",
+                "primary_keys": [
+                  "performanceid",
+                  "datadate",
+                  "paydate"
+                ]
+            }
           },
-          "output_file": {
-            "database": "funds_staging",
-            "table": "morningstar_dividends",
-            "primary_keys": [
-              "performanceid",
-              "datadate",
-              "paydate"
-            ]
+          "output_tables": {
+            "morningstar_dividends": {
+                "database": "funds_staging",
+                "table": "morningstar_dividends",
+                "primary_keys": [
+                  "performanceid",
+                  "datadate",
+                  "paydate"
+                ]
+            }
           },
           "processing_specifications": {
             "technology": "emr",
@@ -74,7 +68,7 @@
               "ram": 512
             },
             "spark_configuration": {
-              "default_catalog": true,
+              "catalog": "iceberg_catalog",
               "warehouse": "funds_staging",
               "custom_configuration": [
                 {

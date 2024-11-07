@@ -1,5 +1,4 @@
 from typing import Type, TypeVar, Union, get_type_hints, get_origin, get_args
-from dataclasses import fields, field
 from data_framework.modules.config.model.flows import (
     Processes,
     LandingToRaw,
@@ -13,11 +12,11 @@ from data_framework.modules.config.model.flows import (
     Validations,
     ProcessingSpecifications,
     Hardware,
-    Environment,
     SparkConfiguration,
     CustomConfiguration,
     OutputReport,
-    GenericProcesss
+    GenericProcess,
+    TableDict
 )
 import threading
 import sys
@@ -36,7 +35,7 @@ class ConfigSetup:
     _lock = threading.Lock()
 
     _models = (
-        Processes, LandingToRaw, GenericProcesss, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, Validations, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration, OutputReport
     )
@@ -122,10 +121,14 @@ class ConfigSetup:
 
         try:
             for field, field_type in fieldtypes.items():
-
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
+                elif isinstance(field_type, type) and issubclass(field_type, (TableDict)) and json_file:
+                    tables = {}
+                    for table_name, config in json_file.get(field, {}).items():
+                        tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config)
+                    kwargs[field] = TableDict(tables)
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                     kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):
@@ -134,25 +137,22 @@ class ConfigSetup:
                         kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-                    
                     if json_file:
                         kwargs[field] = [
                             cls.parse_to_model(model=field_model, json_file=field_item)
                             for field_item in json_file.get(field)
                         ]
                 else:
-                    
                     default_value = None
                     if hasattr(model, field):
                         default_value = getattr(model, field)
-
                     kwargs[field] = json_file.get(field, default_value)
         except Exception as e:
             import traceback
             expection = type(e).__name__
             error = str(e)
             trace = traceback.format_exc()
-            
+
             # Imprimir la información de la excepción
             print(
                 f"""

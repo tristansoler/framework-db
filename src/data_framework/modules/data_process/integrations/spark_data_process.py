@@ -3,7 +3,6 @@ from data_framework.modules.data_process.interface_data_process import (
     ReadResponse,
     WriteResponse
 )
-from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
 from data_framework.modules.data_process.helpers.cast import Cast
 from typing import List
@@ -32,14 +31,14 @@ class SparkDataProcess(DataProcessInterface):
         # Initialize Spark session
         spark_session = SparkSession.builder
         # Configure Iceberg catalog
-        if spark_config.default_catalog:
-            spark_session = spark_session.config(
-                "spark.sql.catalog.iceberg_catalog",
-                "org.apache.iceberg.spark.SparkCatalog"
-            )
+        self.catalog = spark_config.catalog
+        spark_session = spark_session.config(
+            f"spark.sql.catalog.{self.catalog}",
+            "org.apache.iceberg.spark.SparkCatalog"
+        )
         # Configure Iceberg warehouse
         spark_session = spark_session.config(
-            "spark.sql.catalog.iceberg_catalog.warehouse",
+            f"spark.sql.catalog.{self.catalog}.warehouse",
             f"{spark_config.warehouse}/"
         )
         # Add custom configurations
@@ -49,9 +48,7 @@ class SparkDataProcess(DataProcessInterface):
                 custom_config.value
             )
         # Create Spark session
-        spark_session = spark_session.enableHiveSupport().getOrCreate()
-        self.spark = spark_session
-        self.catalog = 'iceberg_catalog'
+        self.spark = spark_session.enableHiveSupport().getOrCreate()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'{self.catalog}.{database}.{table}'
@@ -116,20 +113,13 @@ class SparkDataProcess(DataProcessInterface):
         df_result = self.spark.sql(query)
         return df_result
 
-    def read_table(self, database: str, table: str) -> ReadResponse:
+    def read_table(self, database: str, table: str, _filter: str = None) -> ReadResponse:
         try:
             table_name = self._build_simple_table_name(database, table)
-            query = f"SELECT * FROM {table_name}"
-            df = self._execute_query(query)
-            response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
-
-    def read_table_with_filter(self, database: str, table: str, _filter: str) -> ReadResponse:
-        try:
-            table_name = self._build_simple_table_name(database, table)
-            query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            if _filter:
+                query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            else:
+                query = f"SELECT * FROM {table_name}"
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
