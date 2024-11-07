@@ -1,4 +1,5 @@
 from data_framework.modules.config.core import config, Config
+from data_framework.modules.config.model.flows import TableDict
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.quality_controls import QualityControls
@@ -24,11 +25,11 @@ class RawToStaging:
         return self.__quality_controls
 
     @property
-    def source_tables(self) -> QualityControls:
+    def source_tables(self) -> TableDict:
         return self.__source_tables
 
     @property
-    def target_tables(self) -> QualityControls:
+    def target_tables(self) -> TableDict:
         return self.__target_tables
 
     def __init__(self):
