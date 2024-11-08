@@ -1,5 +1,5 @@
 from data_framework.modules.storage.interface_storage import Database
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, List, Tuple, Union
 import os
@@ -42,7 +42,7 @@ class CustomConfiguration:
 class SparkConfiguration:
     catalog: str
     warehouse: Database
-    custom_configuration: Optional[List[CustomConfiguration]] = None
+    custom_configuration: List[CustomConfiguration] = field(default_factory=list)
 
 
 @dataclass

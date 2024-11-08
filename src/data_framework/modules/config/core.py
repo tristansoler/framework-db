@@ -137,7 +137,8 @@ class ConfigSetup:
                         kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-                    if json_file:
+                    
+                    if json_file and json_file.get(field):
                         kwargs[field] = [
                             cls.parse_to_model(model=field_model, json_file=field_item)
                             for field_item in json_file.get(field)
