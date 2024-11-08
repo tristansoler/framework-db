@@ -29,37 +29,49 @@
           },
           "output_file": {
             "database": "funds_raw",
-            "database_relation": "rl_funds_raw",
-            "table": "default_table",
-            "partition_field": "data_date"
+            "table": "default_table"
           },
           "processing_specifications": {
             "technology": "emr",
             "hardware": {
               "ram": 512
+            },
+            "spark_configuration": {
+              "default_catalog": true,
+              "warehouse": "funds_raw"
             }
           }
         },
         "raw_to_staging": {
           "source_tables": {
-            "table_name_1": {
-                "database": "funds_raw",
-                "primary_keys": [
-                  "performanceid",
-                  "datadate",
-                  "paydate"
-                ]
+            "morningstar_valuation_prod": {
+              "database": "funds_raw",
+              "table": "morningstar_valuation_prod",
+              "primary_keys": [
+                "performanceid",
+                "date",
+                "datadate"
+              ]
+            },
+            "morningstar_valuation_correction": {
+              "database": "funds_raw",
+              "table": "morningstar_valuation_correction",
+              "primary_keys": [
+                "performanceid",
+                "date",
+                "datadate"
+              ]
             }
           },
-          "output_tables": {
-            "morningstar_dividends": {
-                "database": "funds_staging",
-                "table": "morningstar_dividends",
-                "primary_keys": [
-                  "performanceid",
-                  "datadate",
-                  "paydate"
-                ]
+          "target_tables": {
+            "morningstar_valuations": {
+              "database": "funds_staging",
+              "table": "morningstar_valuations",
+              "primary_keys": [
+                "performanceid",
+                "date",
+                "datadate"
+              ]
             }
           },
           "processing_specifications": {
@@ -68,49 +80,75 @@
               "ram": 512
             },
             "spark_configuration": {
-              "catalog": "iceberg_catalog",
-              "warehouse": "funds_staging",
-              "custom_configuration": [
-                {
-                  "parameter": "",
-                  "value": ""
-                }
+              "default_catalog": true,
+              "warehouse": "funds_staging"
+            }
+          }
+        },
+        "staging_to_common": {
+          "source_tables": {
+            "morningstar_valuations": {
+              "database": "funds_staging",
+              "table": "morningstar_valuations",
+              "primary_keys": [
+                "performanceid",
+                "date",
+                "datadate"
               ]
+            }
+          },
+          "target_tables": {
+            "morningstar_valuations": {
+              "database": "funds_common",
+              "table": "morningstar_valuations",
+              "primary_keys": [
+                "performanceid",
+                "date",
+                "datadate"
+              ]
+            }
+          },
+          "processing_specifications": {
+            "technology": "emr",
+            "hardware": {
+              "ram": 512
+            },
+            "spark_configuration": {
+              "default_catalog": true,
+              "warehouse": "funds_staging"
             }
           }
         }
       }
     },
-    "morningstar_dividend_prod": {
+    "morningstar_valuation_prod": {
       "processes": {
         "landing_to_raw": {
           "incoming_file": {
-            "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.ZIP",
-            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_PROD.TXT"
+            "filename_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_PROD.ZIP",
+            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_PROD.TXT"
           },
           "output_file": {
-            "table": "morningstar_dividend_prod"
-          }
-        }
-      }
-    },
-    "morningstar_dividend_correction": {
-      "processes": {
-        "landing_to_raw": {
-          "incoming_file": {
-            "filename_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.ZIP",
-            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_DIVIDEND_\\d{8}_CORRECTION.TXT"
-          },
-          "output_file": {
-            "table": "morningstar_dividend_correction",
-            "partition_field": "datadate"
+            "table": "morningstar_valuation_prod"
           }
         },
-        "raw_to_staging": {
+        "raw_to_staging": {},
+        "staging_to_common": {}
+      }
+    },
+    "morningstar_valuation_correction": {
+      "processes": {
+        "landing_to_raw": {
           "incoming_file": {
-            "table": "morningstar_dividend_correction"
+            "filename_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_CORRECTION.ZIP",
+            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_CORRECTION.TXT"
+          },
+          "output_file": {
+            "table": "morningstar_valuation_correction"
           }
-        }
+        },
+        "raw_to_staging": {},
+        "staging_to_common": {}
       }
     }
   }

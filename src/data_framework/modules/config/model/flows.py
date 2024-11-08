@@ -2,7 +2,7 @@ from data_framework.modules.storage.interface_storage import Database
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, List, Tuple, Union
-
+import os
 
 class Environment(Enum):
     LOCAL = "local"
@@ -80,11 +80,16 @@ class Parameters:
     process: str
     table: str
     source_file_path: str
-    bucket_prefix: str
     file_name: str
     file_date: Optional[str]
-    region: str
 
+    @property
+    def region(self) -> str:
+        return os.environ["AWS_REGION"]
+    
+    @property
+    def bucket_prefix(self) -> str:
+        return "aihd1airas3aihgdp"
 
 @dataclass
 class Validations:
