@@ -118,6 +118,11 @@ class DatabaseTable:
     @property
     def full_name(self) -> str:
         return f'{self.database_relation}.{self.table}'
+    
+    @property
+    def sql_where(self) -> str:
+        from data_framework.modules.config.core import config
+        return f"{self.partition_field} = '{config().parameters.file_date}'"
 
 
 @dataclass
