@@ -42,7 +42,7 @@ class CustomConfiguration:
 class SparkConfiguration:
     catalog: str
     warehouse: Database
-    custom_configuration: List[CustomConfiguration]
+    custom_configuration: Optional[List[CustomConfiguration]] = None
 
 
 @dataclass
