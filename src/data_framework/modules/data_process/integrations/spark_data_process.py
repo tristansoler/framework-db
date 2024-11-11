@@ -44,8 +44,6 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog"),
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
-            ## Configure Iceberg catalog
-            (f"spark.sql.catalog.{self.catalog}", "org.apache.iceberg.spark.SparkCatalog"),
             ## Configure Iceberg warehouse
             (f"spark.sql.catalog.{self.catalog}.warehouse", f"{json_config.warehouse}/"),
             # Hive
