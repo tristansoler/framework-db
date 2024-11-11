@@ -4,6 +4,7 @@ from data_framework.modules.data_process.interface_data_process import (
     WriteResponse
 )
 from data_framework.modules.config.core import config
+from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from typing import List
 from pyspark import SparkConf
@@ -120,6 +121,7 @@ class SparkDataProcess(DataProcessInterface):
                 partition_value
             )
 
+            logger.debug(query)
             
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
