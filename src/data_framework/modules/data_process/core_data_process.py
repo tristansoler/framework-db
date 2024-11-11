@@ -6,6 +6,9 @@ from data_framework.modules.data_process.interface_data_process import (
 )
 from data_framework.modules.config.core import config
 from data_framework.modules.config.model.flows import Technologies
+from data_framework.modules.config.model.flows import (
+    DatabaseTable
+)
 from typing import List, Any
 
 
@@ -24,12 +27,10 @@ class CoreDataProcess(object):
             pass
 
     @classmethod
-    def merge(cls, dataframe: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(cls, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
         return cls._data_process.merge(
             dataframe=dataframe,
-            database=database,
-            table=table,
-            primary_keys=primary_keys
+            table_config=table_config
         )
 
     @classmethod

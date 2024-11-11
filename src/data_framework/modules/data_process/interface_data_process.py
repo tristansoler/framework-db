@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Any
-
+from data_framework.modules.config.model.flows import (
+    DatabaseTable
+)
 
 @dataclass
 class ReadResponse:
@@ -19,7 +21,7 @@ class WriteResponse:
 class DataProcessInterface(ABC):
 
     @abstractmethod
-    def merge(self, dataframe: Any, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
         pass
 
     @abstractmethod

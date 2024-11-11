@@ -1,12 +1,15 @@
 from data_framework.modules.data_process.interface_data_process import (
     DataProcessInterface,
     ReadResponse,
-    WriteResponse
+    WriteResponse,
 )
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.config.model.flows import (
+    DatabaseTable
+)
 from typing import List
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
@@ -31,8 +34,6 @@ class SparkDataProcess(DataProcessInterface):
         process = config().parameters.process
         json_config = getattr(config().processes, process) \
             .processing_specifications.spark_configuration
-        
-        self.catalog = "iceberg_catalog"
         
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
@@ -78,23 +79,23 @@ class SparkDataProcess(DataProcessInterface):
         self.catalogue = CoreCatalogue()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
-        return f'{self.catalog}.{database}.{table}'
+        return f'iceberg_catalog.{database}.{table}'
 
     def _build_simple_table_name(self, database: str, table: str) -> str:
         return f'{database}.{table}'
 
-    def merge(self, dataframe: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
         try:
-            table_name = self._build_complete_table_name(database, table)
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
-            table_schema = self.catalogue.get_schema(database=database, table=table)
+            table_schema = self.catalogue.get_schema(database=table_config.database_relation, table=table_config.table)
             table_columns = table_schema.schema.get_column_names(partitioned=True)
             dataframe = dataframe.select(*table_columns)
             # Perform merge
             dataframe.createOrReplaceTempView(view_name)
             sql_update_with_pks = '\n AND '.join([
-                f' {view_name}.{field} = {table_name}.{field}' for field in primary_keys
+                f' {view_name}.{field} = {table_name}.{field}' for field in table_config.primary_keys
             ])
             merge_query = f"""
                 MERGE INTO {table_name}
@@ -106,7 +107,6 @@ class SparkDataProcess(DataProcessInterface):
                 INSERT *
             """
 
-            logger.info(f'merge sql \n{merge_query}')
             logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
