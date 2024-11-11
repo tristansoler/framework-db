@@ -47,7 +47,7 @@ class SparkDataProcess(DataProcessInterface):
             ## Configure Iceberg catalog
             (f"spark.sql.catalog.{self.catalog}", "org.apache.iceberg.spark.SparkCatalog"),
             ## Configure Iceberg warehouse
-            (f"spark.sql.catalog.{self.catalog}.warehouse", f"{spark_config.warehouse}/")
+            (f"spark.sql.catalog.{self.catalog}.warehouse", f"{json_config.warehouse}/")
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
