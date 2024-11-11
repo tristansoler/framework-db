@@ -45,10 +45,11 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
             ## Configure Iceberg warehouse
-            (f"spark.sql.catalog.{self.catalog}.warehouse", f"{json_config.warehouse}/"),
+            ("spark.sql.catalog.iceberg_catalog.warehouse", f"{json_config.warehouse}/"),
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
+            ("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"),
             # Configure hardware
             # TODO: Set dynamic values from config
             ("spark.executor.memory", "4g"),
@@ -64,6 +65,7 @@ class SparkDataProcess(DataProcessInterface):
         # Create Spark session
         self.spark = SparkSession.builder \
             .config(conf=spark_config) \
+            .enableHiveSupport() \
             .getOrCreate()
 
         self.catalogue = CoreCatalogue()
