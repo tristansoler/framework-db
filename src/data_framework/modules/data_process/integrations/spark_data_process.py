@@ -67,6 +67,12 @@ class SparkDataProcess(DataProcessInterface):
             .config(conf=spark_config) \
             .enableHiveSupport() \
             .getOrCreate()
+        
+        current_conf = self.spark.conf.getAll()
+
+        # Imprimir todas las configuraciones
+        for key, value in current_conf.items():
+            self.logger.info(f"{key} = {value}")
 
         self.catalogue = CoreCatalogue()
 
