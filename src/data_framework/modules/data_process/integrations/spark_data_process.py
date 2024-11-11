@@ -74,12 +74,6 @@ class SparkDataProcess(DataProcessInterface):
             .config(conf=spark_config) \
             .enableHiveSupport() \
             .getOrCreate()
-        
-        current_conf = self.spark.sparkContext.getConf().getAll()
-
-        # Imprimir todas las configuraciones
-        for key, value in current_conf:
-            logger.info(f"{key} = {value}")
 
         self.catalogue = CoreCatalogue()
 
@@ -111,6 +105,8 @@ class SparkDataProcess(DataProcessInterface):
                 WHEN NOT MATCHED THEN
                 INSERT *
             """
+
+            logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
         except Exception as e:
@@ -137,9 +133,9 @@ class SparkDataProcess(DataProcessInterface):
                 partition_value
             )
 
-            logger.info(
+            logger.debug(
                 f"""
-                    DATACAST
+                    query of casting
                     {query}
                 """
             )
