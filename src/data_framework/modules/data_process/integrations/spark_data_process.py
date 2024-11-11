@@ -94,7 +94,7 @@ class SparkDataProcess(DataProcessInterface):
             table_name = self._build_complete_table_name(database, table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
-            table_schema = self.catalogue.get_schema(database, table)
+            table_schema = self.catalogue.get_schema(database=database, table=table)
             table_columns = table_schema.schema.get_column_names(partitioned=True)
             dataframe = dataframe.select(*table_columns)
             # Perform merge

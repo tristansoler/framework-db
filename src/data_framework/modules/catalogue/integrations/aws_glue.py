@@ -137,5 +137,5 @@ class CatalogueAWSGlue(CatalogueInterface):
                 return response
 
         except Exception as error:
-            msg_error = f'Error in get_schema: {str(error)}'
+            msg_error = f"Error in get_schema(database='{database}' table='{table}'): {str(error)}"
             raise Exception(msg_error)
