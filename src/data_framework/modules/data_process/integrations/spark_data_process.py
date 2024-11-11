@@ -68,7 +68,7 @@ class SparkDataProcess(DataProcessInterface):
             .enableHiveSupport() \
             .getOrCreate()
         
-        current_conf = self.spark.conf.getAll()
+        current_conf = self.spark.sparkContext.getConf().getAll()
 
         # Imprimir todas las configuraciones
         for key, value in current_conf.items():
