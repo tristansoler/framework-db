@@ -50,6 +50,13 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
             ("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"),
+
+            # AWS Glue
+            ("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"),
+            ("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
+            ("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
+            ("spark.sql.catalogImplementation", "hive"),
+
             # Configure hardware
             # TODO: Set dynamic values from config
             ("spark.executor.memory", "4g"),
@@ -71,7 +78,7 @@ class SparkDataProcess(DataProcessInterface):
         current_conf = self.spark.sparkContext.getConf().getAll()
 
         # Imprimir todas las configuraciones
-        for key, value in current_conf.items():
+        for key, value in current_conf:
             self.logger.info(f"{key} = {value}")
 
         self.catalogue = CoreCatalogue()
