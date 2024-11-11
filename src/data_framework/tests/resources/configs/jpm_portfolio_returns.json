@@ -48,9 +48,12 @@
                     }
                 },
                 "target_tables": {
-                    "luxembourg_portfolio_returns_cast": {
+                    "luxembourg_portfolio_returns": {
                       "database": "funds_staging",
-                      "table": "luxembourg_portfolio_returns"
+                      "table": "luxembourg_portfolio_returns",
+                      "primary_keys": [
+                        "data_date"
+                      ]
                     },
                     "portfolio_returns": {
                       "database": "funds_staging",
