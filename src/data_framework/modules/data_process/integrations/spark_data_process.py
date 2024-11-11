@@ -32,7 +32,7 @@ class SparkDataProcess(DataProcessInterface):
         json_config = getattr(config().processes, process) \
             .processing_specifications.spark_configuration
         
-        self.catalog = json_config.catalog
+        self.catalog = "iceberg_catalog"
         
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
