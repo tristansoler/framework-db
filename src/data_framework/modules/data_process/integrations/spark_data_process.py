@@ -121,7 +121,12 @@ class SparkDataProcess(DataProcessInterface):
                 partition_value
             )
 
-            logger.debug(query)
+            logger.info(
+                f"""
+                    DATACAST
+                    {query}
+                """
+            )
             
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
