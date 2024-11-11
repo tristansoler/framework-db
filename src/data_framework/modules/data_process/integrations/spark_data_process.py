@@ -6,6 +6,7 @@ from data_framework.modules.data_process.interface_data_process import (
 from data_framework.modules.config.core import config
 from data_framework.modules.data_process.helpers.cast import Cast
 from typing import List
+from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.types import (
     StructType,
@@ -26,29 +27,44 @@ class SparkDataProcess(DataProcessInterface):
     def __init__(self):
         # Obtain Spark configuration for the current process
         process = config().parameters.process
-        spark_config = getattr(config().processes, process) \
+        json_config = getattr(config().processes, process) \
             .processing_specifications.spark_configuration
-        # Initialize Spark session
-        spark_session = SparkSession.builder
-        # Configure Iceberg catalog
-        self.catalog = spark_config.catalog
-        spark_session = spark_session.config(
-            f"spark.sql.catalog.{self.catalog}",
-            "org.apache.iceberg.spark.SparkCatalog"
-        )
-        # Configure Iceberg warehouse
-        spark_session = spark_session.config(
-            f"spark.sql.catalog.{self.catalog}.warehouse",
-            f"{spark_config.warehouse}/"
-        )
+        
+        self.catalog = json_config.catalog
+        
+        spark_config = SparkConf() \
+            .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
+
+        spark_config.setAll([
+            # Iceberg
+            ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
+            ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
+            ("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog"),
+            ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
+            ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
+            ## Configure Iceberg catalog
+            (f"spark.sql.catalog.{self.catalog}", "org.apache.iceberg.spark.SparkCatalog"),
+            ## Configure Iceberg warehouse
+            (f"spark.sql.catalog.{self.catalog}.warehouse", f"{spark_config.warehouse}/")
+            # Hive
+            ("spark.hadoop.hive.exec.dynamic.partition", "true"),
+            ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
+            # Configure hardware
+            # TODO: Set dynamic values from config
+            ("spark.executor.memory", "4g"),
+            ("spark.executor.cores", "1"),
+            ("spark.driver.cores", "1"),
+            ("spark.driver.memory", "4g"),
+            ("spark.executor.instances", "1")
+        ])
+
         # Add custom configurations
         for custom_config in spark_config.custom_configuration:
-            spark_session = spark_session.config(
-                custom_config.parameter,
-                custom_config.value
-            )
+            spark_config.set(custom_config.parameter, custom_config.value)
         # Create Spark session
-        self.spark = spark_session.enableHiveSupport().getOrCreate()
+        self.spark = SparkSession.builder \
+            .config(conf=spark_config) \
+            .getOrCreate()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'{self.catalog}.{database}.{table}'
@@ -103,6 +119,8 @@ class SparkDataProcess(DataProcessInterface):
                 partition_field,
                 partition_value
             )
+
+            
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
