@@ -106,6 +106,7 @@ class SparkDataProcess(DataProcessInterface):
                 INSERT *
             """
 
+            logger.info(f'merge sql \n{merge_query}')
             logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
