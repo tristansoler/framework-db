@@ -6,6 +6,7 @@ from data_framework.modules.data_process.interface_data_process import (
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
+from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from typing import List
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
@@ -67,6 +68,8 @@ class SparkDataProcess(DataProcessInterface):
             .config(conf=spark_config) \
             .getOrCreate()
 
+        self.catalogue = CoreCatalogue()
+
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'{self.catalog}.{database}.{table}'
 
@@ -77,13 +80,15 @@ class SparkDataProcess(DataProcessInterface):
         try:
             table_name = self._build_complete_table_name(database, table)
             view_name = 'data_to_merge'
-
+            # Select only necessary columns of the dataframe
+            table_schema = self.catalogue.get_schema(database, table)
+            table_columns = table_schema.schema.get_column_names(partitioned=True)
+            dataframe = dataframe.select(*table_columns)
+            # Perform merge
             dataframe.createOrReplaceTempView(view_name)
-
             sql_update_with_pks = '\n AND '.join([
                 f' {view_name}.{field} = {table_name}.{field}' for field in primary_keys
             ])
-
             merge_query = f"""
                 MERGE INTO {table_name}
                 USING {view_name} ON
@@ -93,9 +98,7 @@ class SparkDataProcess(DataProcessInterface):
                 WHEN NOT MATCHED THEN
                 INSERT *
             """
-
             self._execute_query(merge_query)
-
             response = WriteResponse(success=True, error=None)
         except Exception as e:
             response = WriteResponse(success=False, error=e)

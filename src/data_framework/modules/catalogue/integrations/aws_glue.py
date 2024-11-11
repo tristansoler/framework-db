@@ -1,4 +1,10 @@
-from data_framework.modules.catalogue.interface_catalogue import CatalogueInterface, SchemaResponse, GenericResponse, Column, Schema
+from data_framework.modules.catalogue.interface_catalogue import (
+    CatalogueInterface,
+    SchemaResponse,
+    GenericResponse,
+    Column,
+    Schema
+)
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
 from typing import Union
@@ -13,8 +19,13 @@ class CatalogueAWSGlue(CatalogueInterface):
         self.config = config()
         self.glue_client = boto3.client('glue', region_name=config().parameters.region)
 
-    def create_partition(self, database: str, table: str, partition_field: str, partition_value: Union[str, int])\
-            -> GenericResponse:
+    def create_partition(
+        self,
+        database: str,
+        table: str,
+        partition_field: str,
+        partition_value: Union[str, int]
+    ) -> GenericResponse:
         """
         Function to create new partition in a table
         :param database: name of database of the table
@@ -103,18 +114,18 @@ class CatalogueAWSGlue(CatalogueInterface):
                 l_columns = response_gc['Table']['StorageDescriptor']['Columns']
                 l_names = [column['Name'] for column in l_columns]
                 l_types = [column['Type'] for column in l_columns]
-                l_ispartitioned = [False for column in l_columns]
+                l_ispartitioned = [False for _ in l_columns]
 
                 try:
                     l_partition_keys = response_gc['Table']['PartitionKeys']
                     l_partition_keys_names = [column['Name'] for column in l_partition_keys]
                     l_partition_keys_types = [column['Type'] for column in l_partition_keys]
-                    l_partition_keys_ispartitioned = [True for column in l_partition_keys]
+                    l_partition_keys_ispartitioned = [True for _ in l_partition_keys]
                     l_names.extend(l_partition_keys_names)
                     l_types.extend(l_partition_keys_types)
                     l_ispartitioned.extend(l_partition_keys_ispartitioned)
-                except Exception as error:
-                    self.logger.info(f"La tabla '{database}'.'{table}' no tiene Particiones")
+                except Exception:
+                    self.logger.info(f"La tabla '{database}'.'{table}' no tiene particiones")
 
                 n_cols = len(l_names)
                 l_order = [number+1 for number in range(n_cols)]
