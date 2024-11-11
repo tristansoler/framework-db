@@ -79,7 +79,7 @@ class SparkDataProcess(DataProcessInterface):
 
         # Imprimir todas las configuraciones
         for key, value in current_conf:
-            self.logger.info(f"{key} = {value}")
+            logger.info(f"{key} = {value}")
 
         self.catalogue = CoreCatalogue()
 
