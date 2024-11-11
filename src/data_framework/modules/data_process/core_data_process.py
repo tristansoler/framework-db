@@ -52,8 +52,8 @@ class CoreDataProcess(object):
         )
 
     @classmethod
-    def read_table(cls, database: str, table: str, _filter: str = None) -> ReadResponse:
-        return cls._data_process.read_table(database=database, table=table, _filter=_filter)
+    def read_table(cls, database: str, table: str, filter: str = None) -> ReadResponse:
+        return cls._data_process.read_table(database=database, table=table, filter=filter)
 
     @classmethod
     def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:

@@ -116,11 +116,11 @@ class SparkDataProcess(DataProcessInterface):
         df_result = self.spark.sql(query)
         return df_result
 
-    def read_table(self, database: str, table: str, _filter: str = None) -> ReadResponse:
+    def read_table(self, database: str, table: str, filter: str = None) -> ReadResponse:
         try:
             table_name = self._build_simple_table_name(database, table)
-            if _filter:
-                query = f"SELECT * FROM {table_name} WHERE {_filter}"
+            if filter:
+                query = f"SELECT * FROM {table_name} WHERE {filter}"
             else:
                 query = f"SELECT * FROM {table_name}"
             df = self._execute_query(query)
