@@ -95,7 +95,6 @@ class Parameters:
 
 @dataclass
 class Validations:
-    validate_extension: bool
     validate_filename: bool
     validate_csv: bool
     validate_columns: bool
@@ -109,6 +108,7 @@ class IncomingFileLandingToRaw:
     filename_unzipped_pattern: Optional[str]
     csv_specs: CSVSpecs
     validations: Validations
+    compare_with_previous_file: Optional[bool] = False
 
 
 @dataclass
