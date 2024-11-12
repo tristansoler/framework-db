@@ -18,11 +18,12 @@ class FileValidator:
 
     def __init__(self, file_contents: dict):
         self.config = config()
+        self.current_process_config = self.config.current_process_config()
         self.logger = logger
-        self.catalogue = CoreCatalogue._catalogue
-        self.incoming_file_config = self.config.processes.landing_to_raw.incoming_file
-        self.output_file_config = self.config.processes.landing_to_raw.output_file
-        self.validations = self.config.processes.landing_to_raw.incoming_file.validations
+        self.catalogue = CoreCatalogue()
+        self.incoming_file_config = self.current_process_config.incoming_file
+        self.output_file_config = self.current_process_config.output_file
+        self.validations = self.current_process_config.incoming_file.validations
         self.file_contents = file_contents
         self.file_name = Path(self.config.parameters.source_file_path).name
 
@@ -146,11 +147,12 @@ class ProcessingCoordinator:
 
     def __init__(self):
         self.config = config()
+        self.current_process_config = self.config.current_process_config()
         self.logger = logger
-        self.storage = Storage._storage
-        self.catalogue = CoreCatalogue._catalogue
-        self.incoming_file_config = self.config.processes.landing_to_raw.incoming_file
-        self.output_file_config = self.config.processes.landing_to_raw.output_file
+        self.storage = Storage()
+        self.catalogue = CoreCatalogue()
+        self.incoming_file_config = self.current_process_config.incoming_file
+        self.output_file_config = self.current_process_config.output_file
 
     def process(self) -> dict:
 

@@ -16,9 +16,7 @@ class CoreDataProcess(object):
 
     @LazyClassProperty
     def _data_process(cls) -> DataProcessInterface:
-        process = config().parameters.process
-        technology = getattr(config().processes, process) \
-            .processing_specifications.technology
+        technology = config().current_process_config().processing_specifications.technology
         if technology == Technologies.EMR.value:
             from data_framework.modules.data_process.integrations.spark_data_process import SparkDataProcess
             return SparkDataProcess()
@@ -53,8 +51,8 @@ class CoreDataProcess(object):
         )
 
     @classmethod
-    def read_table(cls, database: str, table: str, filter: str = None) -> ReadResponse:
-        return cls._data_process.read_table(database=database, table=table, filter=filter)
+    def read_table(cls, database: str, table: str, filter: str = None, columns: List[str] = None) -> ReadResponse:
+        return cls._data_process.read_table(database=database, table=table, filter=filter, columns=columns)
 
     @classmethod
     def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:

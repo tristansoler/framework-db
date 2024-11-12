@@ -4,44 +4,215 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
         {
             "name": "Landing to Raw + AWS login",
             "type": "python",
             "request": "launch",
-            "cwd": "./src",
-            "program": "data_framework/flows/landing.py",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/landing.py",
             "console": "integratedTerminal",
             "preLaunchTask": "sso_login",
             "justMyCode": true,
             "args": [
                 "--dataflow", "jpm_portfolio_returns",
+                "--process", "landing_to_raw",
                 "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--bucket-prefix", "aihd1airas3aihgdp",
-                "--region", "eu-west-1",
+                "--local-file", "jpm_portfolio_returns",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
-                // "ENV": "local"
+                "AWS_REGION": "eu-west-1",
             }
         },
         {
             "name": "Landing to Raw",
             "type": "python",
             "request": "launch",
-            "cwd": "./src",
-            "program": "data_framework/flows/landing.py",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/landing.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
                 "--dataflow", "jpm_portfolio_returns",
+                "--process", "landing_to_raw",
                 "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--bucket-prefix", "aihd1airas3aihgdp",
-                "--region", "eu-west-1",
+                "--local-file", "jpm_portfolio_returns",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
-                // "ENV": "local"
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Raw to Staging + AWS login",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/staging.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "sso_login",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "raw_to_staging",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Raw to Staging",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/staging.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "raw_to_staging",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Staging to Business + AWS login",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/business.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "sso_login",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "staging_to_business",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Staging to Business",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/business.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "staging_to_business",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Staging to Common + AWS login",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/common.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "sso_login",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "staging_to_common",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "Staging to Common",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/common.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "staging_to_common",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "To Output + AWS login",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/output.py",
+            "console": "integratedTerminal",
+            "preLaunchTask": "sso_login",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "to_output",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
+            }
+        },
+        {
+            "name": "To Output",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "program": "data_framework/dataflow/output.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--dataflow", "jpm_portfolio_returns",
+                "--process", "to_output",
+                "--file-date", "2024-09-24",
+                "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
+                "--local-file", "jpm_portfolio_returns",
+            ],
+            "env": {
+                "AWS_PROFILE": "SysOps-339712925210",
+                "AWS_REGION": "eu-west-1",
             }
         }
     ]

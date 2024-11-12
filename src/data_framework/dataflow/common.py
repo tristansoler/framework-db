@@ -5,10 +5,8 @@ from data_framework.modules.data_process.core_data_process import CoreDataProces
 from data_framework.modules.validation.quality_controls import QualityControls
 from typing import Any, Dict
 
+
 class StagingToCommon():
-    @property
-    def origin_dataframe(self):
-        return self.__df
 
     @property
     def config(self) -> Config:
@@ -36,12 +34,12 @@ class StagingToCommon():
 
     def __init__(self):
         self.__config = config()
+        self.__current_process_config = self.__config.current_process_config()
         self.__logger = logger
         self.__data_process = CoreDataProcess()
         self.__quality_controls = QualityControls()
-
-        self.__source_tables = self.__config.processes.staging_to_common.source_tables
-        self.__target_tables = self.__config.processes.staging_to_common.target_tables
+        self.__source_tables = self.__current_process_config.source_tables
+        self.__target_tables = self.__current_process_config.target_tables
 
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
@@ -91,6 +89,7 @@ class StagingToCommon():
         else:
             self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
             raise response.error
+
 
 if __name__ == '__main__':
     common = StagingToCommon()

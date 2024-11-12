@@ -41,14 +41,14 @@
               },
               "raw_to_staging": {
                 "source_tables": {
-                    "luxembourg_portfolio_returns": {
+                    "lux_portfolio_returns": {
                       "database": "funds_raw",
                       "table": "luxembourg_portfolio_returns",
                       "partition_field": "data_date"
                     }
                 },
                 "target_tables": {
-                    "luxembourg_portfolio_returns": {
+                    "lux_portfolio_returns": {
                       "database": "funds_staging",
                       "table": "luxembourg_portfolio_returns",
                       "primary_keys": [
@@ -76,46 +76,168 @@
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
                     "warehouse": "funds_staging",
-                    "custom_configuration": [
-                      {
-                        "parameter": "",
-                        "value": ""
-                      }
-                    ]
+                    "custom_configuration": []
+                  }
+                }
+              },
+              "staging_to_business": {
+                "source_tables": {
+                    "portfolio_returns": {
+                      "database": "funds_staging",
+                      "table": "portfolio_returns",
+                      "primary_keys": [
+                        "country",
+                        "account_number",
+                        "base_currency",
+                        "position_date",
+                        "security_number_full",
+                        "trading_currency"
+                      ]
+                    }
+                },
+                "target_tables": {
+                    "portfolio_functional_controls": {
+                      "database": "funds_business",
+                      "table": "portfolio_functional_controls",
+                      "primary_keys": [
+                        "country",
+                        "portfolio_id",
+                        "base_currency",
+                        "position_date",
+                        "id_control"
+                      ]
+                    },
+                    "portfolio_returns_to_factset": {
+                      "database": "funds_business",
+                      "table": "portfolio_returns_to_factset",
+                      "primary_keys": [
+                        "date",
+                        "country",
+                        "portfolio",
+                        "symbol"
+                      ]
+                    }
+                },
+                "processing_specifications": {
+                  "technology": "emr",
+                  "hardware": {
+                    "ram": 512
+                  },
+                  "spark_configuration": {
+                    "catalog": "iceberg_catalog",
+                    "warehouse": "funds_staging",
+                    "custom_configuration": []
                   }
                 }
               },
               "to_output": {
-                "output_reports": [{
-                  "name" : "funds_staging",
-                  "table": "morningstar_dividends",
-                  "columns": ["secid", "performanceid", "currencyiso"],
-                  "columns_alias": ["id", "performance_id", "currency_ISO"],
-                  "where": "1=1",
-                  "file_format": "csv",
-                  "filename_pattern": "fichero_output_{}",
-                  "csv_specs": {
-                    "header": true,
-                    "encoding": "UTF-8",
-                    "delimiter": ","
+                "output_reports": [
+                  {
+                    "name" : "funds_business",
+                    "table": "portfolio_returns_to_factset",
+                    "columns": [
+                      "date",
+                      "country",
+                      "portfolio",
+                      "asset_type",
+                      "symbol",
+                      "security_description",
+                      "shares",
+                      "market_value",
+                      "priceiso",
+                      "price",
+                      "total_return_local",
+                      "total_return_base",
+                      "holding_portfolio",
+                      "prior_cost_base",
+                      "cost_base",
+                      "change_in_cost_base",
+                      "prior_accrued_income_base",
+                      "accrued_income_base",
+                      "change_in_accrued_income_base",
+                      "nominal_value",
+                      "strike_price",
+                      "bond_original_price",
+                      "category_long_description",
+                      "contract_size",
+                      "coupon",
+                      "gics_economic_group_description",
+                      "gics_industry_group_description",
+                      "gics_sector_group_description",
+                      "gics_sub_sector_group_description",
+                      "underlying_security",
+                      "prior_trading_currency_fx_rate",
+                      "exchange_rate",
+                      "cusip",
+                      "isin",
+                      "sedol",
+                      "base_currency",
+                      "call_date",
+                      "effective_maturity_date",
+                      "expiration_date"
+                    ],
+                    "columns_alias": [
+                      "date",
+                      "country",
+                      "portfolio",
+                      "asset_type",
+                      "symbol",
+                      "security_description",
+                      "shares",
+                      "market_value",
+                      "priceiso",
+                      "price",
+                      "total_return_local",
+                      "total_return_base",
+                      "holding_portfolio",
+                      "prior_cost_base",
+                      "cost_base",
+                      "change_in_cost_base",
+                      "prior_accrued_income_base",
+                      "accrued_income_base",
+                      "change_in_accrued_income_base",
+                      "nominal_value",
+                      "strike_price",
+                      "bond_original_price",
+                      "category_long_description",
+                      "contract_size",
+                      "coupon",
+                      "gics_economic_group_description",
+                      "gics_industry_group_description",
+                      "gics_sector_group_description",
+                      "gics_sub_sector_group_description",
+                      "underlying_security",
+                      "prior_trading_currency_fx_rate",
+                      "exchange_rate",
+                      "cusip",
+                      "isin",
+                      "sedol",
+                      "base_currency",
+                      "call_date",
+                      "effective_maturity_date",
+                      "expiration_date"
+                    ],
+                    "where": "date='{}'",
+                    "file_format": "csv",
+                    "filename_pattern": "{}_FACTSET_{}",
+                    "csv_specs": {
+                      "header": true,
+                      "encoding": "UTF-8",
+                      "delimiter": ","
+                    }
                   }
-                }],
+                ],
                 "processing_specifications": {
-                  "technology": "lambda",
-                  "hardware": {
-                  "ram": 512
-                  },
-                  "spark_configuration": {
-                    "default_catalog": true,
-                    "warehouse": "funds_raw",
-                    "custom_configuration": [
-                      {
-                        "parameter": "",
-                        "value": ""
-                      }
-                    ]
+                    "technology": "emr",
+                    "hardware": {
+                      "ram": 512
+                    },
+                    "spark_configuration": {
+                      "catalog": "iceberg_catalog",
+                      "warehouse": "funds_staging",
+                      "custom_configuration": []
+                    }
                   }
-                }
               }
             }
         }

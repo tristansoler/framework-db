@@ -34,7 +34,7 @@ class SparkDataProcess(DataProcessInterface):
         process = config().parameters.process
         json_config = getattr(config().processes, process) \
             .processing_specifications.spark_configuration
-        
+
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
 
@@ -45,13 +45,15 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog"),
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
-            ## Configure Iceberg warehouse
+            # Configure Iceberg warehouse
             ("spark.sql.catalog.iceberg_catalog.warehouse", f"{json_config.warehouse}/"),
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
-            ("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"),
-
+            (
+                "spark.hadoop.hive.metastore.client.factory.class",
+                "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+            ),
             # AWS Glue
             ("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"),
             ("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
@@ -140,7 +142,7 @@ class SparkDataProcess(DataProcessInterface):
                     {query}
                 """
             )
-            
+
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
@@ -151,13 +153,16 @@ class SparkDataProcess(DataProcessInterface):
         df_result = self.spark.sql(query)
         return df_result
 
-    def read_table(self, database: str, table: str, filter: str = None) -> ReadResponse:
+    def read_table(self, database: str, table: str, filter: str = None, columns: List[str] = None) -> ReadResponse:
         try:
             table_name = self._build_simple_table_name(database, table)
-            if filter:
-                query = f"SELECT * FROM {table_name} WHERE {filter}"
+            if columns:
+                columns_str = ', '.join(columns)
+                query = f"SELECT {columns_str} FROM {table_name}"
             else:
                 query = f"SELECT * FROM {table_name}"
+            if filter:
+                query += f" WHERE {filter}"
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
