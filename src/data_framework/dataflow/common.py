@@ -40,8 +40,8 @@ class StagingToCommon():
         self.__data_process = CoreDataProcess()
         self.__quality_controls = QualityControls()
 
-        self.__source_tables = self.__config.processes.raw_to_staging.source_tables
-        self.__target_tables = self.__config.processes.raw_to_staging.target_tables
+        self.__source_tables = self.__config.processes.staging_to_common.source_tables
+        self.__target_tables = self.__config.processes.staging_to_common.target_tables
 
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
