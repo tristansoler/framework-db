@@ -70,7 +70,7 @@ class ConfigSetup:
         config_json = {}
         path_absolute = Path(__file__).resolve()
 
-        if local_file is None:
+        if local_file is not None:
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{local_file}.json'
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
