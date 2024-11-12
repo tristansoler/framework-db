@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional, List, Tuple, Union
 import os
 
+
 class Environment(Enum):
     LOCAL = "local"
     REMOTE = "remote"
@@ -90,6 +91,7 @@ class Parameters:
     @property
     def bucket_prefix(self) -> str:
         return "aihd1airas3aihgdp"
+
 
 @dataclass
 class Validations:
