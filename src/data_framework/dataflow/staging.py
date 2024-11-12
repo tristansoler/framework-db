@@ -34,11 +34,12 @@ class RawToStaging:
 
     def __init__(self):
         self.__config = config()
+        self.__current_process_config = self.__config.current_process_config()
         self.__logger = logger
         self.__data_process = CoreDataProcess()
         self.__quality_controls = QualityControls()
-        self.__source_tables = self.__config.processes.raw_to_staging.source_tables
-        self.__target_tables = self.__config.processes.raw_to_staging.target_tables
+        self.__source_tables = self.__current_process_config.source_tables
+        self.__target_tables = self.__current_process_config.target_tables
 
     def read_table_with_casting(
         self,

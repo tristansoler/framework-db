@@ -86,7 +86,7 @@ class Parameters:
     @property
     def region(self) -> str:
         return os.environ["AWS_REGION"]
-    
+
     @property
     def bucket_prefix(self) -> str:
         return "aihd1airas3aihgdp"
@@ -123,7 +123,7 @@ class DatabaseTable:
     @property
     def full_name(self) -> str:
         return f'{self.database_relation}.{self.table}'
-    
+
     @property
     def sql_where(self) -> str:
         from data_framework.modules.config.core import config
@@ -137,8 +137,9 @@ class TableDict:
     def table(self, table_key: str) -> Union[DatabaseTable, None]:
         table_info = self.tables.get(table_key)
         if not table_info:
+            table_keys = ', '.join(self.tables.keys())
             raise ValueError(
-                f'Table key {table_key} not found. Available table keys: {list(self.tables.keys())}'
+                f'Table key {table_key} not found. Available table keys: {table_keys}'
             )
         return table_info
 
@@ -189,3 +190,13 @@ class Config:
     processes: Processes
     environment: Environment
     parameters: Parameters
+
+    def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
+        try:
+            current_process = self.parameters.process
+            return getattr(self.processes, current_process)
+        except AttributeError:
+            processes = ', '.join(self.processes.__dict__.keys())
+            raise ValueError(
+                f'Process {current_process} not found in config. Available processes: {processes}'
+            )

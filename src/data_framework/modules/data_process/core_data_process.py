@@ -16,9 +16,7 @@ class CoreDataProcess(object):
 
     @LazyClassProperty
     def _data_process(cls) -> DataProcessInterface:
-        process = config().parameters.process
-        technology = getattr(config().processes, process) \
-            .processing_specifications.technology
+        technology = config().current_process_config().processing_specifications.technology
         if technology == Technologies.EMR.value:
             from data_framework.modules.data_process.integrations.spark_data_process import SparkDataProcess
             return SparkDataProcess()
