@@ -194,7 +194,10 @@ class Config:
     def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
         try:
             current_process = self.parameters.process
-            return getattr(self.processes, current_process)
+            current_process_config = getattr(self.processes, current_process)
+            if current_process_config is None:
+                raise ValueError(f'Configuration of process {current_process} is empty')
+            return current_process_config
         except AttributeError:
             processes = ', '.join(self.processes.__dict__.keys())
             raise ValueError(

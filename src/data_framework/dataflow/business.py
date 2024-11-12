@@ -92,4 +92,4 @@ class StagingToBusiness():
 
 
 if __name__ == '__main__':
-    common = StagingToBusiness()
+    business = StagingToBusiness()
