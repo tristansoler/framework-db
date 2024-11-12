@@ -83,9 +83,6 @@ class SparkDataProcess(DataProcessInterface):
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'iceberg_catalog.{database}.{table}'
 
-    def _build_simple_table_name(self, database: str, table: str) -> str:
-        return f'{database}.{table}'
-
     def merge(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
         try:
             table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
@@ -155,7 +152,7 @@ class SparkDataProcess(DataProcessInterface):
 
     def read_table(self, database: str, table: str, filter: str = None, columns: List[str] = None) -> ReadResponse:
         try:
-            table_name = self._build_simple_table_name(database, table)
+            table_name = self._build_complete_table_name(database=database, table=table)
             if columns:
                 columns_str = ', '.join(columns)
                 query = f"SELECT {columns_str} FROM {table_name}"
