@@ -165,8 +165,9 @@ class SparkDataProcess(DataProcessInterface):
                 query += f" WHERE {filter}"
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            response = ReadResponse(success=False, error=e, data=None)
+        except Exception as error:
+            error_message = f"{error}\nSQL\n{query}"
+            response = ReadResponse(success=False, error=error_message, data=None)
         return response
 
     def join(self, df_1: DataFrame, df_2: DataFrame, on: List[str], how: str) -> ReadResponse:
