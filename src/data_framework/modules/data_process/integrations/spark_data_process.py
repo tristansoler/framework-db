@@ -1,12 +1,15 @@
 from data_framework.modules.data_process.interface_data_process import (
     DataProcessInterface,
     ReadResponse,
-    WriteResponse
+    WriteResponse,
 )
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.config.model.flows import (
+    DatabaseTable
+)
 from typing import List
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
@@ -32,8 +35,6 @@ class SparkDataProcess(DataProcessInterface):
         json_config = getattr(config().processes, process) \
             .processing_specifications.spark_configuration
         
-        self.catalog = json_config.catalog
-        
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
 
@@ -50,6 +51,13 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
             ("spark.hadoop.hive.metastore.client.factory.class", "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"),
+
+            # AWS Glue
+            ("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog"),
+            ("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
+            ("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
+            ("spark.sql.catalogImplementation", "hive"),
+
             # Configure hardware
             # TODO: Set dynamic values from config
             ("spark.executor.memory", "4g"),
@@ -71,23 +79,23 @@ class SparkDataProcess(DataProcessInterface):
         self.catalogue = CoreCatalogue()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
-        return f'{self.catalog}.{database}.{table}'
+        return f'iceberg_catalog.{database}.{table}'
 
     def _build_simple_table_name(self, database: str, table: str) -> str:
         return f'{database}.{table}'
 
-    def merge(self, dataframe: DataFrame, database: str, table: str, primary_keys: List[str]) -> WriteResponse:
+    def merge(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
         try:
-            table_name = self._build_complete_table_name(database, table)
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
-            table_schema = self.catalogue.get_schema(database, table)
+            table_schema = self.catalogue.get_schema(database=table_config.database_relation, table=table_config.table)
             table_columns = table_schema.schema.get_column_names(partitioned=True)
             dataframe = dataframe.select(*table_columns)
             # Perform merge
             dataframe.createOrReplaceTempView(view_name)
             sql_update_with_pks = '\n AND '.join([
-                f' {view_name}.{field} = {table_name}.{field}' for field in primary_keys
+                f' {view_name}.{field} = {table_name}.{field}' for field in table_config.primary_keys
             ])
             merge_query = f"""
                 MERGE INTO {table_name}
@@ -98,6 +106,8 @@ class SparkDataProcess(DataProcessInterface):
                 WHEN NOT MATCHED THEN
                 INSERT *
             """
+
+            logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
         except Exception as e:
@@ -124,9 +134,9 @@ class SparkDataProcess(DataProcessInterface):
                 partition_value
             )
 
-            logger.info(
+            logger.debug(
                 f"""
-                    DATACAST
+                    query of casting
                     {query}
                 """
             )

@@ -125,7 +125,7 @@ class CatalogueAWSGlue(CatalogueInterface):
                     l_types.extend(l_partition_keys_types)
                     l_ispartitioned.extend(l_partition_keys_ispartitioned)
                 except Exception:
-                    self.logger.info(f"La tabla '{database}'.'{table}' no tiene particiones")
+                    self.logger.debug(f"The table '{database}'.'{table}' is not partitioned")
 
                 n_cols = len(l_names)
                 l_order = [number+1 for number in range(n_cols)]
@@ -137,5 +137,5 @@ class CatalogueAWSGlue(CatalogueInterface):
                 return response
 
         except Exception as error:
-            msg_error = f'Error in get_schema: {str(error)}'
+            msg_error = f"Error in get_schema(database='{database}' table='{table}'): {str(error)}"
             raise Exception(msg_error)
