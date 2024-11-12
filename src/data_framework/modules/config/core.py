@@ -67,14 +67,13 @@ class ConfigSetup:
         import json
         from pathlib import Path
 
-        config_json: dict = None
+        config_json = {}
         path_absolute = Path(__file__).resolve()
 
-        if local_file != None:
+        if local_file is None:
             path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{local_file}.json'
             file = open(path_config)
             config_json = dict(json.loads(file.read()))
-            #environment = Environment.LOCAL
         else:
             import zipfile
 
@@ -83,8 +82,6 @@ class ConfigSetup:
             config_file = archive.open('transformation.json')
             config_json = dict(json.loads(config_file.read()))
             config_file.close()
-
-           # environment = Environment.DEVELOP
 
         dataflows = config_json.get('dataflows')
         common_flow_json = dataflows.get('default')
@@ -115,7 +112,7 @@ class ConfigSetup:
 
     @classmethod
     def parse_to_model(cls, model: Type[T], json_file: dict, parameters: dict = None) -> T:
-
+        # TODO: refactorizar
         fieldtypes = get_type_hints(model)
         kwargs = {}
 
@@ -137,7 +134,7 @@ class ConfigSetup:
                         kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-                    
+
                     if json_file and json_file.get(field):
                         kwargs[field] = [
                             cls.parse_to_model(model=field_model, json_file=field_item)
