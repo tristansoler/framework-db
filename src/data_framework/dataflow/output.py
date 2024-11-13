@@ -66,10 +66,13 @@ class ProcessingCoordinator:
         self.logger.info(
             f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
         )
-        df = self.data_process.read_table(
+        response = self.data_process.read_table(
             config_output.source_table.database, config_output.source_table.table, _filter, columns
-        ).data
-        return df
+        )
+        if response.success:
+            return response.data
+        else:
+            self.logger.error(f'Error reading data: {response.error}')
 
     def write_data_to_file(self, df: DataFrame, config_output: OutputReport) -> None:
         """
