@@ -165,12 +165,12 @@ class OutputReport:
     name: str
     source_table: DatabaseTable
     columns: List[str]
-    columns_alias: Optional[List[str]] = field(default_factory=list)
     where: str
     file_format: str
     filename_pattern: str
-    filename_date_format: Optional[str] = '%Y-%m-%d'
     csv_specs: CSVSpecsReport
+    columns_alias: Optional[List[str]] = field(default_factory=list)
+    filename_date_format: Optional[str] = '%Y-%m-%d'
 
 
 @dataclass
