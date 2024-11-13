@@ -41,6 +41,14 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
+    def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
+        pass
+
+    @abstractmethod
+    def insert_dataframe(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+        pass
+
+    @abstractmethod
     def join(self, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
         pass
 
