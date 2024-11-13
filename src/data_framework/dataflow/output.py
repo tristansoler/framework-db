@@ -28,8 +28,10 @@ class ProcessingCoordinator:
                 try:
                     self.generate_output_file(config_output)
                 except Exception as e:
+                    error_message = f'Error generating output {config_output.name}: {e}'
+                    self.logger.error(error_message)
                     response['fail'].append(config_output.name)
-                    response['errors'].append(f'Error generating output {config_output.name}: {str(e)}')
+                    response['errors'].append(error_message)
                 else:
                     response['success'].append(config_output.name)
             return response
