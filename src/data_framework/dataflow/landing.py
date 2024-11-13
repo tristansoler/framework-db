@@ -11,7 +11,8 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import tarfile
-
+import boto3
+import json
 
 class ProcessingCoordinator:
 
@@ -30,12 +31,12 @@ class ProcessingCoordinator:
         response = {
             'success': False,
             'continue': False,
-            'file_name': None,
-            'file_date': None
+            'fileName': None,
+            'fileDate': None
         }
 
         try:
-            response['file_name'] = Path(self.config.parameters.source_file_path).name
+            response['fileName'] = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Apply controls
@@ -56,9 +57,17 @@ class ProcessingCoordinator:
                     self.write_data(file_contents, partitions)
                     response['continue'] = True
                 response['success'] = True
-                response['file_date'] = file_date
+                response['fileDate'] = file_date
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
+
+        ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
+        ssm_client.put_parameter(
+            Name=f'/dataflow/{self.config.parameters.dataflow}/landing_to_raw/result',
+            Value=json.dumps(response),
+            Type='String',
+            Overwrite=True
+        )
         return response
 
     def read_data(self) -> dict:
