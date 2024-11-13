@@ -25,7 +25,7 @@
                 "--dataflow", "jpm_portfolio_returns",
                 "--process", "landing_to_raw",
                 "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -44,7 +44,7 @@
                 "--dataflow", "jpm_portfolio_returns",
                 "--process", "landing_to_raw",
                 "--source-file-path", "jpm_portfolio_returns/inbound/LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -65,7 +65,7 @@
                 "--process", "raw_to_staging",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -85,7 +85,7 @@
                 "--process", "raw_to_staging",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -106,7 +106,7 @@
                 "--process", "staging_to_business",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -126,7 +126,7 @@
                 "--process", "staging_to_business",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -147,7 +147,7 @@
                 "--process", "staging_to_common",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -167,7 +167,7 @@
                 "--process", "staging_to_common",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -188,7 +188,7 @@
                 "--process", "to_output",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
@@ -208,7 +208,7 @@
                 "--process", "to_output",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
-                "--local-file", "jpm_portfolio_returns",
+                "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
             ],
             "env": {
                 "AWS_PROFILE": "SysOps-339712925210",
