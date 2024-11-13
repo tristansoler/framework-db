@@ -68,15 +68,14 @@ class ConfigSetup:
         from pathlib import Path
 
         config_json = {}
-        path_absolute = Path(__file__).resolve()
 
         if local_file is not None:
-            path_config = str(path_absolute.parent.parent.parent) + f'\\tests\\resources\\configs\\{local_file}.json'
-            file = open(path_config)
+            file = open(local_file)
             config_json = dict(json.loads(file.read()))
         else:
             import zipfile
 
+            path_absolute = Path(__file__).resolve()
             transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
             archive = zipfile.ZipFile(transformation_path, 'r')
             config_file = archive.open('transformation.json')
