@@ -67,7 +67,7 @@ class ProcessingCoordinator:
             f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
         )
         response = self.data_process.read_table(
-            config_output.source_table.database, config_output.source_table.table, _filter, columns
+            config_output.source_table.database_relation, config_output.source_table.table, _filter, columns
         )
         if response.success:
             return response.data
