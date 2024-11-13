@@ -45,8 +45,11 @@ class ProcessingCoordinator:
         # Obtain data
         df = self.retrieve_data(config_output)
         # Upload output data to S3
-        self.write_data_to_file(df, config_output)
-        self.logger.info(f'Output {config_output.name} generated successfully')
+        if df and not df.isEmpty():
+            self.write_data_to_file(df, config_output)
+            self.logger.info(f'Output {config_output.name} generated successfully')
+        else:
+            self.logger.info(f'No data available for output {config_output.name}')
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """
@@ -65,7 +68,7 @@ class ProcessingCoordinator:
         )
         df = self.data_process.read_table(
             config_output.source_table.database, config_output.source_table.table, _filter, columns
-        )
+        ).data
         return df
 
     def write_data_to_file(self, df: DataFrame, config_output: OutputReport) -> None:
