@@ -51,3 +51,7 @@ class DataProcessInterface(ABC):
     @abstractmethod
     def append_rows_to_dataframe(self, df: Any, new_rows: List[dict]) -> ReadResponse:
         pass
+
+    @abstractmethod
+    def query(self, sql: str) -> ReadResponse:
+        pass
