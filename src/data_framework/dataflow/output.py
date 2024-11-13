@@ -39,10 +39,12 @@ class ProcessingCoordinator:
             return response
 
     def generate_output_file(self, config_output: OutputReport) -> None:
+        self.logger.info(f'Generating output {config_output.name}')
         # Obtain data
         df = self.retrieve_data(config_output)
         # Upload output data to S3
         self.write_data_to_file(df, config_output)
+        self.logger.info(f'Output {config_output.name} generated successfully')
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """
@@ -56,8 +58,11 @@ class ProcessingCoordinator:
         else:
             columns = config_output.columns
         _filter = self.format_string(config_output.where)
+        self.logger.info(
+            f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
+        )
         df = self.data_process.read_table(
-            config_output.source_table.database, self.source_table.table, _filter, columns
+            config_output.source_table.database, config_output.source_table.table, _filter, columns
         )
         return df
 
@@ -69,6 +74,7 @@ class ProcessingCoordinator:
         bucket_output = f'{self.config.parameters.bucket_prefix}-{Layer.OUTPUT.value}'
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
         filename_path = f"s3://{bucket_output}/funds_output/{self.config.parameters.dataflow}/{filename}"
+        self.logger.info(f'Saving output {config_output.name} in {filename_path}')
         if config_output.file_format == "csv":
             header = config_output.csv_specs['header']
             delimiter = config_output.csv_specs['delimiter']
