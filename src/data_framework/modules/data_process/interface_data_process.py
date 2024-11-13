@@ -5,6 +5,7 @@ from data_framework.modules.config.model.flows import (
     DatabaseTable
 )
 
+
 @dataclass
 class ReadResponse:
     success: bool
