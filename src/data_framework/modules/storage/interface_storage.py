@@ -13,8 +13,11 @@ class Layer(Enum):
 
 
 class Database(Enum):
+    # TODO: parametrizar dinámicamente
     FUNDS_RAW = "funds_raw"
     FUNDS_STAGING = "funds_staging"
+    FUNDS_COMMON = "funds_common"
+    FUNDS_BUSINESS = "funds_business"
 
 
 @dataclass

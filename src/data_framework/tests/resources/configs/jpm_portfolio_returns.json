@@ -75,8 +75,7 @@
                   },
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
-                    "warehouse": "funds_staging",
-                    "custom_configuration": []
+                    "warehouse": "funds_staging"
                   }
                 }
               },
@@ -126,16 +125,19 @@
                   },
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
-                    "warehouse": "funds_staging",
-                    "custom_configuration": []
+                    "warehouse": "funds_staging"
                   }
                 }
               },
               "to_output": {
                 "output_reports": [
                   {
-                    "name" : "funds_business",
-                    "table": "portfolio_returns_to_factset",
+                    "name": "JP Morgan to Factset",
+                    "source_table": {
+                      "database" : "funds_business",
+                      "table": "portfolio_returns_to_factset",
+                      "partition_field": "date"
+                    },
                     "columns": [
                       "date",
                       "country",
@@ -145,7 +147,7 @@
                       "security_description",
                       "shares",
                       "market_value",
-                      "priceiso",
+                      "price_iso",
                       "price",
                       "total_return_local",
                       "total_return_base",
@@ -177,50 +179,10 @@
                       "effective_maturity_date",
                       "expiration_date"
                     ],
-                    "columns_alias": [
-                      "date",
-                      "country",
-                      "portfolio",
-                      "asset_type",
-                      "symbol",
-                      "security_description",
-                      "shares",
-                      "market_value",
-                      "priceiso",
-                      "price",
-                      "total_return_local",
-                      "total_return_base",
-                      "holding_portfolio",
-                      "prior_cost_base",
-                      "cost_base",
-                      "change_in_cost_base",
-                      "prior_accrued_income_base",
-                      "accrued_income_base",
-                      "change_in_accrued_income_base",
-                      "nominal_value",
-                      "strike_price",
-                      "bond_original_price",
-                      "category_long_description",
-                      "contract_size",
-                      "coupon",
-                      "gics_economic_group_description",
-                      "gics_industry_group_description",
-                      "gics_sector_group_description",
-                      "gics_sub_sector_group_description",
-                      "underlying_security",
-                      "prior_trading_currency_fx_rate",
-                      "exchange_rate",
-                      "cusip",
-                      "isin",
-                      "sedol",
-                      "base_currency",
-                      "call_date",
-                      "effective_maturity_date",
-                      "expiration_date"
-                    ],
-                    "where": "date='{}'",
+                    "where": "date='{file_date}'",
                     "file_format": "csv",
-                    "filename_pattern": "{}_FACTSET_{}",
+                    "filename_pattern": "LUX_FACTSET_{current_date}.csv",
+                    "filename_date_format": "%Y%m%d",
                     "csv_specs": {
                       "header": true,
                       "encoding": "UTF-8",
@@ -235,8 +197,7 @@
                     },
                     "spark_configuration": {
                       "catalog": "iceberg_catalog",
-                      "warehouse": "funds_staging",
-                      "custom_configuration": []
+                      "warehouse": "funds_business"
                     }
                   }
               }
