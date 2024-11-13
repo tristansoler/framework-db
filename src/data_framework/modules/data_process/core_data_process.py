@@ -65,3 +65,7 @@ class CoreDataProcess(object):
     @classmethod
     def append_rows_to_dataframe(cls, df: Any, new_rows: List[dict]) -> ReadResponse:
         return cls._data_process.append_rows_to_dataframe(df=df, new_rows=new_rows)
+    
+    @classmethod
+    def query(cls, sql: str) -> ReadResponse:
+        return cls._data_process.query(query=sql)

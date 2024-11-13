@@ -223,3 +223,13 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             response = ReadResponse(success=False, error=e, data=None)
         return response
+    
+    def query(self, sql: str) -> ReadResponse:
+        try:
+            df = self._execute_query(sql)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as error:
+            error_message = f"{error}\nSQL\n{sql}"
+            response = ReadResponse(success=False, error=error_message, data=None)
+        
+        return response
