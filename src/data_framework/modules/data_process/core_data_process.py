@@ -55,6 +55,14 @@ class CoreDataProcess(object):
         return cls._data_process.read_table(database=database, table=table, filter=filter, columns=columns)
 
     @classmethod
+    def delete_from_table(cls, table_config: DatabaseTable, _filter: str) -> WriteResponse:
+        return cls._data_process.delete_from_table(table_config=table_config, _filter=_filter)
+
+    @classmethod
+    def insert_dataframe(cls, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+        return cls._data_process.insert_dataframe(dataframe=dataframe, table_config=table_config)
+
+    @classmethod
     def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
         return cls._data_process.join(df_1=df_1, df_2=df_2, on=on, how=how)
 
@@ -65,7 +73,7 @@ class CoreDataProcess(object):
     @classmethod
     def append_rows_to_dataframe(cls, df: Any, new_rows: List[dict]) -> ReadResponse:
         return cls._data_process.append_rows_to_dataframe(df=df, new_rows=new_rows)
-    
+
     @classmethod
     def query(cls, sql: str) -> ReadResponse:
         return cls._data_process.query(sql=sql)

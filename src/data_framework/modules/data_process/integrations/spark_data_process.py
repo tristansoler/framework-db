@@ -166,6 +166,31 @@ class SparkDataProcess(DataProcessInterface):
             response = ReadResponse(success=False, error=error_message, data=None)
         return response
 
+    def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
+        try:
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
+            query = f"DELETE FROM {table_name} WHERE {_filter}"
+            self._execute_query(query)
+            response = WriteResponse(success=True, error=None)
+        except Exception as error:
+            error_message = f"{error}\nSQL\n{query}"
+            response = WriteResponse(success=False, error=error_message)
+        return response
+
+    def insert_dataframe(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
+        try:
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
+            # Select only necessary columns of the dataframe
+            table_schema = self.catalogue.get_schema(database=table_config.database_relation, table=table_config.table)
+            table_columns = table_schema.schema.get_column_names(partitioned=True)
+            dataframe = dataframe.select(*table_columns)
+            # Insert dataframe into table
+            dataframe.writeTo(table_name).append()
+            response = WriteResponse(success=True, error=None)
+        except Exception as e:
+            response = WriteResponse(success=False, error=e)
+        return response
+
     def join(self, df_1: DataFrame, df_2: DataFrame, on: List[str], how: str) -> ReadResponse:
         try:
             if how not in ['inner', 'left', 'right', 'outer']:
@@ -222,7 +247,7 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             response = ReadResponse(success=False, error=e, data=None)
         return response
-    
+
     def query(self, sql: str) -> ReadResponse:
         try:
             df = self._execute_query(sql)
@@ -230,5 +255,5 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as error:
             error_message = f"{error}\nSQL\n{sql}"
             response = ReadResponse(success=False, error=error_message, data=None)
-        
+
         return response

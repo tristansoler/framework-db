@@ -5,6 +5,7 @@ from data_framework.modules.config.model.flows import (
     DatabaseTable
 )
 
+
 @dataclass
 class ReadResponse:
     success: bool
@@ -38,6 +39,14 @@ class DataProcessInterface(ABC):
 
     @abstractmethod
     def read_table(self, database: str, table: str, filter: str, columns: List[str]) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
+        pass
+
+    @abstractmethod
+    def insert_dataframe(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
         pass
 
     @abstractmethod
