@@ -59,5 +59,9 @@ class CoreStorageInterface(ABC):
         pass
 
     @abstractmethod
+    def write_to_path(self, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
+        pass
+
+    @abstractmethod
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         pass

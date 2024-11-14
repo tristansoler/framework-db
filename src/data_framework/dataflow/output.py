@@ -1,10 +1,12 @@
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
+from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
 from data_framework.modules.config.model.flows import OutputReport
 from data_framework.modules.utils.logger import logger
 from pyspark.sql import DataFrame
 from datetime import datetime
+from io import BytesIO
 
 
 class ProcessingCoordinator:
@@ -14,6 +16,7 @@ class ProcessingCoordinator:
         self.current_process_config = self.config.current_process_config()
         self.logger = logger
         self.data_process = CoreDataProcess()
+        self.storage = Storage()
 
     def process(self) -> dict:
         # Build generic response
@@ -78,16 +81,25 @@ class ProcessingCoordinator:
         """
         Function to write the dataframe with the data in storage
         """
-        # TODO: obtener nombre del bucket usando el FW
-        bucket_output = f'{self.config.parameters.bucket_prefix}-{Layer.OUTPUT.value}'
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
-        filename_path = f"s3://{bucket_output}/{self.config.parameters.dataflow}/{filename}"
-        self.logger.info(f'Saving output {config_output.name} in {filename_path}')
+        file_path = f"{self.config.parameters.dataflow}/{filename}"
+        self.logger.info(f'Saving output {config_output.name} in {file_path}')
         if config_output.file_format == "csv":
-            header = config_output.csv_specs['header']
-            delimiter = config_output.csv_specs['delimiter']
-            df.write.options(header=header, delimiter=delimiter) \
-                .csv(filename_path)
+            csv_file = BytesIO()
+            df.toPandas().to_csv(
+                csv_file,
+                sep=config_output.csv_specs['delimiter'],
+                header=config_output.csv_specs['header'],
+                index=False
+            )
+            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file)
+            if not response.success:
+                raise response.error
+            # header = config_output.csv_specs['header']
+            # delimiter = config_output.csv_specs['delimiter']
+            # df.repartition(1).write \
+            #     .options(header=header, delimiter=delimiter) \
+            #     .csv(filename_path)
         # TODO: Salida a excel y json
 
     def format_string(self, string_to_format: str, date_format: str = '%Y-%m-%d') -> str:

@@ -71,6 +71,18 @@ class S3Storage(CoreStorageInterface):
             response = WriteResponse(success=False, error=error)
         return response
 
+    def write_to_path(self, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
+        bucket = self._build_s3_bucket_name(layer=layer)
+        logger.info(f'Writing to S3 path: {key_path}')
+        try:
+            self.s3.put_object(Bucket=bucket, Key=key_path, Body=data)
+            logger.info(f'Successfully wrote to path: {key_path}')
+            response = WriteResponse(success=True, error=None)
+        except ClientError as error:
+            logger.error(f'Failed to write: {error}')
+            response = WriteResponse(success=False, error=error)
+        return response
+
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
         logger.info(f'Listing files from bucket {bucket} with prefix {prefix}')
