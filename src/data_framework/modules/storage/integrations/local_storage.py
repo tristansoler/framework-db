@@ -77,6 +77,21 @@ class LocalStorage(CoreStorageInterface):
             response = WriteResponse(success=False, error=error)
         return response
 
+    def write_to_path(self, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
+        try:
+            folder = self._build_folder_name(layer=layer)
+            full_path = os.path.join(folder, os.path.normpath(key_path))
+            parent_path = os.path.dirname(full_path)
+            os.makedirs(parent_path, exist_ok=True)
+            with open(full_path, 'wb') as f:
+                f.write(data)
+            logger.info(f'Successfully wrote to path: {full_path}')
+            response = WriteResponse(success=True, error=None)
+        except Exception as error:
+            logger.error(f'Failed to write: {error}')
+            response = WriteResponse(success=False, error=error)
+        return response
+
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         try:
             folder = self._build_folder_name(layer=layer)

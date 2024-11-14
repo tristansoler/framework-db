@@ -46,5 +46,13 @@ class Storage:
         )
 
     @classmethod
+    def write_to_path(cls, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
+        return cls._storage.write_to_path(
+            layer=layer,
+            key_path=key_path,
+            data=data
+        )
+
+    @classmethod
     def list_files(cls, layer: Layer, prefix: str) -> ListResponse:
         return cls._storage.list_files(layer=layer, prefix=prefix)

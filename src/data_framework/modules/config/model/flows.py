@@ -162,14 +162,15 @@ class GenericProcess:
 
 @dataclass
 class OutputReport:
-    name: Database
-    table: str
-    columns: str
-    columns_alias: str
+    name: str
+    source_table: DatabaseTable
+    columns: List[str]
     where: str
     file_format: str
     filename_pattern: str
     csv_specs: CSVSpecsReport
+    columns_alias: Optional[List[str]] = field(default_factory=list)
+    filename_date_format: Optional[str] = '%Y-%m-%d'
 
 
 @dataclass

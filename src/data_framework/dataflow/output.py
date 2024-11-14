@@ -1,65 +1,12 @@
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.storage.core_storage import Storage
+from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
+from data_framework.modules.config.model.flows import OutputReport
 from data_framework.modules.utils.logger import logger
 from pyspark.sql import DataFrame
 from datetime import datetime
-
-# TODO: FALTA POR PROBAR el flujo completo ya que no funciona spark
-# TODO: Salida a excel y json
-
-
-class MakeOutput():
-
-    def __init__(self):
-        self.logger = logger
-        self.data_process = CoreDataProcess()
-
-    def set_config_output(self, config_parameters, config_output):
-        """
-        Function to set parameters
-        """
-        self.name = config_output['name']
-        self.database = config_output['database_relation']
-        self.table = config_output['table']
-        self.columns = config_output['columns']
-        self.columns_alias = config_output['columns_alias']
-        self.where = config_output['where']
-        self.file_format = config_output['file_format']
-        self.filename_pattern = config_output['filename_pattern']
-        self.csv_specs = config_output['csv_specs']
-        self.bucket_prefix = config_parameters.bucket_prefix
-        self.process = config_parameters.process
-
-    def retrieve_data(self) -> DataFrame:
-        """
-        Function to build sql a retrieve the dataframe with the data
-        """
-        columns = dict(zip(self.columns, self.columns_alias))
-        l_columns = [f"{key} as {val}" for key, val in columns.items()]
-        df = self.data_process.read_table(self.database, self.table, self.where, l_columns)
-        return df
-
-    def write_data_to_file(self, df: DataFrame):
-        """
-        Function to write the dataframe with the data in storage
-        """
-        try:
-            today = datetime.now()
-            bucket_output = self.bucket_prefix + "-output"
-            file_output_path = f"funds_output/{self.process}"
-            filename = self.filename_pattern.format(today.strftime('%Y%m%d'))
-            filename = f"s3://{bucket_output}/{file_output_path}/{filename}"
-            if self.file_format == "csv":
-                header = self.csv_specs['header']
-                delimiter = self.csv_specs['delimiter']
-                df.write.options(header=header, delimiter=delimiter) \
-                    .csv(filename)
-            success = True
-        except Exception as e:
-            self.logger.error(f'Error write_data_to_file : {e}')
-            success = False
-        return success
+from io import BytesIO
 
 
 class ProcessingCoordinator:
@@ -68,51 +15,107 @@ class ProcessingCoordinator:
         self.config = config()
         self.current_process_config = self.config.current_process_config()
         self.logger = logger
-        self.make_output = MakeOutput()
+        self.data_process = CoreDataProcess()
+        self.storage = Storage()
 
     def process(self) -> dict:
-
         # Build generic response
         response = {
-            'success': [],
-            'fail': [],
-            'errors': [],
+            'success': True,
+            'file_name': self.config.parameters.file_name,
+            'file_date': self.config.parameters.file_date,
+            'outputs': []
         }
-
         try:
-            l_success = []
-            l_fail = []
-            l_fail_errors = []
-
-            # Loop for all output
-            l_outputs = self.current_process_config.output_reports
-            for config_output in l_outputs:
-                report_name = config_output['name']
-                # Set config values
-                self.make_output.set_config_output(self.config.parameters, config_output)
+            # Generate all outputs
+            for config_output in self.current_process_config.output_reports:
                 try:
-                    # Retrieve data to output
-                    df = self.make_output.retrieve_data()
-                    # Send file to bucket_output/folder
-                    success = self.make_output.write_data_to_file(df)
-                    if success:
-                        l_success.append(report_name)
+                    self.generate_output_file(config_output)
                 except Exception as e:
-                    l_fail.append(report_name)
-                    l_fail_errors.append(f'El output {report_name} ha dado error: {str(e)}')
-
-            response['success'] = l_success
-            response['fail'] = l_fail
-            response['errors'] = l_fail_errors
-
-            return response
-
+                    error_message = f'Error generating output {config_output.name}: {e}'
+                    self.logger.error(error_message)
+                    response['outputs'].append({
+                        'name': config_output.name,
+                        'success': False,
+                        'error': error_message
+                    })
+                    response['success'] = False
+                else:
+                    response['outputs'].append({
+                        'name': config_output.name,
+                        'success': True,
+                        'error': ''
+                    })
         except Exception as e:
-            self.logger.error(f'Error output: {e}')
-            response['fail'].append(f'Error output: {e}')
-            return response
+            self.logger.error(f'Error generating outputs: {e}')
+            response['success'] = False
+        return response
+
+    def generate_output_file(self, config_output: OutputReport) -> None:
+        self.logger.info(f'Generating output {config_output.name}')
+        # Obtain data
+        df = self.retrieve_data(config_output)
+        # Upload output data to S3
+        if df and not df.isEmpty():
+            self.write_data_to_file(df, config_output)
+            self.logger.info(f'Output {config_output.name} generated successfully')
+        else:
+            raise Exception(f'No data available for output {config_output.name}')
+
+    def retrieve_data(self, config_output: OutputReport) -> DataFrame:
+        """
+        Function to build sql a retrieve the dataframe with the data
+        """
+        if config_output.columns_alias:
+            columns = [
+                f"{column} as {column_alias}"
+                for column, column_alias in zip(config_output.columns, config_output.columns_alias)
+            ]
+        else:
+            columns = config_output.columns
+        _filter = self.format_string(config_output.where)
+        self.logger.info(
+            f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
+        )
+        response = self.data_process.read_table(
+            config_output.source_table.database_relation, config_output.source_table.table, _filter, columns
+        )
+        if response.success:
+            return response.data
+        else:
+            self.logger.error(f'Error reading data: {response.error}')
+            raise response.error
+
+    def write_data_to_file(self, df: DataFrame, config_output: OutputReport) -> None:
+        """
+        Function to write the dataframe with the data in storage
+        """
+        filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
+        file_path = f"{self.config.parameters.dataflow}/{filename}"
+        self.logger.info(f'Saving output {config_output.name} in {file_path}')
+        if config_output.file_format == "csv":
+            csv_file = BytesIO()
+            pdf = df.toPandas()
+            pdf.to_csv(
+                csv_file,
+                sep=config_output.csv_specs['delimiter'],
+                header=config_output.csv_specs['header'],
+                index=False
+            )
+            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
+            if not response.success:
+                raise response.error
+        # TODO: Salida a excel y json
+
+    def format_string(self, string_to_format: str, date_format: str = '%Y-%m-%d') -> str:
+        # TODO: permitir argumentos custom (p.ej. country en JPM)
+        formatted_string = string_to_format.format(
+            file_date=self.config.parameters.file_date,
+            current_date=datetime.now().strftime(date_format)
+        )
+        return formatted_string
 
 
 if __name__ == '__main__':
-    stb = ProcessingCoordinator()
-    response = stb.process()
+    output = ProcessingCoordinator()
+    response = output.process()
