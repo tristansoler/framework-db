@@ -95,7 +95,7 @@ class ProcessingCoordinator:
                 header=config_output.csv_specs['header'],
                 index=False
             )
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file)
+            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
             if not response.success:
                 raise response.error
             # header = config_output.csv_specs['header']
