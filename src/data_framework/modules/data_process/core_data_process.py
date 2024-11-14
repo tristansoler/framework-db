@@ -68,4 +68,4 @@ class CoreDataProcess(object):
     
     @classmethod
     def query(cls, sql: str) -> ReadResponse:
-        return cls._data_process.query(query=sql)
+        return cls._data_process.query(sql=sql)

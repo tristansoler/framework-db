@@ -26,7 +26,6 @@ from pyspark.sql.types import (
     DecimalType
 )
 
-
 class SparkDataProcess(DataProcessInterface):
 
     def __init__(self):
