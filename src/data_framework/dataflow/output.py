@@ -87,8 +87,6 @@ class ProcessingCoordinator:
         if config_output.file_format == "csv":
             csv_file = BytesIO()
             pdf = df.toPandas()
-            self.logger.info(f'Shape of the PySpark df: {(df.count(), len(df.columns))}')
-            self.logger.info(f'Shape of the Pandas df: {pdf.shape}')
             pdf.to_csv(
                 csv_file,
                 sep=config_output.csv_specs['delimiter'],
