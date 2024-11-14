@@ -21,9 +21,10 @@ class ProcessingCoordinator:
     def process(self) -> dict:
         # Build generic response
         response = {
-            'success': [],
-            'fail': [],
-            'errors': [],
+            'success': True,
+            'file_name': self.config.parameters.file_name,
+            'file_date': self.config.parameters.file_date,
+            'outputs': []
         }
         try:
             # Generate all outputs
@@ -33,15 +34,22 @@ class ProcessingCoordinator:
                 except Exception as e:
                     error_message = f'Error generating output {config_output.name}: {e}'
                     self.logger.error(error_message)
-                    response['fail'].append(config_output.name)
-                    response['errors'].append(error_message)
+                    response['outputs'].append({
+                        'name': config_output.name,
+                        'success': False,
+                        'error': error_message
+                    })
+                    response['success'] = False
                 else:
-                    response['success'].append(config_output.name)
-            return response
+                    response['outputs'].append({
+                        'name': config_output.name,
+                        'success': True,
+                        'error': ''
+                    })
         except Exception as e:
             self.logger.error(f'Error generating outputs: {e}')
-            response['fail'].append(f'Error generating outputs: {e}')
-            return response
+            response['success'] = False
+        return response
 
     def generate_output_file(self, config_output: OutputReport) -> None:
         self.logger.info(f'Generating output {config_output.name}')
@@ -52,7 +60,7 @@ class ProcessingCoordinator:
             self.write_data_to_file(df, config_output)
             self.logger.info(f'Output {config_output.name} generated successfully')
         else:
-            self.logger.info(f'No data available for output {config_output.name}')
+            raise Exception(f'No data available for output {config_output.name}')
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """
@@ -76,6 +84,7 @@ class ProcessingCoordinator:
             return response.data
         else:
             self.logger.error(f'Error reading data: {response.error}')
+            raise response.error
 
     def write_data_to_file(self, df: DataFrame, config_output: OutputReport) -> None:
         """
@@ -96,11 +105,6 @@ class ProcessingCoordinator:
             response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
             if not response.success:
                 raise response.error
-            # header = config_output.csv_specs['header']
-            # delimiter = config_output.csv_specs['delimiter']
-            # df.repartition(1).write \
-            #     .options(header=header, delimiter=delimiter) \
-            #     .csv(filename_path)
         # TODO: Salida a excel y json
 
     def format_string(self, string_to_format: str, date_format: str = '%Y-%m-%d') -> str:
