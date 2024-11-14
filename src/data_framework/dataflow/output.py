@@ -81,7 +81,7 @@ class ProcessingCoordinator:
         # TODO: obtener nombre del bucket usando el FW
         bucket_output = f'{self.config.parameters.bucket_prefix}-{Layer.OUTPUT.value}'
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
-        filename_path = f"s3://{bucket_output}/funds_output/{self.config.parameters.dataflow}/{filename}"
+        filename_path = f"s3://{bucket_output}/{self.config.parameters.dataflow}/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {filename_path}')
         if config_output.file_format == "csv":
             header = config_output.csv_specs['header']
