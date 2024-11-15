@@ -71,6 +71,7 @@ class CSVSpecs:
 @dataclass
 class CSVSpecsReport:
     header: bool
+    index: bool
     encoding: str
     delimiter: str
 
@@ -169,6 +170,7 @@ class OutputReport:
     file_format: str
     filename_pattern: str
     csv_specs: CSVSpecsReport
+    description: Optional[str]
     columns_alias: Optional[List[str]] = field(default_factory=list)
     filename_date_format: Optional[str] = '%Y-%m-%d'
 

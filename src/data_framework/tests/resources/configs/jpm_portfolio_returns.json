@@ -51,6 +51,7 @@
                     "lux_portfolio_returns": {
                       "database": "funds_staging",
                       "table": "luxembourg_portfolio_returns",
+                      "partition_field": "data_date",
                       "primary_keys": [
                         "data_date"
                       ]
@@ -58,6 +59,7 @@
                     "portfolio_returns": {
                       "database": "funds_staging",
                       "table": "portfolio_returns",
+                      "partition_field": "data_date",
                       "primary_keys": [
                         "country",
                         "account_number",
@@ -110,6 +112,7 @@
                     "portfolio_returns_to_factset": {
                       "database": "funds_business",
                       "table": "portfolio_returns_to_factset",
+                      "partition_field": "date",
                       "primary_keys": [
                         "date",
                         "country",
@@ -132,7 +135,8 @@
               "to_output": {
                 "output_reports": [
                   {
-                    "name": "JP Morgan to Factset",
+                    "name": "JPM to Factset",
+                    "description": "Collect JP Morgan returns data to send it to Factset",
                     "source_table": {
                       "database" : "funds_business",
                       "table": "portfolio_returns_to_factset",
@@ -179,12 +183,13 @@
                       "effective_maturity_date",
                       "expiration_date"
                     ],
-                    "where": "date='{file_date}'",
+                    "where": "date='{file_date}' AND country = 'LUX'",
                     "file_format": "csv",
                     "filename_pattern": "LUX_FACTSET_{current_date}.csv",
-                    "filename_date_format": "%Y%m%d",
+                    "filename_date_format": "%Y%m%d_%H%M%S",
                     "csv_specs": {
                       "header": true,
+                      "index": false,
                       "encoding": "UTF-8",
                       "delimiter": ","
                     }

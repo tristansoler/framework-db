@@ -16,7 +16,8 @@ from data_framework.modules.config.model.flows import (
     CustomConfiguration,
     OutputReport,
     GenericProcess,
-    TableDict
+    TableDict,
+    CSVSpecsReport
 )
 import threading
 import sys
@@ -37,7 +38,7 @@ class ConfigSetup:
     _models = (
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, Validations, ProcessingSpecifications,
-        Hardware, SparkConfiguration, CustomConfiguration, OutputReport
+        Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport
     )
 
     def __new__(cls, *args, **kwargs):

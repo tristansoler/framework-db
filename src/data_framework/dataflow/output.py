@@ -7,6 +7,7 @@ from data_framework.modules.utils.logger import logger
 from pyspark.sql import DataFrame
 from datetime import datetime
 from io import BytesIO
+import re
 
 
 class ProcessingCoordinator:
@@ -91,21 +92,33 @@ class ProcessingCoordinator:
         Function to write the dataframe with the data in storage
         """
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
-        file_path = f"{self.config.parameters.dataflow}/{filename}"
+        output_folder = self.parse_output_folder(config_output.name)
+        file_path = f"{self.config.parameters.dataflow}/{output_folder}/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {file_path}')
         if config_output.file_format == "csv":
             csv_file = BytesIO()
             pdf = df.toPandas()
             pdf.to_csv(
                 csv_file,
-                sep=config_output.csv_specs['delimiter'],
-                header=config_output.csv_specs['header'],
-                index=False
+                sep=config_output.csv_specs.delimiter,
+                header=config_output.csv_specs.header,
+                index=config_output.csv_specs.index,
+                encoding=config_output.csv_specs.encoding,
             )
             response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
             if not response.success:
                 raise response.error
         # TODO: Salida a excel y json
+
+    @staticmethod
+    def parse_output_folder(output_folder: str) -> str:
+        return re.sub(
+            r'\s+', '_',
+            re.sub(
+                r'[^a-z\s]', '',
+                output_folder.lower().strip()
+            )
+        )
 
     def format_string(self, string_to_format: str, date_format: str = '%Y-%m-%d') -> str:
         # TODO: permitir argumentos custom (p.ej. country en JPM)
