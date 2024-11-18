@@ -13,6 +13,7 @@ from data_framework.modules.config.model.flows import (
 from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql.functions import col
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -192,14 +193,24 @@ class SparkDataProcess(DataProcessInterface):
             response = WriteResponse(success=False, error=e)
         return response
 
-    def join(self, df_1: DataFrame, df_2: DataFrame, on: List[str], how: str) -> ReadResponse:
+    def join(self, df_1: DataFrame, df_2: DataFrame, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
         try:
             if how not in ['inner', 'left', 'right', 'outer']:
                 raise ValueError(
                     f'Invalid parameter value: how={how}. Allowed values: inner, left, right, outer'
                 )
-            # TODO: join por columnas diferentes en cada df -> similar a left_on y right_on en pandas
-            df_result = df_1.join(df_2, on=on, how=how)
+            if left_on == right_on:
+                df_result = df_1.join(df_2, on=left_on, how=how)
+            elif len(left_on) != len(right_on):
+                raise ValueError(
+                    'Number of columns in left_on and right_on parameters must be the same. ' +
+                    f'left_on: {len(left_on)} columns. right_on: {len(right_on)} columns'
+                )
+            else:
+                for left_column, right_column in zip(left_on, right_on):
+                    if left_column != right_column:
+                        df_2 = df_2.withColumn(left_column, col(right_column))
+                df_result = df_1.join(df_2, on=left_on, how=how)
             # TODO: revisar tipo de respuesta. ¿TransformationResponse?
             response = ReadResponse(success=True, error=None, data=df_result)
         except Exception as e:
