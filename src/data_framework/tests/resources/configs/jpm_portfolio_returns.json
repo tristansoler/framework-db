@@ -66,7 +66,8 @@
                         "base_currency",
                         "position_date",
                         "security_number_full",
-                        "trading_currency"
+                        "trading_currency",
+                        "category_description"
                       ]
                     }
                 },
@@ -93,7 +94,8 @@
                         "base_currency",
                         "position_date",
                         "security_number_full",
-                        "trading_currency"
+                        "trading_currency",
+                        "category_description"
                       ]
                     }
                 },
