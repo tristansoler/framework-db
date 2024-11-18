@@ -54,11 +54,7 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def create_dataframe(self, schema: dict, rows: List[dict]) -> ReadResponse:
-        pass
-
-    @abstractmethod
-    def append_rows_to_dataframe(self, df: Any, new_rows: List[dict]) -> ReadResponse:
+    def create_dataframe(self, data: Any, schema: dict = None) -> ReadResponse:
         pass
 
     @abstractmethod
