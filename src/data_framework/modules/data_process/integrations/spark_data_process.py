@@ -10,7 +10,7 @@ from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.config.model.flows import (
     DatabaseTable
 )
-from typing import List
+from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.types import (
@@ -25,6 +25,7 @@ from pyspark.sql.types import (
     TimestampType,
     DecimalType
 )
+
 
 class SparkDataProcess(DataProcessInterface):
 
@@ -205,11 +206,14 @@ class SparkDataProcess(DataProcessInterface):
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
-    def create_dataframe(self, schema: dict, rows: List[dict]) -> ReadResponse:
+    def create_dataframe(self, data: Any, schema: dict = None) -> ReadResponse:
         try:
-            spark_schema = self._parse_schema(schema)
-            df_result = self.spark.createDataFrame(rows, spark_schema)
-            response = ReadResponse(success=True, error=None, data=df_result)
+            if schema:
+                spark_schema = self._parse_schema(schema)
+                df = self.spark.createDataFrame(data, spark_schema)
+            else:
+                df = self.spark.createDataFrame(data)
+            response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
             response = ReadResponse(success=False, error=e, data=None)
         return response
@@ -237,16 +241,6 @@ class SparkDataProcess(DataProcessInterface):
             )
         spark_schema = StructType(parsed_fields)
         return spark_schema
-
-    def append_rows_to_dataframe(self, df: DataFrame, new_rows: List[dict]) -> ReadResponse:
-        try:
-            spark_schema = df.schema
-            new_df = self.spark.createDataFrame(new_rows, spark_schema)
-            df_result = df.unionByName(new_df)
-            response = ReadResponse(success=True, error=None, data=df_result)
-        except Exception as e:
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
 
     def query(self, sql: str) -> ReadResponse:
         try:
