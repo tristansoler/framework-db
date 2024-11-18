@@ -63,8 +63,8 @@ class CoreDataProcess(object):
         return cls._data_process.insert_dataframe(dataframe=dataframe, table_config=table_config)
 
     @classmethod
-    def join(cls, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
-        return cls._data_process.join(df_1=df_1, df_2=df_2, on=on, how=how)
+    def join(cls, df_1: Any, df_2: Any, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
+        return cls._data_process.join(df_1=df_1, df_2=df_2, left_on=left_on, right_on=right_on, how=how)
 
     @classmethod
     def create_dataframe(cls, data: Any, schema: dict = None) -> ReadResponse:

@@ -50,7 +50,7 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def join(self, df_1: Any, df_2: Any, on: List[str], how: str) -> ReadResponse:
+    def join(self, df_1: Any, df_2: Any, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
         pass
 
     @abstractmethod
