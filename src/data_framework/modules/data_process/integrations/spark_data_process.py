@@ -105,8 +105,6 @@ class SparkDataProcess(DataProcessInterface):
                 UPDATE SET *
                 WHEN NOT MATCHED THEN
                 INSERT *
-                WHEN NOT MATCHED BY SOURCE THEN
-                DELETE
             """
             logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
