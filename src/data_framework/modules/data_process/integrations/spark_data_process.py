@@ -110,6 +110,7 @@ class SparkDataProcess(DataProcessInterface):
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
         except Exception as e:
+            logger.error(e)
             response = WriteResponse(success=False, error=e)
         return response
 
@@ -143,6 +144,7 @@ class SparkDataProcess(DataProcessInterface):
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
+            logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
@@ -162,8 +164,9 @@ class SparkDataProcess(DataProcessInterface):
                 query += f" WHERE {filter}"
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
-        except Exception as error:
-            error_message = f"{error}\nSQL\n{query}"
+        except Exception as e:
+            error_message = f"{e}\nSQL\n{query}"
+            logger.error(error_message)
             response = ReadResponse(success=False, error=error_message, data=None)
         return response
 
@@ -173,8 +176,9 @@ class SparkDataProcess(DataProcessInterface):
             query = f"DELETE FROM {table_name} WHERE {_filter}"
             self._execute_query(query)
             response = WriteResponse(success=True, error=None)
-        except Exception as error:
-            error_message = f"{error}\nSQL\n{query}"
+        except Exception as e:
+            error_message = f"{e}\nSQL\n{query}"
+            logger.error(error_message)
             response = WriteResponse(success=False, error=error_message)
         return response
 
@@ -189,6 +193,7 @@ class SparkDataProcess(DataProcessInterface):
             dataframe.writeTo(table_name).append()
             response = WriteResponse(success=True, error=None)
         except Exception as e:
+            logger.error(e)
             response = WriteResponse(success=False, error=e)
         return response
 
@@ -235,6 +240,7 @@ class SparkDataProcess(DataProcessInterface):
             # TODO: revisar tipo de respuesta. ¿TransformationResponse?
             response = ReadResponse(success=True, error=None, data=df_result)
         except Exception as e:
+            logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
@@ -247,6 +253,7 @@ class SparkDataProcess(DataProcessInterface):
                 df = self.spark.createDataFrame(data)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
+            logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
@@ -278,10 +285,10 @@ class SparkDataProcess(DataProcessInterface):
         try:
             df = self._execute_query(sql)
             response = ReadResponse(success=True, error=None, data=df)
-        except Exception as error:
-            error_message = f"{error}\nSQL\n{sql}"
+        except Exception as e:
+            error_message = f"{e}\nSQL\n{sql}"
+            logger.error(error_message)
             response = ReadResponse(success=False, error=error_message, data=None)
-
         return response
 
     def overwrite_columns(
@@ -305,8 +312,9 @@ class SparkDataProcess(DataProcessInterface):
                 if drop_columns:
                     df = df.drop(f.col(custom_column), f.col(default_column))
             response = ReadResponse(success=True, error=None, data=df)
-        except Exception as error:
-            response = ReadResponse(success=False, error=error, data=None)
+        except Exception as e:
+            logger.error(e)
+            response = ReadResponse(success=False, error=e, data=None)
         return response
 
     def unfold_string_values(self, df: DataFrame, column_name: str, separator: str) -> ReadResponse:
@@ -315,8 +323,9 @@ class SparkDataProcess(DataProcessInterface):
                 f.explode(f.split(f.col(column_name), separator))
             ).rdd.flatMap(lambda x: x).collect()
             response = ReadResponse(success=True, error=None, data=values)
-        except Exception as error:
-            response = ReadResponse(success=False, error=error, data=None)
+        except Exception as e:
+            logger.error(e)
+            response = ReadResponse(success=False, error=e, data=None)
         return response
 
     def add_dynamic_column(
@@ -341,6 +350,7 @@ class SparkDataProcess(DataProcessInterface):
             expression.otherwise(default_value)
             df = df.withColumn(new_column, expression)
             response = ReadResponse(success=True, error=None, data=df)
-        except Exception as error:
-            response = ReadResponse(success=False, error=error, data=None)
+        except Exception as e:
+            logger.error(e)
+            response = ReadResponse(success=False, error=e, data=None)
         return response
