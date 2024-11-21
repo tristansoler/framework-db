@@ -105,11 +105,8 @@ class SparkDataProcess(DataProcessInterface):
                 UPDATE SET *
                 WHEN NOT MATCHED THEN
                 INSERT *
-                WHEN MATCHED AND NOT EXISTS (
-                    SELECT 1 FROM {view_name} WHERE {sql_update_with_pks}
-                ) THEN
-                DELETE
             """
+
             logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
