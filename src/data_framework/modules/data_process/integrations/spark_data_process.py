@@ -13,7 +13,7 @@ from data_framework.modules.config.model.flows import (
 from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import col
+import pyspark.sql.functions as f
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -78,7 +78,7 @@ class SparkDataProcess(DataProcessInterface):
             .config(conf=spark_config) \
             .enableHiveSupport() \
             .getOrCreate()
-
+        # Others
         self.catalogue = CoreCatalogue()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
@@ -193,12 +193,34 @@ class SparkDataProcess(DataProcessInterface):
             response = WriteResponse(success=False, error=e)
         return response
 
-    def join(self, df_1: DataFrame, df_2: DataFrame, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
+    def join(
+        self,
+        df_1: DataFrame,
+        df_2: DataFrame,
+        how: str,
+        left_on: List[str],
+        right_on: List[str] = None,
+        left_suffix: str = '_df_1',
+        right_suffix: str = '_df_2'
+    ) -> ReadResponse:
         try:
             if how not in ['inner', 'left', 'right', 'outer']:
                 raise ValueError(
                     f'Invalid parameter value: how={how}. Allowed values: inner, left, right, outer'
                 )
+            if not right_on:
+                right_on = left_on
+            # Make a copy of the dataframes
+            df_1 = df_1.alias('df_1')
+            df_2 = df_2.alias('df_2')
+            # Rename common columns before the join
+            columns_df_1 = set(df_1.columns) - set(left_on)
+            columns_df_2 = set(df_2.columns) - set(right_on)
+            common_columns = list(columns_df_1 & columns_df_2)
+            for column in common_columns:
+                df_1 = df_1.withColumnRenamed(column, column + left_suffix)
+                df_2 = df_2.withColumnRenamed(column, column + right_suffix)
+            # Perform join
             if left_on == right_on:
                 df_result = df_1.join(df_2, on=left_on, how=how)
             elif len(left_on) != len(right_on):
@@ -209,7 +231,7 @@ class SparkDataProcess(DataProcessInterface):
             else:
                 for left_column, right_column in zip(left_on, right_on):
                     if left_column != right_column:
-                        df_2 = df_2.withColumn(left_column, col(right_column))
+                        df_2 = df_2.withColumnRenamed(right_column, left_column)
                 df_result = df_1.join(df_2, on=left_on, how=how)
             # TODO: revisar tipo de respuesta. ¿TransformationResponse?
             response = ReadResponse(success=True, error=None, data=df_result)
@@ -261,4 +283,65 @@ class SparkDataProcess(DataProcessInterface):
             error_message = f"{error}\nSQL\n{sql}"
             response = ReadResponse(success=False, error=error_message, data=None)
 
+        return response
+
+    def overwrite_columns(
+        self,
+        df: DataFrame,
+        columns: List[str],
+        custom_column_suffix: str,
+        default_column_suffix: str,
+        drop_columns: bool = True
+    ) -> ReadResponse:
+        try:
+            for column in columns:
+                custom_column = column + custom_column_suffix
+                default_column = column + default_column_suffix
+                df = df.withColumn(
+                    column,
+                    f.when(
+                        f.col(custom_column).isNull(), f.col(default_column)
+                    ).otherwise(f.col(custom_column))
+                )
+                if drop_columns:
+                    df = df.drop(f.col(custom_column), f.col(default_column))
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as error:
+            response = ReadResponse(success=False, error=error, data=None)
+        return response
+
+    def unfold_string_values(self, df: DataFrame, column_name: str, separator: str) -> ReadResponse:
+        try:
+            values = df.select(
+                f.explode(f.split(f.col(column_name), separator))
+            ).rdd.flatMap(lambda x: x).collect()
+            response = ReadResponse(success=True, error=None, data=values)
+        except Exception as error:
+            response = ReadResponse(success=False, error=error, data=None)
+        return response
+
+    def add_dynamic_column(
+        self,
+        df: Any,
+        new_column: str,
+        reference_column: str,
+        available_columns: List[str] = [],
+        default_value: Any = None
+    ) -> ReadResponse:
+        try:
+            if not available_columns:
+                available_columns = list(df.columns)
+            # Build conditional expression for the new column
+            expression = None
+            for column in available_columns:
+                if expression is None:
+                    # First item
+                    expression = f.when(f.col(reference_column) == column, f.col(column))
+                else:
+                    expression = expression.f.when(f.col(reference_column) == column, f.col(column))
+            expression.otherwise(default_value)
+            df = df.withColumn(new_column, expression)
+            response = ReadResponse(success=True, error=None, data=df)
+        except Exception as error:
+            response = ReadResponse(success=False, error=error, data=None)
         return response

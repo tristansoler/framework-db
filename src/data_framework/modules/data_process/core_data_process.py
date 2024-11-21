@@ -63,8 +63,25 @@ class CoreDataProcess(object):
         return cls._data_process.insert_dataframe(dataframe=dataframe, table_config=table_config)
 
     @classmethod
-    def join(cls, df_1: Any, df_2: Any, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
-        return cls._data_process.join(df_1=df_1, df_2=df_2, left_on=left_on, right_on=right_on, how=how)
+    def join(
+        cls,
+        df_1: Any,
+        df_2: Any,
+        how: str,
+        left_on: List[str],
+        right_on: List[str] = None,
+        left_suffix: str = '_df_1',
+        right_suffix: str = '_df_2'
+    ) -> ReadResponse:
+        return cls._data_process.join(
+            df_1=df_1,
+            df_2=df_2,
+            how=how,
+            left_on=left_on,
+            right_on=right_on,
+            left_suffix=left_suffix,
+            right_suffix=right_suffix
+        )
 
     @classmethod
     def create_dataframe(cls, data: Any, schema: dict = None) -> ReadResponse:
@@ -73,3 +90,43 @@ class CoreDataProcess(object):
     @classmethod
     def query(cls, sql: str) -> ReadResponse:
         return cls._data_process.query(sql=sql)
+
+    @classmethod
+    def overwrite_columns(
+        cls,
+        df: Any,
+        columns: List[str],
+        custom_column_suffix: str,
+        default_column_suffix: str,
+        drop_columns: bool = True
+    ) -> ReadResponse:
+        return cls._data_process.overwrite_columns(
+            df=df,
+            columns=columns,
+            custom_column_suffix=custom_column_suffix,
+            default_column_suffix=default_column_suffix,
+            drop_columns=drop_columns
+        )
+
+    @classmethod
+    def unfold_string_values(cls, df: Any, column_name: str, separator: str) -> ReadResponse:
+        return cls._data_process.unfold_string_values(
+            df=df, column_name=column_name, separator=separator
+        )
+
+    @classmethod
+    def add_dynamic_column(
+        cls,
+        df: Any,
+        new_column: str,
+        reference_column: str,
+        available_columns: List[str] = [],
+        default_value: Any = None
+    ) -> ReadResponse:
+        return cls._data_process.add_dynamic_column(
+            df=df,
+            new_column=new_column,
+            reference_column=reference_column,
+            available_columns=available_columns,
+            default_value=default_value
+        )

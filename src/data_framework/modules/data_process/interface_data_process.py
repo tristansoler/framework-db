@@ -50,7 +50,16 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def join(self, df_1: Any, df_2: Any, left_on: List[str], right_on: List[str], how: str) -> ReadResponse:
+    def join(
+        self,
+        df_1: Any,
+        df_2: Any,
+        how: str,
+        left_on: List[str],
+        right_on: List[str] = None,
+        left_suffix: str = '_df_1',
+        right_suffix: str = '_df_2'
+    ) -> ReadResponse:
         pass
 
     @abstractmethod
@@ -59,4 +68,30 @@ class DataProcessInterface(ABC):
 
     @abstractmethod
     def query(self, sql: str) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def overwrite_columns(
+        self,
+        df: Any,
+        columns: List[str],
+        custom_column_suffix: str,
+        default_column_suffix: str,
+        drop_columns: bool = True
+    ) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def unfold_string_values(self, df: Any, column_name: str, separator: str) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def add_dynamic_column(
+        self,
+        df: Any,
+        new_column: str,
+        reference_column: str,
+        available_columns: List[str] = [],
+        default_value: Any = None
+    ) -> ReadResponse:
         pass
