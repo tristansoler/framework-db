@@ -5,7 +5,7 @@ from data_framework.modules.config.model.flows import DatabaseTable
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.utils.debug import debug_code
 from typing import Any, Union
-from datetime import datetime
+from datetime import datetime, date
 from pandas import DataFrame, Series
 
 
@@ -183,7 +183,7 @@ class QualityControls:
                 'control_table_id': rule_id,
                 'control_master_id': rule['control_master_id'],
                 'data_date': datetime.strptime(self.config.parameters.file_date, '%Y-%m-%d'),
-                'initial_date': datetime.now(),
+                'initial_date': date.today(),
                 'end_date': None,
                 'control_result': None,
                 'control_outcome': {'total': None, 'value': None},
@@ -197,7 +197,7 @@ class QualityControls:
                 self.compute_python_rule(rule, rule_result, df_data)
             else:
                 raise ValueError(f'Rule algorithm type not implemented: {algorithm_type}')
-            rule_result['end_date'] = datetime.now()
+            rule_result['end_date'] = date.today()
             rule_result['control_outcome'] = str(rule_result['control_outcome'])
             return Series(rule_result)
         except Exception as e:
