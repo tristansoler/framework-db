@@ -90,9 +90,7 @@ class SparkDataProcess(DataProcessInterface):
             table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
-            table_schema = self.catalogue.get_schema(database=table_config.database_relation, table=table_config.table)
-            table_columns = table_schema.schema.get_column_names(partitioned=True)
-            dataframe = dataframe.select(*table_columns)
+            dataframe = self._select_table_columns(dataframe, table_config)
             # Perform merge
             dataframe.createOrReplaceTempView(view_name)
             sql_update_with_pks = '\n AND '.join([
@@ -187,9 +185,7 @@ class SparkDataProcess(DataProcessInterface):
         try:
             table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             # Select only necessary columns of the dataframe
-            table_schema = self.catalogue.get_schema(database=table_config.database_relation, table=table_config.table)
-            table_columns = table_schema.schema.get_column_names(partitioned=True)
-            dataframe = dataframe.select(*table_columns)
+            dataframe = self._select_table_columns(dataframe, table_config)
             # Insert dataframe into table
             dataframe.writeTo(table_name).append()
             response = WriteResponse(success=True, error=None)
@@ -197,6 +193,15 @@ class SparkDataProcess(DataProcessInterface):
             logger.error(e)
             response = WriteResponse(success=False, error=e)
         return response
+
+    def _select_table_columns(self, dataframe: DataFrame, table_config: DatabaseTable) -> DataFrame:
+        table_schema = self.catalogue.get_schema(
+            database=table_config.database_relation,
+            table=table_config.table
+        )
+        table_columns = table_schema.schema.get_column_names(partitioned=True)
+        dataframe = dataframe.select(*table_columns).distinct()
+        return dataframe
 
     def join(
         self,
