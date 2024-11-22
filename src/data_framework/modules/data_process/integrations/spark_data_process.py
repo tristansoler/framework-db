@@ -325,7 +325,9 @@ class SparkDataProcess(DataProcessInterface):
 
     def unfold_string_values(self, dataframe: DataFrame, column_name: str, separator: str) -> ReadResponse:
         try:
-            values = dataframe.select(
+            values = dataframe.filter(
+                (f.col(column_name).isNotNull()) & (f.col(column_name) != '')
+            ).select(
                 f.explode(f.split(f.col(column_name), separator))
             ).rdd.flatMap(lambda x: x).collect()
             response = ReadResponse(success=True, error=None, data=values)
