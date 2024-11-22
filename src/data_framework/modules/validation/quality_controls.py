@@ -44,7 +44,7 @@ class QualityControls:
             table='controls_results_v2',
             primary_keys=[
                 'control_master_id', 'control_table_id',
-                'initial_date', 'end_date'
+                'initial_date', 'end_date', 'data_date'
             ]
         )
 
