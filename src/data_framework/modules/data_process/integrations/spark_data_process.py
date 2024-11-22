@@ -14,6 +14,7 @@ from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as f
+from pyspark.sql.functions import when
 from pyspark.sql.types import (
     StructType,
     StructField,
@@ -344,9 +345,9 @@ class SparkDataProcess(DataProcessInterface):
             for column in available_columns:
                 if expression is None:
                     # First item
-                    expression = f.when(f.col(reference_column) == column, f.col(column))
+                    expression = when(f.col(reference_column) == column, f.col(column))
                 else:
-                    expression = expression.f.when(f.col(reference_column) == column, f.col(column))
+                    expression = expression.when(f.col(reference_column) == column, f.col(column))
             expression.otherwise(default_value)
             df = df.withColumn(new_column, expression)
             response = ReadResponse(success=True, error=None, data=df)
