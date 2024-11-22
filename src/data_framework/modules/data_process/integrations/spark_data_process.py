@@ -299,7 +299,7 @@ class SparkDataProcess(DataProcessInterface):
 
     def overwrite_columns(
         self,
-        df: DataFrame,
+        dataframe: DataFrame,
         columns: List[str],
         custom_column_suffix: str,
         default_column_suffix: str,
@@ -309,7 +309,7 @@ class SparkDataProcess(DataProcessInterface):
             for column in columns:
                 custom_column = column + custom_column_suffix
                 default_column = column + default_column_suffix
-                df = df.withColumn(
+                df = dataframe.withColumn(
                     column,
                     f.when(
                         f.col(custom_column).isNull(), f.col(default_column)
@@ -323,9 +323,9 @@ class SparkDataProcess(DataProcessInterface):
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
-    def unfold_string_values(self, df: DataFrame, column_name: str, separator: str) -> ReadResponse:
+    def unfold_string_values(self, dataframe: DataFrame, column_name: str, separator: str) -> ReadResponse:
         try:
-            values = df.select(
+            values = dataframe.select(
                 f.explode(f.split(f.col(column_name), separator))
             ).rdd.flatMap(lambda x: x).collect()
             response = ReadResponse(success=True, error=None, data=values)
@@ -336,7 +336,7 @@ class SparkDataProcess(DataProcessInterface):
 
     def add_dynamic_column(
         self,
-        df: Any,
+        dataframe: Any,
         new_column: str,
         reference_column: str,
         available_columns: List[str] = [],
@@ -354,7 +354,7 @@ class SparkDataProcess(DataProcessInterface):
                 else:
                     expression = expression.when(f.col(reference_column) == column, f.col(column))
             expression.otherwise(default_value)
-            df = df.withColumn(new_column, expression)
+            df = dataframe.withColumn(new_column, expression)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
             logger.error(e)

@@ -73,7 +73,7 @@ class DataProcessInterface(ABC):
     @abstractmethod
     def overwrite_columns(
         self,
-        df: Any,
+        dataframe: Any,
         columns: List[str],
         custom_column_suffix: str,
         default_column_suffix: str,
@@ -82,13 +82,13 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def unfold_string_values(self, df: Any, column_name: str, separator: str) -> ReadResponse:
+    def unfold_string_values(self, dataframe: Any, column_name: str, separator: str) -> ReadResponse:
         pass
 
     @abstractmethod
     def add_dynamic_column(
         self,
-        df: Any,
+        dataframe: Any,
         new_column: str,
         reference_column: str,
         available_columns: List[str] = [],

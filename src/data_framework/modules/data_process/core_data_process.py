@@ -94,14 +94,14 @@ class CoreDataProcess(object):
     @classmethod
     def overwrite_columns(
         cls,
-        df: Any,
+        dataframe: Any,
         columns: List[str],
         custom_column_suffix: str,
         default_column_suffix: str,
         drop_columns: bool = True
     ) -> ReadResponse:
         return cls._data_process.overwrite_columns(
-            df=df,
+            dataframe=dataframe,
             columns=columns,
             custom_column_suffix=custom_column_suffix,
             default_column_suffix=default_column_suffix,
@@ -109,22 +109,22 @@ class CoreDataProcess(object):
         )
 
     @classmethod
-    def unfold_string_values(cls, df: Any, column_name: str, separator: str) -> ReadResponse:
+    def unfold_string_values(cls, dataframe: Any, column_name: str, separator: str) -> ReadResponse:
         return cls._data_process.unfold_string_values(
-            df=df, column_name=column_name, separator=separator
+            dataframe=dataframe, column_name=column_name, separator=separator
         )
 
     @classmethod
     def add_dynamic_column(
         cls,
-        df: Any,
+        dataframe: Any,
         new_column: str,
         reference_column: str,
         available_columns: List[str] = [],
         default_value: Any = None
     ) -> ReadResponse:
         return cls._data_process.add_dynamic_column(
-            df=df,
+            dataframe=dataframe,
             new_column=new_column,
             reference_column=reference_column,
             available_columns=available_columns,
