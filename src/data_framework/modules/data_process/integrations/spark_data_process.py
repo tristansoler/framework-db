@@ -341,21 +341,22 @@ class SparkDataProcess(DataProcessInterface):
         dataframe: Any,
         new_column: str,
         reference_column: str,
-        available_columns: List[str] = [],
+        available_columns: List[str],
         default_value: Any = None
     ) -> ReadResponse:
         try:
-            if not available_columns:
-                available_columns = list(dataframe.columns)
-            # Build conditional expression for the new column
-            expression = None
-            for column in available_columns:
-                if expression is None:
-                    # First item
-                    expression = when(f.col(reference_column) == column, f.col(column))
-                else:
-                    expression = expression.when(f.col(reference_column) == column, f.col(column))
-            expression.otherwise(default_value)
+            if available_columns:
+                # Build conditional expression for the new column
+                expression = None
+                for column in available_columns:
+                    if expression is None:
+                        # First item
+                        expression = when(f.col(reference_column) == column, f.col(column))
+                    else:
+                        expression = expression.when(f.col(reference_column) == column, f.col(column))
+                expression.otherwise(default_value)
+            else:
+                expression = f.lit(None)
             dataframe = dataframe.withColumn(new_column, expression)
             response = ReadResponse(success=True, error=None, data=dataframe)
         except Exception as e:

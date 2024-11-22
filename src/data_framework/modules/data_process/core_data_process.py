@@ -120,7 +120,7 @@ class CoreDataProcess(object):
         dataframe: Any,
         new_column: str,
         reference_column: str,
-        available_columns: List[str] = [],
+        available_columns: List[str],
         default_value: Any = None
     ) -> ReadResponse:
         return cls._data_process.add_dynamic_column(
