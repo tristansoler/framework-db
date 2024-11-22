@@ -309,15 +309,15 @@ class SparkDataProcess(DataProcessInterface):
             for column in columns:
                 custom_column = column + custom_column_suffix
                 default_column = column + default_column_suffix
-                df = dataframe.withColumn(
+                dataframe = dataframe.withColumn(
                     column,
                     f.when(
                         f.col(custom_column).isNull(), f.col(default_column)
                     ).otherwise(f.col(custom_column))
                 )
                 if drop_columns:
-                    df = df.drop(f.col(custom_column), f.col(default_column))
-            response = ReadResponse(success=True, error=None, data=df)
+                    dataframe = dataframe.drop(f.col(custom_column), f.col(default_column))
+            response = ReadResponse(success=True, error=None, data=dataframe)
         except Exception as e:
             logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
@@ -344,7 +344,7 @@ class SparkDataProcess(DataProcessInterface):
     ) -> ReadResponse:
         try:
             if not available_columns:
-                available_columns = list(df.columns)
+                available_columns = list(dataframe.columns)
             # Build conditional expression for the new column
             expression = None
             for column in available_columns:
@@ -354,8 +354,8 @@ class SparkDataProcess(DataProcessInterface):
                 else:
                     expression = expression.when(f.col(reference_column) == column, f.col(column))
             expression.otherwise(default_value)
-            df = dataframe.withColumn(new_column, expression)
-            response = ReadResponse(success=True, error=None, data=df)
+            dataframe = dataframe.withColumn(new_column, expression)
+            response = ReadResponse(success=True, error=None, data=dataframe)
         except Exception as e:
             logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
