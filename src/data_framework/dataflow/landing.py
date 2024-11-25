@@ -17,9 +17,6 @@ class ProcessingCoordinator(DataFlowInterface):
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
 
-        self.incoming_file = self.__current_process_config.incoming_file
-        self.output_file = self.__current_process_config.output_file
-
     def process(self) -> dict:
 
         try:
