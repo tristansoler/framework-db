@@ -36,8 +36,9 @@ class Launcher:
         except AttributeError:
             print(f'Class {class_name} not found in {module.__name__}')
 
-        _class().process()
-        _class().save_payload_response()
+        _instance_class = _class()
+        _instance_class.process()
+        _instance_class.save_payload_response()
 
 if __name__ == '__main__':
 

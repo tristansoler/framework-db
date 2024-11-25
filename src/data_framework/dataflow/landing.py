@@ -47,6 +47,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 self.payload_response.success = True
                 self.payload_response.file_date = file_date
         except Exception as e:
+            # TODO: Refactor
             import traceback
             expection = type(e).__name__
             error = str(e)
