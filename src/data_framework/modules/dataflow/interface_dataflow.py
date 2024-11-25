@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from data_framework.modules.config.core import config, Config
-from data_framework.modules.config.model.flows import TableDict
+from data_framework.modules.config.model.flows import TableDict, DatabaseTable
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.quality_controls import QualityControls
@@ -61,6 +61,14 @@ class DataFlowInterface(ABC):
     @property
     def payload_response(self) -> PayloadResponse:
         return self.__payload_response
+    
+    @property
+    def incoming_file(self) -> DatabaseTable:
+        return self.__current_process_config.incoming_file
+    
+    @property
+    def output_file(self) -> DatabaseTable:
+        return self.__current_process_config.output_file
     
     def __init__(self):
         self.__config = config()

@@ -17,8 +17,8 @@ class ProcessingCoordinator(DataFlowInterface):
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
 
-        self.incoming_file_config = self.__current_process_config.incoming_file
-        self.output_file_config = self.__current_process_config.output_file
+        self.incoming_file = self.__current_process_config.incoming_file
+        self.output_file = self.__current_process_config.output_file
 
     def process(self) -> dict:
 
@@ -35,7 +35,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 process_file = True
 
                 # Compare with the previous file
-                if self.incoming_file_config.compare_with_previous_file:
+                if self.incoming_file.compare_with_previous_file:
                     process_file = self.compare_with_previous_file(file_contents)
                     
                 if process_file:
@@ -65,7 +65,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 'validate': True
             }
         }
-        if self.incoming_file_config.zipped == 'zip':
+        if self.incoming_file.zipped == 'zip':
             file_contents[filename]['validate'] = False
             with ZipFile(s3_file_content, 'r') as z:
                 for filename in z.namelist():
@@ -74,7 +74,7 @@ class ProcessingCoordinator(DataFlowInterface):
                             'content': BytesIO(f.read()),
                             'validate': True
                         }
-        elif self.incoming_file_config.zipped == 'tar':
+        elif self.incoming_file.zipped == 'tar':
             file_contents[filename]['validate'] = False
             with tarfile.open(fileobj=s3_file_content, mode='r') as t:
                 for filename in t.getnames():
@@ -86,12 +86,12 @@ class ProcessingCoordinator(DataFlowInterface):
         return file_contents
 
     def obtain_file_date(self) -> str:
-        if self.incoming_file_config.csv_specs.date_located == 'filename':
-            pattern = self.incoming_file_config.csv_specs.date_located_filename.regex
+        if self.incoming_file.csv_specs.date_located == 'filename':
+            pattern = self.incoming_file.csv_specs.date_located_filename.regex
             match = re.search(pattern, self.config.parameters.source_file_path)
             year, month, day = match.groups()
             return f'{year}-{month}-{day}'
-        elif self.incoming_file_config.csv_specs.date_located == 'column':
+        elif self.incoming_file.csv_specs.date_located == 'column':
             # TODO: implementar
             return ''
 
@@ -147,10 +147,11 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
-        partition_field = self.output_file_config.partition_field
+        
+        partition_field = self.output_file.partition_field
         response = self.catalogue.create_partition(
-            self.output_file_config.database_relation,
-            self.output_file_config.table,
+            self.output_file.database_relation,
+            self.output_file.table,
             partition_field,
             file_date
         )
@@ -163,11 +164,11 @@ class ProcessingCoordinator(DataFlowInterface):
             if file_data['validate']:
                 file_data['content'].seek(0)
                 # TODO: revisar
-                database_enum = [db for db in Database if db.value == self.output_file_config.database][0]
+                database_enum = [db for db in Database if db.value == self.output_file.database][0]
                 self.storage.write(
                     layer=Layer.RAW,
                     database=database_enum,
-                    table=self.output_file_config.table,
+                    table=self.output_file.table,
                     data=file_data['content'],
                     partitions=partitions,
                     filename=filename
