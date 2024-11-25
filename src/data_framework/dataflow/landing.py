@@ -19,10 +19,10 @@ class ProcessingCoordinator(DataFlowInterface):
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
 
-    def process(self) -> dict:
+    def process(self):
 
         try:
-            self.__payload_response.file_name = Path(self.config.parameters.source_file_path).name
+            self.payload_response.file_name = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Apply controls
@@ -42,12 +42,20 @@ class ProcessingCoordinator(DataFlowInterface):
                     partitions = self.create_partitions(file_date)
                     # Save file in raw table
                     self.write_data(file_contents, partitions)
-                    self.__payload_response.next_stage = True
+                    self.payload_response.next_stage = True
                     
-                self.__payload_response.success = True
-                self.__payload_response.file_date = file_date
+                self.payload_response.success = True
+                self.payload_response.file_date = file_date
         except Exception as e:
-            self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
+            import traceback
+            expection = type(e).__name__
+            error = str(e)
+            trace = traceback.format_exc()
+
+            menssage_error = f'Error processing file {self.config.parameters.source_file_path}\nException:\n   {expection}\nError:\n    {error}\nTrace:\n  {trace}'
+
+            self.logger.error(menssage_error)
+            raise menssage_error
 
     def read_data(self) -> dict:
         response = self.storage.read(

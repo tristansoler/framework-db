@@ -79,6 +79,11 @@ class DataFlowInterface(ABC):
         self.__payload_response = PayloadResponse()
         self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
 
+    def process(self):
+        message = "It is mandatory to implement this function"
+        self.logger.error(message)
+        raise message
+    
     def read_table_with_casting(
         self,
         name_of_raw_table: str,
