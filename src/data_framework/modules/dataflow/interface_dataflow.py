@@ -118,6 +118,55 @@ class DataFlowInterface(ABC):
             )
             raise response.error
         
+    def read_table(self, name_of_table: str) -> Any:
+        input_table = self.source_tables.table(name_of_table)
+
+        partition = f'{input_table.partition_field}={self.config.parameters.file_date}'
+
+        response = self.data_process.read_table(
+            database=input_table.database_relation,
+            table=input_table.table,
+            filter=input_table.sql_where
+        )
+
+        if response.success:
+            df = response.data
+            self.logger.info(f'Read {df.count()} rows from {input_table.full_name} with partition {partition}')
+            return df
+        else:
+            self.logger.error(
+                f'Error reading data from {input_table.full_name} with partition {partition}: {response.error}'
+            )
+            raise response.error
+
+    def read_all_source_tables(self, _filter: str = None) -> Dict[str, Any]:
+        tables_content = {}
+        for table_key, table_config in self.source_tables.tables.items():
+            response = self.data_process.read_table(
+                table_config.database_relation, table_config.table, _filter
+            )
+            tables_content[table_key] = response.data
+            if not response.success:
+                self.logger.error(
+                    f'Error reading data from {table_config.full_name}: {response.error}'
+                )
+        return tables_content
+
+    def write(self, df: Any, output_table_key: str) -> None:
+        output_table = self.target_tables.table(output_table_key)
+        response = self.data_process.merge(
+            df,
+            output_table.database_relation,
+            output_table.table,
+            # TODO: obtain primary keys from Glue table
+            output_table.primary_keys
+        )
+        if response.success:
+            self.logger.info(f'Successfully inserted data into {output_table.full_name}')
+        else:
+            self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
+            raise response.error
+        
     def save_payload_response(self):
         if self.config.parameters.process == 'landing_to_raw':
             dq_table = DataQualityTable(
