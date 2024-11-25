@@ -71,7 +71,9 @@ class ConfigSetup:
         config_json = {}
 
         if local_file is not None:
-            file = open(local_file)
+            path_absolute = Path(__file__).resolve()
+            config_path = str(path_absolute.parent.parent.parent) + f'{local_file}.json'
+            file = open(config_path)
             config_json = dict(json.loads(file.read()))
         else:
             import zipfile
@@ -94,6 +96,8 @@ class ConfigSetup:
                 default=common_flow_json
             )
         current_flow_json['environment'] = "develop"
+        current_flow_json['project_id'] = config_json.get('project_id')
+        
         return current_flow_json
 
     @classmethod

@@ -19,12 +19,10 @@ class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
 
-
 class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
     EXCEL = "xls"
-
 
 @dataclass
 class Hardware:
@@ -180,7 +178,6 @@ class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
 
-
 @dataclass
 class Processes:
     landing_to_raw: LandingToRaw
@@ -195,6 +192,7 @@ class Config:
     processes: Processes
     environment: Environment
     parameters: Parameters
+    project_id: str
 
     def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
         try:
