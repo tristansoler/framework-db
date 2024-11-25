@@ -1,5 +1,4 @@
-from data_framework.modules.config.core import config
-from data_framework.modules.utils.logger import logger
+from data_framework.modules.dataflow.interface_dataflow import *
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
@@ -11,32 +10,20 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import tarfile
-import boto3
-import json
 
-class ProcessingCoordinator:
+class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
-        self.config = config()
-        self.current_process_config = self.config.current_process_config()
-        self.logger = logger
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
-        self.incoming_file_config = self.current_process_config.incoming_file
-        self.output_file_config = self.current_process_config.output_file
+
+        self.incoming_file_config = self.__current_process_config.incoming_file
+        self.output_file_config = self.__current_process_config.output_file
 
     def process(self) -> dict:
 
-        # Build generic response
-        response = {
-            'success': False,
-            'continue': False,
-            'fileName': None,
-            'fileDate': None
-        }
-
         try:
-            response['fileName'] = Path(self.config.parameters.source_file_path).name
+            self.payload_response.file_name = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Apply controls
@@ -45,30 +32,23 @@ class ProcessingCoordinator:
             if is_valid:
                 # Obtain file date
                 file_date = self.obtain_file_date()
+                process_file = True
+
                 # Compare with the previous file
                 if self.incoming_file_config.compare_with_previous_file:
                     process_file = self.compare_with_previous_file(file_contents)
-                else:
-                    process_file = True
+                    
                 if process_file:
                     # Create partitions
                     partitions = self.create_partitions(file_date)
                     # Save file in raw table
                     self.write_data(file_contents, partitions)
-                    response['continue'] = True
-                response['success'] = True
-                response['fileDate'] = file_date
+                    self.payload_response.next_stage = True
+                    
+                self.payload_response.success = True
+                self.payload_response.file_date = file_date
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
-
-        ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
-        ssm_client.put_parameter(
-            Name=f'/dataflow/{self.config.parameters.dataflow}/landing_to_raw/result',
-            Value=json.dumps(response),
-            Type='String',
-            Overwrite=True
-        )
-        return response
 
     def read_data(self) -> dict:
         response = self.storage.read(

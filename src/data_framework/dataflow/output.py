@@ -1,56 +1,48 @@
-from data_framework.modules.data_process.core_data_process import CoreDataProcess
+from data_framework.modules.dataflow.interface_dataflow import *
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
-from data_framework.modules.config.core import config
 from data_framework.modules.config.model.flows import OutputReport
-from data_framework.modules.utils.logger import logger
 from pyspark.sql import DataFrame
 from datetime import datetime
 from io import BytesIO
 import re
 
-
-class ProcessingCoordinator:
+class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
-        self.config = config()
-        self.current_process_config = self.config.current_process_config()
-        self.logger = logger
-        self.data_process = CoreDataProcess()
         self.storage = Storage()
 
     def process(self) -> dict:
-        # Build generic response
-        response = {
-            'success': True,
-            'file_name': self.config.parameters.file_name,
-            'file_date': self.config.parameters.file_date,
-            'outputs': []
-        }
+
+        self.payload_response.success = True
+
         try:
             # Generate all outputs
-            for config_output in self.current_process_config.output_reports:
+            for config_output in self.__current_process_config.output_reports:
                 try:
                     self.generate_output_file(config_output)
                 except Exception as e:
                     error_message = f'Error generating output {config_output.name}: {e}'
                     self.logger.error(error_message)
-                    response['outputs'].append({
-                        'name': config_output.name,
-                        'success': False,
-                        'error': error_message
-                    })
-                    response['success'] = False
+
+                    output = OutputResult(
+                        name=config_output.name,
+                        success=False,
+                        error=error_message
+                    )
+
+                    self.payload_response.outputs.append(output)
+                    self.payload_response.success = False
                 else:
-                    response['outputs'].append({
-                        'name': config_output.name,
-                        'success': True,
-                        'error': ''
-                    })
+                    output = OutputResult(
+                        name=config_output.name,
+                        success=True
+                    )
+
+                    self.payload_response.outputs.append(output)
         except Exception as e:
             self.logger.error(f'Error generating outputs: {e}')
-            response['success'] = False
-        return response
+            self.payload_response.success = False
 
     def generate_output_file(self, config_output: OutputReport) -> None:
         self.logger.info(f'Generating output {config_output.name}')
