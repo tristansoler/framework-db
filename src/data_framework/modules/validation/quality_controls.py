@@ -66,7 +66,6 @@ class QualityControls:
             if df_rules.isEmpty():
                 self.logger.info(f'No rules defined for table {table_config.full_name}')
             else:
-                df_data = self.filter_input_dataframe(df_data, table_config, df_rules)
                 df_results = self.compute_rules(df_data, df_rules)
                 self.insert_results(df_results)
                 response['data'] = df_data
@@ -150,12 +149,6 @@ class QualityControls:
                 raise response.error
         else:
             self.logger.info('No control results to persist')
-
-    def filter_input_dataframe(self, df_data: Any, table_config: DatabaseTable, df_rules: Any) -> Any:
-        control_fields = self.data_process.unfold_string_values(df_rules, 'control_field', ',').data
-        primary_keys = table_config.primary_keys
-        columns_to_keep = list(set(control_fields) | set(primary_keys))
-        return df_data.select(*columns_to_keep)
 
     def compute_rules(self, df_data: Any, df_rules: Any) -> Any:
         if debug_code:
