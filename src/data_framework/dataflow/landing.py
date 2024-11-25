@@ -14,6 +14,8 @@ import tarfile
 class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
+        super().__init__()
+
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
 

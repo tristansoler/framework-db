@@ -10,6 +10,8 @@ import re
 class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
+        super().__init__()
+
         self.storage = Storage()
 
     def process(self) -> dict:
