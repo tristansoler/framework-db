@@ -224,12 +224,12 @@ class SparkDataProcess(DataProcessInterface):
             df_1 = df_1.alias('df_1')
             df_2 = df_2.alias('df_2')
             # Rename common columns before the join
-            columns_df_1 = set(df_1.columns) - set(left_on)
-            columns_df_2 = set(df_2.columns) - set(right_on)
-            common_columns = list(columns_df_1 & columns_df_2)
+            common_columns = list(set(df_1.columns) & set(df_2.columns))
             for column in common_columns:
-                df_1 = df_1.withColumnRenamed(column, column + left_suffix)
-                df_2 = df_2.withColumnRenamed(column, column + right_suffix)
+                if column not in left_on:
+                    df_1 = df_1.withColumnRenamed(column, column + left_suffix)
+                if column not in right_on:
+                    df_2 = df_2.withColumnRenamed(column, column + right_suffix)
             # Perform join
             if left_on == right_on:
                 df_result = df_1.join(df_2, on=left_on, how=how)

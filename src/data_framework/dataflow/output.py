@@ -4,8 +4,12 @@ from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.model.flows import OutputReport
 from pyspark.sql import DataFrame
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from io import BytesIO
 import re
+
+TIME_ZONE = ZoneInfo('Europe/Madrid')
+
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -118,7 +122,7 @@ class ProcessingCoordinator(DataFlowInterface):
         # TODO: permitir argumentos custom (p.ej. country en JPM)
         formatted_string = string_to_format.format(
             file_date=self.config.parameters.file_date,
-            current_date=datetime.now().strftime(date_format)
+            current_date=datetime.now(TIME_ZONE).strftime(date_format)
         )
         return formatted_string
 
