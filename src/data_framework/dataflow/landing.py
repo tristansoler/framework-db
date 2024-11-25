@@ -22,7 +22,7 @@ class ProcessingCoordinator(DataFlowInterface):
     def process(self) -> dict:
 
         try:
-            self.payload_response.file_name = Path(self.config.parameters.source_file_path).name
+            self.__payload_response.file_name = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Apply controls
@@ -42,10 +42,10 @@ class ProcessingCoordinator(DataFlowInterface):
                     partitions = self.create_partitions(file_date)
                     # Save file in raw table
                     self.write_data(file_contents, partitions)
-                    self.payload_response.next_stage = True
+                    self.__payload_response.next_stage = True
                     
-                self.payload_response.success = True
-                self.payload_response.file_date = file_date
+                self.__payload_response.success = True
+                self.__payload_response.file_date = file_date
         except Exception as e:
             self.logger.error(f'Error processing file {self.config.parameters.source_file_path}: {e}')
 
