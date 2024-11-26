@@ -190,7 +190,7 @@ class Processes:
     raw_to_staging: Optional[GenericProcess] = None
     staging_to_common: Optional[GenericProcess] = None
     staging_to_business: Optional[GenericProcess] = None
-    to_output: Optional[ToOutput] = None
+    business_to_output: Optional[ToOutput] = None
 
 
 @dataclass

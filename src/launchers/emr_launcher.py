@@ -10,7 +10,7 @@ class Launcher:
         module_name = f'transformation.dataflow.{dataflow}.{process}'
         if process == 'landing_to_raw':
             module_name = 'data_framework.dataflow.landing'
-        elif process == 'to_output':
+        elif process == 'business_to_output':
             module_name = 'data_framework.dataflow.output'
         self._execute(module_name=module_name, default_module_name=common_module_name)
 

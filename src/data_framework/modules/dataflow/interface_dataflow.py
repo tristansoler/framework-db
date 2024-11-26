@@ -53,23 +53,23 @@ class DataFlowInterface(ABC):
     @property
     def source_tables(self) -> TableDict:
         return self.__current_process_config.source_tables
-    
+
     @property
     def target_tables(self) -> TableDict:
         return self.__current_process_config.target_tables
-    
+
     @property
     def payload_response(self) -> PayloadResponse:
         return self.__payload_response
-    
+
     @property
     def incoming_file(self) -> DatabaseTable:
         return self.__current_process_config.incoming_file
-    
+
     @property
     def output_file(self) -> DatabaseTable:
         return self.__current_process_config.output_file
-    
+
     def __init__(self):
         self.__config = config()
         self.__current_process_config = self.__config.current_process_config()
@@ -83,7 +83,7 @@ class DataFlowInterface(ABC):
         message = "It is mandatory to implement this function"
         self.logger.error(message)
         raise message
-    
+
     def read_table_with_casting(
         self,
         name_of_raw_table: str,
@@ -117,7 +117,7 @@ class DataFlowInterface(ABC):
                 f'Error reading data from {input_table.full_name} with partition {partition}: {response.error}'
             )
             raise response.error
-        
+
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
 
@@ -166,7 +166,7 @@ class DataFlowInterface(ABC):
         else:
             self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
             raise response.error
-        
+
     def save_payload_response(self):
         if self.config.parameters.process == 'landing_to_raw':
             dq_table = DataQualityTable(
@@ -174,7 +174,7 @@ class DataFlowInterface(ABC):
                 table=self.__current_process_config.output_file.table
             )
             self.payload_response.data_quality.tables.append(dq_table)
-        elif self.config.parameters.process != 'to_output':
+        elif self.config.parameters.process != 'business_to_output':
             for tale_name in self.__current_process_config.target_tables.tables:
                 table_info = self.__current_process_config.target_tables.table(table_key=tale_name)
 
@@ -188,7 +188,7 @@ class DataFlowInterface(ABC):
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 
         ssm_name = f'/dataflow/{self.config.project_id}/{self.config.parameters.dataflow}-{self.config.parameters.process}/result'
-        
+
         self.__ssm_client.put_parameter(
             Name=ssm_name,
             Value=payload_json,
@@ -212,7 +212,7 @@ class DataFlowInterface(ABC):
     def write(self, df: Any, output_table_key: str) -> None:
         output_table = self.target_tables.table(output_table_key)
         response = self.data_process.merge(
-            df, 
+            df,
             output_table.database_relation,
             output_table.table,
             # TODO: obtain primary keys from Glue table

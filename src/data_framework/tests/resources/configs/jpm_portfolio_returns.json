@@ -141,7 +141,7 @@
                   }
                 }
               },
-              "to_output": {
+              "business_to_output": {
                 "output_reports": [
                   {
                     "name": "JPM to Factset",
@@ -225,7 +225,7 @@
                 "landing_to_raw": {},
                 "raw_to_staging": {},
                 "staging_to_business": {},
-                "to_output": {}
+                "business_to_output": {}
             }
         }
     }

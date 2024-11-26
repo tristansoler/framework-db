@@ -185,7 +185,7 @@
             "justMyCode": true,
             "args": [
                 "--dataflow", "jpm_portfolio_returns",
-                "--process", "to_output",
+                "--process", "business_to_output",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
                 "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
@@ -205,7 +205,7 @@
             "justMyCode": true,
             "args": [
                 "--dataflow", "jpm_portfolio_returns",
-                "--process", "to_output",
+                "--process", "business_to_output",
                 "--file-date", "2024-09-24",
                 "--file-name", "LUX_RETURNS_JP_MORGAN_2024_09_24.csv",
                 "--local-file", "./data_framework/tests/resources/configs/jpm_portfolio_returns.json",
