@@ -5,6 +5,7 @@ from data_framework.modules.data_process.interface_data_process import (
     WriteResponse
 )
 from data_framework.modules.config.core import config
+from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.model.flows import Technologies
 from data_framework.modules.config.model.flows import (
     DatabaseTable
@@ -22,7 +23,10 @@ class CoreDataProcess(object):
             return SparkDataProcess()
         elif technology == Technologies.LAMBDA.value:
             # TODO: pandas integration
-            pass
+            logger.error(
+                'Lambda technology not implemented yet in data framework. ' +
+                'Please choose EMR technology in your config file'
+            )
 
     @classmethod
     def merge(cls, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
