@@ -9,7 +9,7 @@
                 "incoming_file": {
                   "zipped": "",
                   "file_format": "csv",
-                  "filename_pattern": "^LUX_RETURNS_JP_MORGAN_(\\d{4})_(\\d{2})_(\\d{2}).csv$",
+                  "filename_pattern": "^\\d+_([a-zA-Z]{3})_RETURNS_JP_MORGAN_\\d{4}_\\d{2}_\\d{2}.csv$",
                   "csv_specs": {
                     "header_position": 0,
                     "header": true,
@@ -33,9 +33,13 @@
                   "partition_field": "data_date"
                 },
                 "processing_specifications": {
-                  "technology": "lambda",
+                  "technology": "emr",
                   "hardware": {
                     "ram": 512
+                  },
+                  "spark_configuration": {
+                    "catalog": "iceberg_catalog",
+                    "warehouse": "funds_staging"
                   }
                 }
               },
@@ -61,6 +65,7 @@
                       "table": "portfolio_returns",
                       "partition_field": "data_date",
                       "primary_keys": [
+                        "data_date",
                         "country",
                         "account_number",
                         "base_currency",
@@ -89,6 +94,7 @@
                       "table": "portfolio_returns",
                       "partition_field": "data_date",
                       "primary_keys": [
+                        "data_date",
                         "country",
                         "account_number",
                         "base_currency",
@@ -114,8 +120,9 @@
                     "portfolio_returns_to_factset": {
                       "database": "funds_business",
                       "table": "portfolio_returns_to_factset",
-                      "partition_field": "date",
+                      "partition_field": "data_date",
                       "primary_keys": [
+                        "data_date",
                         "date",
                         "country",
                         "portfolio",
@@ -142,7 +149,7 @@
                     "source_table": {
                       "database" : "funds_business",
                       "table": "portfolio_returns_to_factset",
-                      "partition_field": "date"
+                      "partition_field": "data_date"
                     },
                     "columns": [
                       "date",
@@ -185,7 +192,7 @@
                       "effective_maturity_date",
                       "expiration_date"
                     ],
-                    "where": "date='{file_date}' AND country = 'LUX'",
+                    "where": "data_date='{file_date}' AND country = 'LUX'",
                     "file_format": "csv",
                     "filename_pattern": "LUX_FACTSET_{current_date}.csv",
                     "filename_date_format": "%Y%m%d_%H%M%S",
@@ -211,6 +218,9 @@
             }
         },
         "jpm_portfolio_returns": {
+            "config_match_by": {
+                "file_name": "*LUX_RETURNS_JP_MORGAN_*"
+            },
             "processes": {
                 "landing_to_raw": {},
                 "raw_to_staging": {},
