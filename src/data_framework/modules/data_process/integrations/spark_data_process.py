@@ -33,9 +33,7 @@ class SparkDataProcess(DataProcessInterface):
 
     def __init__(self):
         # Obtain Spark configuration for the current process
-        process = config().parameters.process
-        json_config = getattr(config().processes, process) \
-            .processing_specifications.spark_configuration
+        json_config = config().current_process_config().processing_specifications            
 
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
@@ -48,7 +46,7 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
             # Configure Iceberg warehouse
-            ("spark.sql.catalog.iceberg_catalog.warehouse", f"{json_config.warehouse}/"),
+            ("spark.sql.catalog.iceberg_catalog.warehouse", f"{json_config.spark_configuration.warehouse}/"),
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
@@ -64,15 +62,16 @@ class SparkDataProcess(DataProcessInterface):
 
             # Configure hardware
             # TODO: Set dynamic values from config
-            ("spark.executor.memory", "4g"),
-            ("spark.executor.cores", "1"),
-            ("spark.driver.cores", "1"),
-            ("spark.driver.memory", "4g"),
-            ("spark.executor.instances", "1")
+            ("spark.executor.memory", f'{json_config.hardware.ram}m'),
+            ("spark.executor.cores", '1'),
+            ("spark.driver.cores", '1'),
+            ("spark.driver.memory", f'{json_config.hardware.ram}m'),
+            ("spark.executor.instances", f'{json_config.hardware.cpu}')
         ])
+        
 
         # Add custom configurations
-        for custom_config in json_config.custom_configuration:
+        for custom_config in json_config.spark_configuration.custom_configuration:
             spark_config.set(custom_config.parameter, custom_config.value)
         # Create Spark session
         self.spark = SparkSession.builder \

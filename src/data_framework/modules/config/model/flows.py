@@ -27,8 +27,8 @@ class LandingFileFormat(Enum):
 @dataclass
 class Hardware:
     ram: int
-    cpu: Optional[int]
-    disk: Optional[int]
+    cpu: int = 1
+    disk: int = 512
 
 
 @dataclass
