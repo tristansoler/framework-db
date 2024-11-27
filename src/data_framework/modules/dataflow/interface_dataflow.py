@@ -3,7 +3,7 @@ from data_framework.modules.config.core import config, Config
 from data_framework.modules.config.model.flows import TableDict, DatabaseTable
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
-from data_framework.modules.validation.quality_controls import QualityControls
+from data_framework.modules.validation.core_quality_controls import CoreQualityControls
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List
 import boto3
@@ -47,7 +47,7 @@ class DataFlowInterface(ABC):
         return self.__data_process
 
     @property
-    def quality_controls(self) -> QualityControls:
+    def quality_controls(self) -> CoreQualityControls:
         return self.__quality_controls
 
     @property
@@ -75,7 +75,7 @@ class DataFlowInterface(ABC):
         self.__current_process_config = self.__config.current_process_config()
         self.__logger = logger
         self.__data_process = CoreDataProcess()
-        self.__quality_controls = QualityControls()
+        self.__quality_controls = CoreQualityControls()
         self.__payload_response = PayloadResponse()
         self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
 

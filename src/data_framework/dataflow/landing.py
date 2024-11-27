@@ -2,14 +2,16 @@ from data_framework.modules.dataflow.interface_dataflow import *
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
-from data_framework.modules.validation.file_validator import FileValidator
+from data_framework.modules.validation.integrations.file_validator import FileValidator
 import re
 import hashlib
+from traceback import format_exc
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import tarfile
+
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -25,38 +27,36 @@ class ProcessingCoordinator(DataFlowInterface):
             self.payload_response.file_name = Path(self.config.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
+            # Obtain file date
+            file_date = self.obtain_file_date()
+            self.payload_response.file_date = file_date
             # Apply controls
-            file_validator = FileValidator(file_contents)
-            is_valid = file_validator.validate_file()
-            if is_valid:
-                # Obtain file date
-                file_date = self.obtain_file_date()
+            file_validator = FileValidator(file_date, file_contents)
+            self.quality_controls.set_parent(file_validator)
+            response = self.quality_controls.validate(
+                layer=Layer.LANDING,
+                table_config=self.config.processes.landing_to_raw.output_file
+            )
+            if not response.success:
+                raise response.error
+            if response.overall_result:
                 process_file = True
-
                 # Compare with the previous file
                 if self.incoming_file.compare_with_previous_file:
                     process_file = self.compare_with_previous_file(file_contents)
-                    
                 if process_file:
                     # Create partitions
                     partitions = self.create_partitions(file_date)
                     # Save file in raw table
                     self.write_data(file_contents, partitions)
                     self.payload_response.next_stage = True
-                    
                 self.payload_response.success = True
-                self.payload_response.file_date = file_date
         except Exception as e:
-            # TODO: Refactor
-            import traceback
-            expection = type(e).__name__
-            error = str(e)
-            trace = traceback.format_exc()
-
-            menssage_error = f'Error processing file {self.config.parameters.source_file_path}\nException:\n   {expection}\nError:\n    {error}\nTrace:\n  {trace}'
-
-            self.logger.error(menssage_error)
-            raise menssage_error
+            self.logger.error(
+                f'Error processing file {self.config.parameters.source_file_path}\n' +
+                f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
+            )
+            raise e
 
     def read_data(self) -> dict:
         response = self.storage.read(
@@ -155,7 +155,7 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
-        
+
         partition_field = self.output_file.partition_field
         response = self.catalogue.create_partition(
             self.output_file.database_relation,

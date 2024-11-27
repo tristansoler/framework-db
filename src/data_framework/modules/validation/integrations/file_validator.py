@@ -1,0 +1,155 @@
+from data_framework.modules.config.core import config
+from data_framework.modules.utils.logger import logger
+from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.validation.core_quality_controls import CoreQualityControls
+from data_framework.modules.validation.interface_quality_controls import ControlRule
+import re
+from io import BytesIO
+from pathlib import Path
+import pandas as pd
+
+
+class FileValidator:
+
+    def __init__(self, file_date: str, file_contents: dict):
+        self.config = config()
+        self.current_process_config = self.config.current_process_config()
+        self.logger = logger
+        self.catalogue = CoreCatalogue()
+        self.quality_controls = CoreQualityControls()
+        self.incoming_file_config = self.current_process_config.incoming_file
+        self.output_file_config = self.current_process_config.output_file
+        self.file_contents = file_contents
+        self.file_name = Path(self.config.parameters.source_file_path).name
+        self.file_date = file_date
+
+    def validate_filename_pattern(self, rule: ControlRule) -> None:
+        pattern = self.incoming_file_config.filename_pattern
+        valid_filename = bool(re.match(pattern, self.file_name))
+        rule.calculate_result([valid_filename])
+        if rule.result.result_flag:
+            rule.result.add_detail(f'Valid filenames: {self.file_name}')
+        else:
+            rule.result.add_detail(f'Invalid filenames {self.file_name}. Expected pattern: {pattern}')
+        rule.result.set_data_date(self.file_date)
+
+    def validate_unzipped_filename_pattern(self, rule: ControlRule) -> None:
+        pattern = self.incoming_file_config.filename_unzipped_pattern
+        results = []
+        valid_filenames = []
+        invalid_filenames = []
+        for filename, file_data in self.file_contents.items():
+            if file_data['validate']:
+                valid_filename = bool(re.match(pattern, filename))
+                results.append(valid_filename)
+                if valid_filename:
+                    valid_filenames.append(filename)
+                else:
+                    invalid_filenames.append(filename)
+        rule.calculate_result(results)
+        if len(valid_filenames) > 0:
+            rule.result.add_detail(f"Valid filenames: {', '.join(valid_filenames)}")
+        if len(invalid_filenames) > 0:
+            rule.result.add_detail(f"Invalid filenames: {', '.join(invalid_filenames)}")
+            rule.result.add_detail(f'Expected pattern: {pattern}')
+        rule.result.set_data_date(self.file_date)
+
+    def validate_csv_format(self, rule: ControlRule) -> None:
+        delimiter = self.incoming_file_config.csv_specs.delimiter
+        header = self.incoming_file_config.csv_specs.header_position
+        encoding = self.incoming_file_config.csv_specs.encoding
+        results = []
+        valid_files = []
+        invalid_files = []
+        for filename, file_data in self.file_contents.items():
+            if file_data['validate']:
+                file_data['content'].seek(0)
+                df = pd.read_csv(
+                    file_data['content'], dtype=str, delimiter=delimiter, header=header, encoding=encoding
+                )
+                expected_n_rows = self._get_expected_number_of_rows(file_data['content'])
+                expected_n_columns = self._get_expected_number_of_columns(file_data['content'])
+                valid_csv = df.shape == (expected_n_rows, expected_n_columns)
+                results.append(valid_csv)
+                if valid_csv:
+                    valid_files.append(filename)
+                else:
+                    invalid_files.append(filename)
+        rule.calculate_result(results)
+        if len(valid_files) > 0:
+            rule.result.add_detail(f"CSV files with valid format: {', '.join(valid_files)}")
+        if len(invalid_files) > 0:
+            rule.result.add_detail(f"CSV files with invalid format: {', '.join(invalid_files)}")
+            rule.result.add_detail(f'Expected separator: {delimiter}')
+            rule.result.add_detail(f'Expected header position: {header}')
+            rule.result.add_detail(f'Expected encoding: {encoding}')
+        rule.result.set_data_date(self.file_date)
+
+    def validate_csv_columns(self, rule: ControlRule) -> None:
+        # Obtain expected columns from raw table
+        response = self.catalogue.get_schema(
+            self.output_file_config.database_relation,
+            self.output_file_config.table
+        )
+        expected_columns = response.schema.get_column_names(partitioned=False)
+        results = []
+        valid_files = []
+        invalid_files = []
+        for filename, file_data in self.file_contents.items():
+            if file_data['validate']:
+                file_data['content'].seek(0)
+                df = pd.read_csv(
+                    file_data['content'],
+                    dtype=str,
+                    delimiter=self.incoming_file_config.csv_specs.delimiter,
+                    header=self.incoming_file_config.csv_specs.header_position,
+                    encoding=self.incoming_file_config.csv_specs.encoding
+                )
+                columns = self._parse_columns(df)
+                valid_columns = columns == expected_columns
+                results.append(valid_columns)
+                if valid_columns:
+                    valid_files.append(filename)
+                else:
+                    extra_columns = list(set(columns) - set(expected_columns))
+                    missing_columns = list(set(expected_columns) - set(columns))
+                    invalid_files.append(
+                        f"{filename} (Extra columns: {', '.join(extra_columns)}, " +
+                        f"Missing columns: {', '.join(missing_columns)})"
+                    )
+        rule.calculate_result(results)
+        if len(valid_files) > 0:
+            rule.result.add_detail(f"CSV files with valid columns: {', '.join(valid_files)}")
+        if len(invalid_files) > 0:
+            rule.result.add_detail(f"CSV files with invalid columns: {', '.join(invalid_files)}")
+        rule.result.set_data_date(self.file_date)
+
+    def _get_expected_number_of_rows(self, csv_content: BytesIO) -> int:
+        csv_content.seek(0)
+        header_position = self.incoming_file_config.csv_specs.header_position
+        lines = csv_content.getvalue().splitlines()
+        return len(lines) - (header_position + 1)
+
+    def _get_expected_number_of_columns(self, csv_content: BytesIO) -> int:
+        csv_content.seek(0)
+        header_position = self.incoming_file_config.csv_specs.header_position
+        for i, line in enumerate(csv_content):
+            if i == header_position:
+                encoding = self.incoming_file_config.csv_specs.encoding
+                delimiter = self.incoming_file_config.csv_specs.delimiter
+                return len(line.decode(encoding).split(delimiter))
+
+    def _parse_columns(self, df: pd.DataFrame) -> list:
+        # TODO: definir un estándar y parametrizar en config
+        # Replace whitespaces with _ and remove special characters
+        columns = [
+            re.sub(
+                r'\s+', '_',
+                re.sub(
+                    r'[^A-Za-z0-9\s_]', '',
+                    column.lower().strip().replace('/', ' ')
+                )
+            )
+            for column in df.columns
+        ]
+        return columns

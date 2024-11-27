@@ -9,7 +9,6 @@ from data_framework.modules.config.model.flows import (
     CSVSpecs,
     Config,
     DatabaseTable,
-    Validations,
     ProcessingSpecifications,
     Hardware,
     SparkConfiguration,
@@ -37,7 +36,7 @@ class ConfigSetup:
 
     _models = (
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
-        DateLocatedFilename, DatabaseTable, Validations, ProcessingSpecifications,
+        DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport
     )
 

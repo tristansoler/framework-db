@@ -20,11 +20,6 @@
                       "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
                     }
                   },
-                  "validations": {
-                    "validate_filename": true,
-                    "validate_csv": true,
-                    "validate_columns": true
-                  },
                   "compare_with_previous_file": true
                 },
                 "output_file": {
@@ -35,7 +30,7 @@
                 "processing_specifications": {
                   "technology": "emr",
                   "hardware": {
-                    "ram": 512
+                    "ram": 4096
                   },
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
@@ -79,7 +74,7 @@
                 "processing_specifications": {
                   "technology": "emr",
                   "hardware": {
-                    "ram": 512
+                    "ram": 4096
                   },
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
@@ -133,7 +128,7 @@
                 "processing_specifications": {
                   "technology": "emr",
                   "hardware": {
-                    "ram": 512
+                    "ram": 4096
                   },
                   "spark_configuration": {
                     "catalog": "iceberg_catalog",
@@ -207,7 +202,7 @@
                 "processing_specifications": {
                     "technology": "emr",
                     "hardware": {
-                      "ram": 512
+                      "ram": 4096
                     },
                     "spark_configuration": {
                       "catalog": "iceberg_catalog",

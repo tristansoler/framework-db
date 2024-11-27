@@ -19,10 +19,12 @@ class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
 
+
 class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
     EXCEL = "xls"
+
 
 @dataclass
 class Hardware:
@@ -93,20 +95,12 @@ class Parameters:
 
 
 @dataclass
-class Validations:
-    validate_filename: bool
-    validate_csv: bool
-    validate_columns: bool
-
-
-@dataclass
 class IncomingFileLandingToRaw:
     zipped: Optional[str]
     file_format: LandingFileFormat
     filename_pattern: str
     filename_unzipped_pattern: Optional[str]
     csv_specs: CSVSpecs
-    validations: Validations
     compare_with_previous_file: Optional[bool] = False
 
 
@@ -114,7 +108,7 @@ class IncomingFileLandingToRaw:
 class DatabaseTable:
     database: Database
     table: str
-    primary_keys: Optional[list]
+    primary_keys: Optional[list] = field(default_factory=list)
     partition_field: str = "datadate"
 
     @property
@@ -183,6 +177,7 @@ class OutputReport:
 class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
+
 
 @dataclass
 class Processes:
