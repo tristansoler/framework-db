@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from data_framework.modules.config.core import config, Config
-from data_framework.modules.config.model.flows import TableDict, DatabaseTable
+from data_framework.modules.config.model.flows import TableDict, DatabaseTable, OutputReport
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
@@ -9,20 +9,24 @@ from typing import Any, Dict, List
 import boto3
 import json
 
+
 @dataclass
 class DataQualityTable:
     database: str
     table: str
 
+
 @dataclass
 class DataQuality:
     tables: List[DataQualityTable] = field(default_factory=list)
+
 
 @dataclass
 class OutputResult:
     name: str
     success: bool = False
     error: str = None
+
 
 @dataclass
 class PayloadResponse:
@@ -33,7 +37,9 @@ class PayloadResponse:
     data_quality: DataQuality = field(default_factory=DataQuality)
     outputs: List[OutputResult] = field(default_factory=list)
 
+
 class DataFlowInterface(ABC):
+
     @property
     def config(self) -> Config:
         return self.__config
@@ -69,6 +75,10 @@ class DataFlowInterface(ABC):
     @property
     def output_file(self) -> DatabaseTable:
         return self.__current_process_config.output_file
+
+    @property
+    def output_reports(self) -> List[OutputReport]:
+        return self.__current_process_config.output_reports
 
     def __init__(self):
         self.__config = config()
@@ -187,7 +197,10 @@ class DataFlowInterface(ABC):
 
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 
-        ssm_name = f'/dataflow/{self.config.project_id}/{self.config.parameters.dataflow}-{self.config.parameters.process}/result'
+        ssm_name = (
+            f'/dataflow/{self.config.project_id}/' +
+            f'{self.config.parameters.dataflow}-{self.config.parameters.process}/result'
+        )
 
         self.__ssm_client.put_parameter(
             Name=ssm_name,
@@ -195,31 +208,3 @@ class DataFlowInterface(ABC):
             Type='String',
             Overwrite=True
         )
-
-    def read_all_source_tables(self, _filter: str = None) -> Dict[str, Any]:
-        tables_content = {}
-        for table_key, table_config in self.source_tables.tables.items():
-            response = self.data_process.read_table(
-                table_config.database_relation, table_config.table, _filter
-            )
-            tables_content[table_key] = response.data
-            if not response.success:
-                self.logger.error(
-                    f'Error reading data from {table_config.full_name}: {response.error}'
-                )
-        return tables_content
-
-    def write(self, df: Any, output_table_key: str) -> None:
-        output_table = self.target_tables.table(output_table_key)
-        response = self.data_process.merge(
-            df,
-            output_table.database_relation,
-            output_table.table,
-            # TODO: obtain primary keys from Glue table
-            output_table.primary_keys
-        )
-        if response.success:
-            self.logger.info(f'Successfully inserted data into {output_table.full_name}')
-        else:
-            self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
-            raise response.error

@@ -1,4 +1,4 @@
-from data_framework.modules.dataflow.interface_dataflow import *
+from data_framework.modules.dataflow.interface_dataflow import DataFlowInterface, OutputResult
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.model.flows import OutputReport
@@ -15,7 +15,6 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
         super().__init__()
-
         self.storage = Storage()
 
     def process(self) -> dict:
@@ -24,7 +23,7 @@ class ProcessingCoordinator(DataFlowInterface):
 
         try:
             # Generate all outputs
-            for config_output in self.__current_process_config.output_reports:
+            for config_output in self.output_reports:
                 try:
                     self.generate_output_file(config_output)
                 except Exception as e:
@@ -59,7 +58,7 @@ class ProcessingCoordinator(DataFlowInterface):
             self.write_data_to_file(df, config_output)
             self.logger.info(f'Output {config_output.name} generated successfully')
         else:
-            raise Exception(f'No data available for output {config_output.name}')
+            raise ValueError(f'No data available for output {config_output.name}')
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """
