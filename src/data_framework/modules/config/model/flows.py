@@ -28,8 +28,8 @@ class LandingFileFormat(Enum):
 
 @dataclass
 class Hardware:
-    ram: int
-    cpu: int = 1
+    ram: int = 4096
+    cores: int = 2
     disk: int = 512
 
 

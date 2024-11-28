@@ -61,12 +61,16 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalogImplementation", "hive"),
 
             # Configure hardware
+            ("spark.dynamicAllocation.enabled", 'true'),
+            ("spark.dynamicAllocation.initialExecutors", '2'),
+            ("spark.dynamicAllocation.maxExecutors", '10'),
+            
             # TODO: Set dynamic values from config
+            #("spark.executor.instances", f'{json_config.hardware.instances}'),
             ("spark.executor.memory", f'{json_config.hardware.ram}m'),
-            ("spark.executor.cores", '1'),
-            ("spark.driver.cores", '1'),
-            ("spark.driver.memory", f'{json_config.hardware.ram}m'),
-            ("spark.executor.instances", f'{json_config.hardware.cpu}')
+            ("spark.executor.cores", f'{json_config.hardware.cores}')
+            #("spark.driver.cores", f'{json_config.hardware.driver_cores}')
+            
         ])
         
 
