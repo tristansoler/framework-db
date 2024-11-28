@@ -2,6 +2,7 @@ from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
+from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.interface_quality_controls import ControlRule
 import re
 from io import BytesIO
@@ -17,6 +18,7 @@ class FileValidator:
         self.logger = logger
         self.catalogue = CoreCatalogue()
         self.quality_controls = CoreQualityControls()
+        self.data_process = CoreDataProcess()
         self.incoming_file_config = self.current_process_config.incoming_file
         self.output_file_config = self.current_process_config.output_file
         self.file_contents = file_contents
@@ -26,8 +28,11 @@ class FileValidator:
     def validate_filename_pattern(self, rule: ControlRule) -> None:
         pattern = self.incoming_file_config.filename_pattern
         valid_filename = bool(re.match(pattern, self.file_name))
-        rule.calculate_result([valid_filename])
-        if rule.result.result_flag:
+        df_result = self.data_process.create_dataframe(
+            pd.DataFrame({'identifier': [self.file_name], 'result': [valid_filename]})
+        ).data
+        result = rule.calculate_result(df_result)
+        if result.result_flag:
             rule.result.add_detail(f'Valid filenames: {self.file_name}')
         else:
             rule.result.add_detail(f'Invalid filenames {self.file_name}. Expected pattern: {pattern}')
@@ -36,21 +41,21 @@ class FileValidator:
     def validate_unzipped_filename_pattern(self, rule: ControlRule) -> None:
         pattern = self.incoming_file_config.filename_unzipped_pattern
         results = []
-        valid_filenames = []
-        invalid_filenames = []
+        filenames = []
         for filename, file_data in self.file_contents.items():
             if file_data['validate']:
                 valid_filename = bool(re.match(pattern, filename))
                 results.append(valid_filename)
-                if valid_filename:
-                    valid_filenames.append(filename)
-                else:
-                    invalid_filenames.append(filename)
-        rule.calculate_result(results)
-        if len(valid_filenames) > 0:
-            rule.result.add_detail(f"Valid filenames: {', '.join(valid_filenames)}")
-        if len(invalid_filenames) > 0:
-            rule.result.add_detail(f"Invalid filenames: {', '.join(invalid_filenames)}")
+                filenames.append(filename)
+
+        df_result = self.data_process.create_dataframe(
+            pd.DataFrame({'identifier': filenames, 'result': results})
+        ).data
+        result = rule.calculate_result(df_result)
+        if result.valid_identifiers:
+            rule.result.add_detail(f"Valid filenames: {', '.join(result.valid_identifiers)}")
+        if result.invalid_identifiers:
+            rule.result.add_detail(f"Invalid filenames: {', '.join(result.invalid_identifiers)}")
             rule.result.add_detail(f'Expected pattern: {pattern}')
         rule.result.set_data_date(self.file_date)
 
@@ -59,8 +64,7 @@ class FileValidator:
         header = self.incoming_file_config.csv_specs.header_position
         encoding = self.incoming_file_config.csv_specs.encoding
         results = []
-        valid_files = []
-        invalid_files = []
+        filenames = []
         for filename, file_data in self.file_contents.items():
             if file_data['validate']:
                 file_data['content'].seek(0)
@@ -71,15 +75,15 @@ class FileValidator:
                 expected_n_columns = self._get_expected_number_of_columns(file_data['content'])
                 valid_csv = df.shape == (expected_n_rows, expected_n_columns)
                 results.append(valid_csv)
-                if valid_csv:
-                    valid_files.append(filename)
-                else:
-                    invalid_files.append(filename)
-        rule.calculate_result(results)
-        if len(valid_files) > 0:
-            rule.result.add_detail(f"CSV files with valid format: {', '.join(valid_files)}")
-        if len(invalid_files) > 0:
-            rule.result.add_detail(f"CSV files with invalid format: {', '.join(invalid_files)}")
+                filenames.append(filename)
+        df_result = self.data_process.create_dataframe(
+            pd.DataFrame({'identifier': filenames, 'result': results})
+        ).data
+        result = rule.calculate_result(df_result)
+        if result.valid_identifiers:
+            rule.result.add_detail(f"CSV files with valid format: {', '.join(result.valid_identifiers)}")
+        if result.invalid_identifiers:
+            rule.result.add_detail(f"CSV files with invalid format: {', '.join(result.invalid_identifiers)}")
             rule.result.add_detail(f'Expected separator: {delimiter}')
             rule.result.add_detail(f'Expected header position: {header}')
             rule.result.add_detail(f'Expected encoding: {encoding}')
@@ -93,8 +97,8 @@ class FileValidator:
         )
         expected_columns = response.schema.get_column_names(partitioned=False)
         results = []
-        valid_files = []
-        invalid_files = []
+        filenames = []
+        invalid_columns_info = []
         for filename, file_data in self.file_contents.items():
             if file_data['validate']:
                 file_data['content'].seek(0)
@@ -108,20 +112,22 @@ class FileValidator:
                 columns = self._parse_columns(df)
                 valid_columns = columns == expected_columns
                 results.append(valid_columns)
-                if valid_columns:
-                    valid_files.append(filename)
-                else:
+                filenames.append(filename)
+                if not valid_columns:
                     extra_columns = list(set(columns) - set(expected_columns))
                     missing_columns = list(set(expected_columns) - set(columns))
-                    invalid_files.append(
+                    invalid_columns_info.append(
                         f"{filename} (Extra columns: {', '.join(extra_columns)}, " +
                         f"Missing columns: {', '.join(missing_columns)})"
                     )
-        rule.calculate_result(results)
-        if len(valid_files) > 0:
-            rule.result.add_detail(f"CSV files with valid columns: {', '.join(valid_files)}")
-        if len(invalid_files) > 0:
-            rule.result.add_detail(f"CSV files with invalid columns: {', '.join(invalid_files)}")
+        df_result = self.data_process.create_dataframe(
+            pd.DataFrame({'identifier': filenames, 'result': results})
+        ).data
+        result = rule.calculate_result(df_result)
+        if result.valid_identifiers:
+            rule.result.add_detail(f"CSV files with valid columns: {', '.join(result.valid_identifiers)}")
+        if result.invalid_identifiers:
+            rule.result.add_detail(f"CSV files with invalid columns: {', '.join(invalid_columns_info)}")
         rule.result.set_data_date(self.file_date)
 
     def _get_expected_number_of_rows(self, csv_content: BytesIO) -> int:

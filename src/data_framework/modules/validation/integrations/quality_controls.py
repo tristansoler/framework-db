@@ -163,6 +163,10 @@ class QualityControls(InterfaceQualityControls):
         pdf_rules = df_rules.toPandas()
         # Compute all rules
         pdf_results = pdf_rules.apply(self._compute_generic_rule, axis=1, args=(df_data,))
+        # Remove rules that raised an exception
+        pdf_results = pdf_results[
+            (pdf_results['control_master_id'].notna()) & (pdf_results['control_table_id'].notna())
+        ]
         if len(pdf_rules) != len(pdf_results):
             raise ValueError('Some rules could not be executed correctly')
         # Transform into PySpark dataframe
@@ -201,20 +205,18 @@ class QualityControls(InterfaceQualityControls):
         query = rule.algorithm.algorithm_description.format(
             # TODO: estos parámetros son custom para cada regla
             file_date=self.config.parameters.file_date,
-            country=self.file_country
         )
         self.logger.info(f'Executing query {query}')
         response = self.data_process.query(query)
         if response.success:
-            results = response.data.select(response.data.columns[0]).rdd.flatMap(lambda x: x).collect()
-            # TODO: la query debería proporcionar el resto de info a reflejar en el resultado
-            rule.calculate_result(results)
+            result = rule.calculate_result(response.data)
+            if result.invalid_identifiers:
+                rule.result.add_detail(f"Invalid records: {', '.join(result.invalid_identifiers)}")
         else:
             raise response.error
 
     def _compute_python_rule(self, rule: ControlRule, df_data: DataFrame) -> None:
         # TODO: ver si realmente es necesario pasar el dataframe con los datos
-        # TODO: ¿qué sucede si una función necesita más argumentos adicionales?
         try:
             if not self.parent:
                 self.logger.error('QualityControls parent is not set. Configure it using set_parent method')

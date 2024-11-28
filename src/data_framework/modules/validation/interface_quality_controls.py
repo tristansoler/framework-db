@@ -4,10 +4,12 @@ from data_framework.modules.config.core import config
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Union, List, Tuple
+from typing import Any, Union, List
 from datetime import datetime, date
 import pandas as pd
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import col, udf, abs
+from pyspark.sql.types import BooleanType
 
 
 @dataclass
@@ -112,7 +114,7 @@ class ControlOutcome:
     def metric_value(self) -> Union[float, None]:
         if self.total is not None and self.value is not None:
             metric_value = (
-                self.value * 100 / self.total
+                self.value / self.total
                 if self.total != 0 else 0
             )
             return metric_value
@@ -122,8 +124,17 @@ class ControlOutcome:
 
 
 @dataclass
+class ThresholdResult:
+    result_flag: bool
+    total_records: int
+    invalid_records: int
+    valid_identifiers: List[str]
+    invalid_identifiers: List[str]
+
+
+@dataclass
 class ControlResult:
-    master_id: str
+    master_id: int
     table_id: str
     result_flag: bool = False
     outcome: ControlOutcome = ControlOutcome()
@@ -160,8 +171,16 @@ class ControlResult:
         else:
             self.detail = self.detail + separator + detail.strip()
 
+    def fill(self, threshold_result: ThresholdResult) -> None:
+        self.result_flag = threshold_result.result_flag
+        self.outcome = ControlOutcome(
+            total=threshold_result.total_records,
+            value=threshold_result.invalid_records
+        )
+
 
 class ThresholdType(Enum):
+    STANDARD = "Standard"
     PERCENTAGE = "Percentage"
     ABSOLUTE = "Absolute"
     COUNT = "Count"
@@ -208,36 +227,131 @@ class ControlThreshold:
                 'Invalid threshold limits. Binary threshold does not need threshold limits'
             )
 
-    def apply_threshold(self, results: list) -> Tuple[float, bool]:
-        result_value = self.apply_threshold_type(results)
-        result_flag = self.apply_threshold_limits(result_value)
-        return (result_value, result_flag)
-
-    def apply_threshold_type(self, results: list) -> Union[float, None]:
+    def apply_threshold(self, df_result: DataFrame) -> ThresholdResult:
         if (
-            not results and
-            self.threshold_type in [ThresholdType.PERCENTAGE.value, ThresholdType.ABSOLUTE.value]
+            df_result is None or
+            'identifier' not in df_result.columns or
+            'result' not in df_result.columns
         ):
             raise ValueError(
-                f'Cannot apply threshold of type {self.threshold_type} on empty results'
+                'The DataFrame with the results on which to apply the threshold ' +
+                'must have the columns "identifier" and "result"'
             )
-        elif self.threshold_type == ThresholdType.COUNT.value:
-            # Number of records
-            return len(results)
-        elif self.threshold_type == ThresholdType.PERCENTAGE.value:
-            # First value expressed as a percentage
-            return results[0] * 100
+        if self.threshold_type == ThresholdType.STANDARD.value:
+            return self.calculate_standard_threshold(df_result)
         elif self.threshold_type == ThresholdType.ABSOLUTE.value:
-            # First value in absolute value
-            return abs(results[0])
+            return self.calculate_absolute_threshold(df_result)
+        elif self.threshold_type == ThresholdType.PERCENTAGE.value:
+            return self.calculate_percentage_threshold(df_result)
+        elif self.threshold_type == ThresholdType.COUNT.value:
+            return self.calculate_count_threshold(df_result)
         elif self.threshold_type == ThresholdType.BINARY.value:
-            # Number of records that are False
-            return results.count(False)
+            return self.calculate_binary_threshold(df_result)
+
+    def calculate_standard_threshold(self, df_result: DataFrame) -> ThresholdResult:
+        # Apply threshold and absolute value to each record
+        udf_function = udf(self.apply_threshold_limits, BooleanType())
+        df_result = df_result.withColumn('result_flag', udf_function(col('result')))
+        # Records with True result
+        valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Records with False result
+        invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Calculate threshold
+        total_records = df_result.count()
+        invalid_records = len(invalid_ids)
+        result_flag = (invalid_records == 0)
+        # Build response
+        result = ThresholdResult(
+            result_flag=result_flag,
+            total_records=total_records,
+            invalid_records=invalid_records,
+            valid_identifiers=valid_ids,
+            invalid_identifiers=invalid_ids
+        )
+        return result
+
+    def calculate_absolute_threshold(self, df_result: DataFrame) -> ThresholdResult:
+        # Apply threshold and absolute value to each record
+        udf_function = udf(self.apply_threshold_limits, BooleanType())
+        df_result = df_result.withColumn('result_flag', udf_function(abs(col('result'))))
+        # Records with True result
+        valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Records with False result
+        invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Calculate threshold
+        total_records = df_result.count()
+        invalid_records = len(invalid_ids)
+        result_flag = (invalid_records == 0)
+        # Build response
+        result = ThresholdResult(
+            result_flag=result_flag,
+            total_records=total_records,
+            invalid_records=invalid_records,
+            valid_identifiers=valid_ids,
+            invalid_identifiers=invalid_ids
+        )
+        return result
+
+    def calculate_percentage_threshold(self, df_result: DataFrame) -> ThresholdResult:
+        # Records with True result
+        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Records with False result
+        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Calculate threshold
+        total_records = df_result.count()
+        invalid_records = len(invalid_ids)
+        percentage = invalid_records / total_records
+        result_flag = self.apply_threshold_limits(percentage)
+        # Build response
+        result = ThresholdResult(
+            result_flag=result_flag,
+            total_records=total_records,
+            invalid_records=invalid_records,
+            valid_identifiers=valid_ids,
+            invalid_identifiers=invalid_ids
+        )
+        return result
+
+    def calculate_count_threshold(self, df_result: DataFrame) -> ThresholdResult:
+        # Records with True result
+        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Records with False result
+        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Calculate threshold
+        total_records = df_result.count()
+        invalid_records = len(invalid_ids)
+        result_flag = self.apply_threshold_limits(invalid_records)
+        # Build response
+        result = ThresholdResult(
+            result_flag=result_flag,
+            total_records=total_records,
+            invalid_records=invalid_records,
+            valid_identifiers=valid_ids,
+            invalid_identifiers=invalid_ids
+        )
+        return result
+
+    def calculate_binary_threshold(self, df_result: DataFrame) -> ThresholdResult:
+        # Records with True result
+        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Records with False result
+        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+        # Calculate threshold
+        total_records = df_result.count()
+        invalid_records = len(invalid_ids)
+        result_flag = (invalid_records == 0)
+        # Build response
+        result = ThresholdResult(
+            result_flag=result_flag,
+            total_records=total_records,
+            invalid_records=invalid_records,
+            valid_identifiers=valid_ids,
+            invalid_identifiers=invalid_ids
+        )
+        return result
 
     def apply_threshold_limits(self, value: float) -> bool:
-        if self.threshold_type == ThresholdType.BINARY.value:
-            return value == 0
-        elif self.threshold_min is not None and self.threshold_max is not None:
+        if self.threshold_min is not None and self.threshold_max is not None:
             return (self.threshold_min <= value <= self.threshold_max)
         elif self.threshold_min is not None:
             return (self.threshold_min <= value)
@@ -288,7 +402,7 @@ class ControlAlgorithm:
 
 @dataclass
 class ControlRule:
-    master_id: str
+    master_id: int
     table_id: str
     layer: str
     database_table: DatabaseTable
@@ -355,15 +469,10 @@ class ControlRule:
                 f'Available control levels: {", ".join(control_levels)}'
             )
 
-    def calculate_result(self, results: list, total_records: int = None) -> None:
-        result_value, result_flag = self.threshold.apply_threshold(results)
-        self.result.result_flag = result_flag
-        if total_records is None:
-            total_records = len(results)
-        self.result.outcome = ControlOutcome(
-            total=total_records,
-            value=result_value
-        )
+    def calculate_result(self, df_result: DataFrame) -> ThresholdResult:
+        threshold_result = self.threshold.apply_threshold(df_result)
+        self.result.fill(threshold_result)
+        return threshold_result
 
 
 class InterfaceQualityControls(ABC):
