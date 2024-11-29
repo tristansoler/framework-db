@@ -1,21 +1,4 @@
 """
-Clase para el casteo de las columnas de un dataframe.
-Además del casteo se añade columna para devolver los posibles problemas de casteo
-
-# Datatypes a convertir:
-# string - ok
-# int - ok
-# double - ok
-# float - ok
-# decimal - ok
-# date - ok
-# boolean - ok
-# datetime TODO
-# timestamp TODO
-
-# TODO: Está hecho para query en Athena. Cuando funcione spark hay que cambiar las funciones de casteo.
-# Todo: ¿cómo se van a pasar los datos de la bd y de las tablas? Quizás no hace falta pasar la bd y tabla origen,
-# si tenemos un df origen tenemos las columnas origen.
 """
 
 from data_framework.modules.utils.logger import logger
@@ -33,7 +16,7 @@ class Cast:
 
     def decode_cast(self, col, coltype):
         q = f'{col}'
-        if coltype in ('int', 'double', 'float', 'date') or coltype.startswith('decimal'):
+        if coltype in ('int', 'double', 'float', 'date', 'timestamp') or coltype.startswith('decimal'):
             q = f"try_cast({col} AS {coltype.upper()}) as {col}, " \
                 f"case when try_cast({col} AS {coltype.upper()}) is null " \
                 f"then '{col}: valor {coltype} inválido' end as {col}_control_cast"
