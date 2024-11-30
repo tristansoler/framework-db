@@ -88,7 +88,7 @@ class SparkDataProcess(DataProcessInterface):
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'iceberg_catalog.{database}.{table}'
 
-    def merge(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
+    def merge(self, dataframe: DataFrame, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
         try:
             table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
@@ -99,14 +99,22 @@ class SparkDataProcess(DataProcessInterface):
             sql_update_with_pks = '\n AND '.join([
                 f' {view_name}.{field} = {table_name}.{field}' for field in table_config.primary_keys
             ])
+
+            stratgy = """
+                WHEN MATCHED THEN
+                    UPDATE SET *
+                WHEN NOT MATCHED THEN
+                    INSERT *
+            """
+            
+            if custom_strategy:
+                stratgy = custom_strategy
+
             merge_query = f"""
                 MERGE INTO {table_name}
                 USING {view_name} ON
                     {sql_update_with_pks}
-                WHEN MATCHED THEN
-                UPDATE SET *
-                WHEN NOT MATCHED THEN
-                INSERT *
+                {stratgy}
             """
             logger.debug(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
