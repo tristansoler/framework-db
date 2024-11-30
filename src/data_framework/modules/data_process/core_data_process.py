@@ -29,10 +29,11 @@ class CoreDataProcess(object):
             )
 
     @classmethod
-    def merge(cls, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+    def merge(cls, dataframe: Any, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
         return cls._data_process.merge(
             dataframe=dataframe,
-            table_config=table_config
+            table_config=table_config,
+            custom_strategy=custom_strategy
         )
 
     @classmethod

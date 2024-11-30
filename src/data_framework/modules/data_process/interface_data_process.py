@@ -22,7 +22,7 @@ class WriteResponse:
 class DataProcessInterface(ABC):
 
     @abstractmethod
-    def merge(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+    def merge(self, dataframe: Any, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
         pass
 
     @abstractmethod
