@@ -114,7 +114,7 @@ class ControlOutcome:
     @property
     def metric_value(self) -> Union[float, None]:
         if self.total is not None and self.value is not None:
-            metric_value = (
+            metric_value = 1.0 - (
                 self.value / self.total
                 if self.total != 0 else 0
             )
@@ -186,6 +186,7 @@ class ThresholdType(Enum):
     @classmethod
     def available_threshold_types(cls) -> List[str]:
         return [item.value for item in cls]
+
 
 @dataclass
 class ControlThreshold:
@@ -294,7 +295,6 @@ class ControlThreshold:
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
-        percentage = invalid_records / total_records
         # Build response
         result = ThresholdResult(
             total_records=total_records,
@@ -312,7 +312,6 @@ class ControlThreshold:
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
-        result_flag = self.apply_threshold_limits(invalid_records)
         # Build response
         result = ThresholdResult(
             total_records=total_records,
@@ -330,7 +329,6 @@ class ControlThreshold:
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
-        result_flag = (invalid_records == 0)
         # Build response
         result = ThresholdResult(
             total_records=total_records,

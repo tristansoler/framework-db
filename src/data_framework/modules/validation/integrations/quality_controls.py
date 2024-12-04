@@ -133,14 +133,16 @@ class QualityControls(InterfaceQualityControls):
     def _get_overall_result(self, df_rules: DataFrame, df_results: DataFrame) -> bool:
         response = self.data_process.join(
             df_rules.select(*['control_master_id', 'control_table_id', 'blocking_control_indicator']),
-            df_results.select(*['control_master_id', 'control_table_id']),
+            df_results.select(*['control_master_id', 'control_table_id', 'control_metric_value']),
             how='inner',
             left_on=['control_master_id', 'control_table_id'],
         )
         if not response.success:
             raise response.error
         # Check if there are blocker controls with KO result
-        failed_controls = response.data.filter((col('blocking_control_indicator')))
+        failed_controls = response.data.filter(
+            (col('blocking_control_indicator')) & (col('control_metric_value') < 1)
+        )
         if failed_controls.isEmpty():
             return True
         else:
