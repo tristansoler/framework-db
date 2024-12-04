@@ -33,7 +33,7 @@ class ControlsTable:
         return cls(
             table_config=DatabaseTable(
                 database='funds_common',
-                table='controls_master_v2',
+                table='controls_master',
                 primary_keys=['control_master_id']
             ),
             mandatory_columns=[
@@ -50,7 +50,7 @@ class ControlsTable:
         return cls(
             table_config=DatabaseTable(
                 database='funds_common',
-                table='controls_dataset_v2',
+                table='controls_dataset',
                 primary_keys=['control_master_id', 'control_table_id']
             ),
             mandatory_columns=[
@@ -66,6 +66,8 @@ class ControlsTable:
                 "control_algorithm_type",
                 "control_threshold_min",
                 "control_threshold_max",
+                "control_threshold_rag_max",
+                "control_threshold_rag_min",
                 "control_threshold_type",
                 "blocking_control_indicator"
             ]
@@ -76,7 +78,7 @@ class ControlsTable:
         return cls(
             table_config=DatabaseTable(
                 database='funds_common',
-                table='controls_results_v2',
+                table='controls_results',
                 primary_keys=[
                     'control_master_id', 'control_table_id',
                     'initial_date', 'end_date', 'data_date'
@@ -85,7 +87,6 @@ class ControlsTable:
             mandatory_columns=[
                 'control_master_id',
                 'control_table_id',
-                'control_result',
                 'control_detail',
                 'control_outcome',
                 'control_metric_value',
@@ -125,7 +126,6 @@ class ControlOutcome:
 
 @dataclass
 class ThresholdResult:
-    result_flag: bool
     total_records: int
     invalid_records: int
     valid_identifiers: List[str]
@@ -136,23 +136,21 @@ class ThresholdResult:
 class ControlResult:
     master_id: int
     table_id: str
-    result_flag: bool = False
     outcome: ControlOutcome = ControlOutcome()
     detail: str = ''
-    initial_date: date = date.today()
-    end_date: date = date.today()
+    initial_date: date = datetime.now()
+    end_date: date = None
     data_date: date = date.today()
 
     def to_series(self) -> pd.Series:
         result = pd.Series({
             'control_master_id': self.master_id,
             'control_table_id': self.table_id,
-            'control_result': self.result_flag,
             'control_outcome': self.outcome.to_string(),
             'control_metric_value': self.outcome.metric_value,
             'control_detail': self.detail,
             'initial_date': self.initial_date,
-            'end_date': self.end_date,
+            'end_date': datetime.now(),
             'data_date': self.data_date,
         })
         return result
@@ -172,7 +170,6 @@ class ControlResult:
             self.detail = self.detail + separator + detail.strip()
 
     def fill(self, threshold_result: ThresholdResult) -> None:
-        self.result_flag = threshold_result.result_flag
         self.outcome = ControlOutcome(
             total=threshold_result.total_records,
             value=threshold_result.invalid_records
@@ -190,12 +187,13 @@ class ThresholdType(Enum):
     def available_threshold_types(cls) -> List[str]:
         return [item.value for item in cls]
 
-
 @dataclass
 class ControlThreshold:
     threshold_type: str
     threshold_max: Union[float, None]
     threshold_min: Union[float, None]
+    # threshold_rag_max: Union[float, None]
+    # threshold_rag_min: Union[float, None]
 
     def validate(self) -> None:
         threshold_types = ThresholdType.available_threshold_types()
@@ -259,10 +257,8 @@ class ControlThreshold:
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
-        result_flag = (invalid_records == 0)
         # Build response
         result = ThresholdResult(
-            result_flag=result_flag,
             total_records=total_records,
             invalid_records=invalid_records,
             valid_identifiers=valid_ids,
@@ -281,10 +277,8 @@ class ControlThreshold:
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
-        result_flag = (invalid_records == 0)
         # Build response
         result = ThresholdResult(
-            result_flag=result_flag,
             total_records=total_records,
             invalid_records=invalid_records,
             valid_identifiers=valid_ids,
@@ -301,10 +295,8 @@ class ControlThreshold:
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
         percentage = invalid_records / total_records
-        result_flag = self.apply_threshold_limits(percentage)
         # Build response
         result = ThresholdResult(
-            result_flag=result_flag,
             total_records=total_records,
             invalid_records=invalid_records,
             valid_identifiers=valid_ids,
@@ -323,7 +315,6 @@ class ControlThreshold:
         result_flag = self.apply_threshold_limits(invalid_records)
         # Build response
         result = ThresholdResult(
-            result_flag=result_flag,
             total_records=total_records,
             invalid_records=invalid_records,
             valid_identifiers=valid_ids,
@@ -342,7 +333,6 @@ class ControlThreshold:
         result_flag = (invalid_records == 0)
         # Build response
         result = ThresholdResult(
-            result_flag=result_flag,
             total_records=total_records,
             invalid_records=invalid_records,
             valid_identifiers=valid_ids,
@@ -445,6 +435,14 @@ class ControlRule:
                     None if pd.isna(rule['control_threshold_min'])
                     else rule['control_threshold_min']
                 )
+                # threshold_rag_max=(
+                #     None if pd.isna(rule['control_threshold_rag_max'])
+                #     else rule['control_threshold_rag_max']
+                # ),
+                # threshold_rag_min=(
+                #     None if pd.isna(rule['control_threshold_rag_min'])
+                #     else rule['control_threshold_rag_min']
+                # )
             ),
             is_blocker=rule['blocking_control_indicator'],
             result=ControlResult(

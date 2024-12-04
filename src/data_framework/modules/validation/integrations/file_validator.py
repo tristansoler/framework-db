@@ -32,7 +32,7 @@ class FileValidator:
             pd.DataFrame({'identifier': [self.file_name], 'result': [valid_filename]})
         ).data
         result = rule.calculate_result(df_result)
-        if result.result_flag:
+        if result.valid_identifiers:
             rule.result.add_detail(f'Valid filenames: {self.file_name}')
         else:
             rule.result.add_detail(f'Invalid filenames {self.file_name}. Expected pattern: {pattern}')

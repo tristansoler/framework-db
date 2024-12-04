@@ -33,15 +33,12 @@ class ProcessingCoordinator(DataFlowInterface):
             self.payload_response.file_date = file_date
             # Apply controls
             file_validator = FileValidator(file_date, file_contents)
-            # TODO: Revisar perdida de performance
-            # self.quality_controls.set_parent(file_validator)
-
-            # response = self.quality_controls.validate(
-            #     layer=Layer.LANDING,
-            #     table_config=self.config.processes.landing_to_raw.output_file
-            # )
-
-            response = ControlsResponse(success=True, overall_result=True, table=self.config.processes.landing_to_raw.output_file)
+            
+            self.quality_controls.set_parent(file_validator)
+            response = self.quality_controls.validate(
+                layer=Layer.LANDING,
+                table_config=self.config.processes.landing_to_raw.output_file
+            )
 
             if not response.success:
                 raise response.error
