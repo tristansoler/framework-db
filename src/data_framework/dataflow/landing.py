@@ -3,7 +3,6 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
 from data_framework.modules.validation.integrations.file_validator import FileValidator
-from data_framework.modules.validation.interface_quality_controls import ControlsResponse
 import re
 import hashlib
 from traceback import format_exc
@@ -33,7 +32,7 @@ class ProcessingCoordinator(DataFlowInterface):
             self.payload_response.file_date = file_date
             # Apply controls
             file_validator = FileValidator(file_date, file_contents)
-            
+
             self.quality_controls.set_parent(file_validator)
             response = self.quality_controls.validate(
                 layer=Layer.LANDING,
@@ -54,6 +53,11 @@ class ProcessingCoordinator(DataFlowInterface):
                     self.write_data(file_contents, partitions)
                     self.payload_response.next_stage = True
                 self.payload_response.success = True
+            else:
+                raise Exception(
+                    'The input file has failed quality controls. ' +
+                    f'Check results in {self.quality_controls.results_table.table_config.full_name} table'
+                )
         except Exception as e:
             self.logger.error(
                 f'Error processing file {self.config.parameters.source_file_path}\n' +

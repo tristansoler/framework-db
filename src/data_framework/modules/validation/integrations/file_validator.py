@@ -35,7 +35,7 @@ class FileValidator:
         if result.valid_identifiers:
             rule.result.add_detail(f'Valid filenames: {self.file_name}')
         else:
-            rule.result.add_detail(f'Invalid filenames {self.file_name}. Expected pattern: {pattern}')
+            rule.result.add_detail(f'Invalid filenames: {self.file_name}. Expected pattern: {pattern}')
         rule.result.set_data_date(self.file_date)
 
     def validate_unzipped_filename_pattern(self, rule: ControlRule) -> None:
