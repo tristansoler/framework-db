@@ -202,6 +202,7 @@ class QualityControls(InterfaceQualityControls):
             return rule_result
         except Exception as e:
             self.logger.error(f'Error computing rule {rule.id}: {e}')
+            return pd.Series()
 
     def _compute_sql_rule(self, rule: ControlRule) -> None:
         query = rule.algorithm.algorithm_description.format(
