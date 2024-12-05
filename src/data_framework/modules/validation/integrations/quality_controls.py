@@ -149,7 +149,7 @@ class QualityControls(InterfaceQualityControls):
             return False
 
     def _insert_results(self, df_results: DataFrame) -> None:
-        response = self.data_process.merge(df_results, self.results_table.table_config)
+        response = self.data_process.insert_dataframe(df_results, self.results_table.table_config)
         if response.success:
             self.logger.info(
                 f'Successfully written control results in table {self.results_table.table_config.full_name}'
