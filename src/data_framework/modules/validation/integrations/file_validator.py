@@ -68,12 +68,20 @@ class FileValidator:
         for filename, file_data in self.file_contents.items():
             if file_data['validate']:
                 file_data['content'].seek(0)
-                df = pd.read_csv(
-                    file_data['content'], dtype=str, delimiter=delimiter, header=header, encoding=encoding
-                )
-                expected_n_rows = self._get_expected_number_of_rows(file_data['content'])
-                expected_n_columns = self._get_expected_number_of_columns(file_data['content'])
-                valid_csv = df.shape == (expected_n_rows, expected_n_columns)
+                try:
+                    df = pd.read_csv(
+                        file_data['content'],
+                        dtype=str,
+                        delimiter=delimiter,
+                        header=header,
+                        encoding=encoding
+                    )
+                except Exception:
+                    valid_csv = False
+                else:
+                    expected_n_rows = self._get_expected_number_of_rows(file_data['content'])
+                    expected_n_columns = self._get_expected_number_of_columns(file_data['content'])
+                    valid_csv = df.shape == (expected_n_rows, expected_n_columns)
                 results.append(valid_csv)
                 filenames.append(filename)
         df_result = self.data_process.create_dataframe(
@@ -102,23 +110,28 @@ class FileValidator:
         for filename, file_data in self.file_contents.items():
             if file_data['validate']:
                 file_data['content'].seek(0)
-                df = pd.read_csv(
-                    file_data['content'],
-                    dtype=str,
-                    delimiter=self.incoming_file_config.csv_specs.delimiter,
-                    header=self.incoming_file_config.csv_specs.header_position,
-                    encoding=self.incoming_file_config.csv_specs.encoding
-                )
-                columns = self._parse_columns(df)
-                valid_columns = columns == expected_columns
+                try:
+                    df = pd.read_csv(
+                        file_data['content'],
+                        dtype=str,
+                        delimiter=self.incoming_file_config.csv_specs.delimiter,
+                        header=self.incoming_file_config.csv_specs.header_position,
+                        encoding=self.incoming_file_config.csv_specs.encoding
+                    )
+                except Exception:
+                    columns = []
+                    valid_columns = False
+                else:
+                    columns = self._parse_columns(df)
+                    valid_columns = columns == expected_columns
                 results.append(valid_columns)
                 filenames.append(filename)
                 if not valid_columns:
                     extra_columns = list(set(columns) - set(expected_columns))
                     missing_columns = list(set(expected_columns) - set(columns))
                     invalid_columns_info.append(
-                        f"{filename} (Extra columns: {', '.join(extra_columns)}, " +
-                        f"Missing columns: {', '.join(missing_columns)})"
+                        f"{filename} (Extra columns: {', '.join(extra_columns) or None}, " +
+                        f"Missing columns: {', '.join(missing_columns) or None})"
                     )
         df_result = self.data_process.create_dataframe(
             pd.DataFrame({'identifier': filenames, 'result': results})
