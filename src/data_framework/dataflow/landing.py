@@ -55,8 +55,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 self.payload_response.success = True
             else:
                 raise Exception(
-                    'The input file has failed quality controls. ' +
-                    f'Check results in {self.quality_controls.results_table.table_config.full_name} table'
+                    'The input file has failed quality controls. Check controls results table for more information'
                 )
         except Exception as e:
             self.logger.error(
