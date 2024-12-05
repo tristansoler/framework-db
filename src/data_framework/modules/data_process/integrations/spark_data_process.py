@@ -70,7 +70,7 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.dynamicAllocation.maxExecutors", '10'),
             
             # TODO: Set dynamic values from config
-            #("spark.executor.instances", f'{json_config.hardware.instances}'),
+            ("spark.executor.instances", '2'),
             ("spark.executor.memory", f'{json_config.hardware.ram}m'),
             ("spark.executor.cores", f'{json_config.hardware.cores}')
             #("spark.driver.cores", f'{json_config.hardware.driver_cores}')
