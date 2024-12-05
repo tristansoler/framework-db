@@ -31,6 +31,8 @@ from pyspark.sql.types import (
 import time
 import random
 
+iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException']
+
 class SparkDataProcess(DataProcessInterface):
 
     def __init__(self):
@@ -167,7 +169,7 @@ class SparkDataProcess(DataProcessInterface):
                 df_result = self.spark.sql(query)
                 break
             except Exception as exception:
-                if 'ConcurrentModificationExceptio' in str(exception) and attempt < max_retries - 1:
+                if any(word in str(exception) for word in iceberg_exceptions) and attempt < max_retries - 1:
                     logger.warning(exception)
                     time.sleep(random.randint(1, 20))
                 else:
@@ -217,7 +219,7 @@ class SparkDataProcess(DataProcessInterface):
                     response = WriteResponse(success=True, error=None)
                     break
                 except Exception as exception:
-                    if 'ConcurrentModificationExceptio' in str(exception) and attempt < max_retries - 1:
+                    if any(word in str(exception) for word in iceberg_exceptions) and attempt < max_retries - 1:
                         logger.warning(exception)
                         time.sleep(random.randint(1, 20))
                     else:
