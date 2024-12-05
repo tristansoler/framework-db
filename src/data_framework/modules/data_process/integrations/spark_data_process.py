@@ -28,6 +28,8 @@ from pyspark.sql.types import (
     DecimalType
 )
 
+import time
+import random
 
 class SparkDataProcess(DataProcessInterface):
 
@@ -159,7 +161,17 @@ class SparkDataProcess(DataProcessInterface):
         return response
 
     def _execute_query(self, query: str) -> DataFrame:
-        df_result = self.spark.sql(query)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                df_result = self.spark.sql(query)
+                break
+            except Exception as exception:
+                if 'ConcurrentModificationExceptio' in str(exception) and attempt < max_retries - 1:
+                    logger.warning(exception)
+                    time.sleep(random.randint(1, 20))
+                else:
+                    raise exception
         return df_result
 
     def read_table(self, database: str, table: str, filter: str = None, columns: List[str] = None) -> ReadResponse:
@@ -198,8 +210,18 @@ class SparkDataProcess(DataProcessInterface):
             # Select only necessary columns of the dataframe
             dataframe = self._select_table_columns(dataframe, table_config)
             # Insert dataframe into table
-            dataframe.writeTo(table_name).append()
-            response = WriteResponse(success=True, error=None)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    dataframe.writeTo(table_name).append()
+                    response = WriteResponse(success=True, error=None)
+                    break
+                except Exception as exception:
+                    if 'ConcurrentModificationExceptio' in str(exception) and attempt < max_retries - 1:
+                        logger.warning(exception)
+                        time.sleep(random.randint(1, 20))
+                    else:
+                        raise exception
         except Exception as e:
             logger.error(e)
             response = WriteResponse(success=False, error=e)
