@@ -1,6 +1,6 @@
 from abc import ABC
 from data_framework.modules.config.core import config, Config
-from data_framework.modules.config.model.flows import TableDict, DatabaseTable, OutputReport
+from data_framework.modules.config.model.flows import TableDict, DatabaseTable, OutputReport, ExecutionMode
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
@@ -105,47 +105,69 @@ class DataFlowInterface(ABC):
             if name_of_staging_table_to_casting
             else name_of_raw_table
         )
-        casting_table = self.target_tables.table(name_of_staging_table_to_casting)
 
-        partition = f'{input_table.partition_field}={self.config.parameters.file_date}'
+        partition_field = input_table.partition_field
+        file_date = self.config.parameters.file_date
+
+        executio_mode = self.config.parameters.execution_mode
+
+        if executio_mode == ExecutionMode.FULL.value:
+            partition_field = None
+            file_date = None
+
+        casting_table = self.target_tables.table(name_of_staging_table_to_casting)
 
         response = self.data_process.datacast(
             input_table.database_relation,
             input_table.table,
             casting_table.database_relation,
             casting_table.table,
-            input_table.partition_field,
-            self.config.parameters.file_date
+            partition_field,
+            file_date
         )
 
         if response.success:
             df = response.data
-            self.logger.info(f'Read {df.count()} rows from {input_table.full_name} with partition {partition}')
+            
+            if executio_mode == ExecutionMode.FULL.value:
+                self.logger.info(f'[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name}')
+            else:
+                self.logger.info(f"[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name} with partition {input_table.sql_where}")
             return df
         else:
             self.logger.error(
-                f'Error reading data from {input_table.full_name} with partition {partition}: {response.error}'
+                f'[ExecutionMode:{executio_mode.value}] Error reading data from {input_table.full_name} with filter {input_table.sql_where}: {response.error}'
             )
+
             raise response.error
 
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
 
-        partition = f'{input_table.partition_field}={self.config.parameters.file_date}'
+        executio_mode = self.config.parameters.execution_mode
+
+        sql_where = input_table.sql_where
+
+        if executio_mode == ExecutionMode.FULL.value:
+            sql_where = None
 
         response = self.data_process.read_table(
             database=input_table.database_relation,
             table=input_table.table,
-            filter=input_table.sql_where
+            filter=sql_where
         )
 
         if response.success:
             df = response.data
-            self.logger.info(f'Read {df.count()} rows from {input_table.full_name} with partition {partition}')
+
+            if executio_mode == ExecutionMode.FULL.value:
+                self.logger.info(f'[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name}')
+            else:
+                self.logger.info(f"[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name} with partition {sql_where}")
             return df
         else:
             self.logger.error(
-                f'Error reading data from {input_table.full_name} with partition {partition}: {response.error}'
+                f'[ExecutionMode:{executio_mode.value}] Error reading data from {input_table.full_name} with filter {sql_where}: {response.error}'
             )
             raise response.error
 

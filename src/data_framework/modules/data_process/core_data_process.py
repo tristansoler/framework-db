@@ -19,7 +19,8 @@ class CoreDataProcess(object):
     def _data_process(cls) -> DataProcessInterface:
         technology = config().current_process_config().processing_specifications.technology
         if technology == Technologies.EMR.value:
-            from data_framework.modules.data_process.integrations.spark_data_process import SparkDataProcess
+            from data_framework.modules.data_process.integrations.spark.spark_data_process import SparkDataProcess
+            
             return SparkDataProcess()
         elif technology == Technologies.LAMBDA.value:
             # TODO: pandas integration

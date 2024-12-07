@@ -16,7 +16,8 @@ from data_framework.modules.config.model.flows import (
     OutputReport,
     GenericProcess,
     TableDict,
-    CSVSpecsReport
+    CSVSpecsReport,
+    VolumetricExpectation
 )
 import threading
 import sys
@@ -37,7 +38,8 @@ class ConfigSetup:
     _models = (
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
-        Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport
+        Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport,
+        VolumetricExpectation
     )
 
     def __new__(cls, *args, **kwargs):
@@ -119,6 +121,7 @@ class ConfigSetup:
 
         try:
             for field, field_type in fieldtypes.items():
+                default_value = None
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
@@ -142,10 +145,13 @@ class ConfigSetup:
                             for field_item in json_file.get(field)
                         ]
                 else:
-                    default_value = None
                     if hasattr(model, field):
                         default_value = getattr(model, field)
-                    kwargs[field] = json_file.get(field, default_value)
+                        
+                    if json_file:
+                        kwargs[field] = json_file.get(field, default_value)
+                    else:
+                        kwargs[field] = default_value
         except Exception as e:
             import traceback
             expection = type(e).__name__
@@ -155,6 +161,7 @@ class ConfigSetup:
             # Imprimir la información de la excepción
             print(
                 f"""
+                    vars: field:{field} field_type:{field_type} parameters:{parameters} json_file:{json_file} default_value:{default_value}
                     Exception: {expection}
                     Error: {error}
                     Trace:

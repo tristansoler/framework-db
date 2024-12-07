@@ -27,7 +27,7 @@ from pyspark.sql.types import (
     TimestampType,
     DecimalType
 )
-
+from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 import time
 import random
 
@@ -50,7 +50,7 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
             # Configure Iceberg warehouse
-            ("spark.sql.catalog.iceberg_catalog.warehouse", f"{json_config.spark_configuration.warehouse}/"),
+            ("spark.sql.catalog.iceberg_catalog.warehouse", "default_warehouse/"),
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
             ("spark.hadoop.hive.exec.dynamic.partition.mode", "nonstrict"),
@@ -64,23 +64,34 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
             ("spark.sql.catalogImplementation", "hive"),
 
+            # Garbage Collection
+            ("spark.executor.extraJavaOptions", '-XX:+UseG1GC'),
+            ("spark.driver.extraJavaOptions", '-XX:+UseG1GC'),
+
+
+            ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
+            ("spark.sql.autoBroadcastJoinThreshold", "-1"),
+
             # Configure hardware
-            ("spark.dynamicAllocation.enabled", 'true'),
-            ("spark.dynamicAllocation.initialExecutors", '2'),
-            ("spark.dynamicAllocation.maxExecutors", '10'),
-            
-            # TODO: Set dynamic values from config
-            ("spark.executor.instances", '2'),
-            ("spark.executor.memory", f'{json_config.hardware.ram}m'),
-            ("spark.executor.cores", f'{json_config.hardware.cores}')
             #("spark.driver.cores", f'{json_config.hardware.driver_cores}')
             
         ])
-        
+
+        volumetric_expectation = json_config.spark_configuration.volumetric_expectation
+        dynamic_config = DynamicConfig.recommend_spark_config(
+            dataset_size_gb=volumetric_expectation.data_size_gb,
+            avg_file_size_mb=volumetric_expectation.avg_file_size_mb
+        )
+
+        spark_config.setAll(pairs=dynamic_config.items())
 
         # Add custom configurations
         for custom_config in json_config.spark_configuration.custom_configuration:
             spark_config.set(custom_config.parameter, custom_config.value)
+
+
+        logger.info(spark_config.getAll())
+        
         # Create Spark session
         self.spark = SparkSession.builder \
             .config(conf=spark_config) \

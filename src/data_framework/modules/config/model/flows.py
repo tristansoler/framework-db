@@ -25,31 +25,43 @@ class LandingFileFormat(Enum):
     JSON = "json"
     EXCEL = "xls"
 
+class ExecutionMode(Enum):
+    DELTA = "delta"
+    FULL = "full"
 
 @dataclass
 class Hardware:
-    ram: int = 4096
+    ram: int = 4
     cores: int = 2
-    disk: int = 512
+    disk: int = 20
 
+@dataclass
+class VolumetricExpectation:
+    data_size_gb: float = 0.1
+    avg_file_size_mb: int = 100
 
 @dataclass
 class CustomConfiguration:
     parameter: str
     value: str
 
-
 @dataclass
 class SparkConfiguration:
-    catalog: str
-    warehouse: Database
+    full_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
+    delta_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
     custom_configuration: List[CustomConfiguration] = field(default_factory=list)
 
+    @property
+    def volumetric_expectation(self) -> VolumetricExpectation:
+        from data_framework.modules.config.core import config
+        if config().parameters.execution_mode == ExecutionMode.FULL.value:
+            return self.full_volumetric_expectation
+        
+        return self.delta_volumetric_expectation
 
 @dataclass
 class ProcessingSpecifications:
     technology: Technologies
-    hardware: Hardware
     spark_configuration: Optional[SparkConfiguration] = None
 
 
@@ -82,8 +94,8 @@ class Parameters:
     process: str
     table: str
     source_file_path: str
-    file_name: str
     file_date: Optional[str]
+    execution_mode: ExecutionMode = ExecutionMode.DELTA.value
 
     @property
     def region(self) -> str:
@@ -109,7 +121,7 @@ class DatabaseTable:
     database: Database
     table: str
     primary_keys: Optional[list] = field(default_factory=list)
-    partition_field: str = "datadate"
+    partition_field: str = "datadate" #TODO: data_date
 
     @property
     def database_relation(self) -> str:

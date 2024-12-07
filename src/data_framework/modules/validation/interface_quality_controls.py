@@ -136,7 +136,7 @@ class ThresholdResult:
 class ControlResult:
     master_id: int
     table_id: str
-    outcome: ControlOutcome = ControlOutcome()
+    outcome = ControlOutcome()
     detail: str = ''
     initial_date: date = datetime.now()
     end_date: date = None

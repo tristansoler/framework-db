@@ -1,5 +1,4 @@
 {
-  "project_id": "morningstar",
   "data_framework": {
     "core_version": "last"
   },
@@ -20,6 +19,12 @@
               "date_located_filename": {
                 "regex": "(\\d{4})(\\d{2})(\\d{2})"
               }
+            },
+            "validations": {
+              "validate_extension": true,
+              "validate_filename": true,
+              "validate_csv": true,
+              "validate_columns": true
             }
           },
           "output_file": {
@@ -29,7 +34,7 @@
           "processing_specifications": {
             "technology": "emr",
             "hardware": {
-              "ram": 512
+              "ram": 4096
             },
             "spark_configuration": {
               "default_catalog": true,
@@ -39,18 +44,18 @@
         },
         "raw_to_staging": {
           "source_tables": {
-            "morningstar_valuation_prod": {
+            "prod": {
               "database": "funds_raw",
-              "table": "morningstar_valuation_prod",
+              "table": "morningstar_rips_prod",
               "primary_keys": [
                 "performanceid",
                 "date",
                 "datadate"
               ]
             },
-            "morningstar_valuation_correction": {
+            "correction": {
               "database": "funds_raw",
-              "table": "morningstar_valuation_correction",
+              "table": "morningstar_rips_correction",
               "primary_keys": [
                 "performanceid",
                 "date",
@@ -59,9 +64,9 @@
             }
           },
           "target_tables": {
-            "morningstar_valuations": {
+            "morningstar_rips": {
               "database": "funds_staging",
-              "table": "morningstar_valuations",
+              "table": "morningstar_rips",
               "primary_keys": [
                 "performanceid",
                 "date",
@@ -71,75 +76,149 @@
           },
           "processing_specifications": {
             "technology": "emr",
-            "hardware": {
-              "ram": 512
-            },
             "spark_configuration": {
-              "default_catalog": true,
-              "warehouse": "funds_staging"
+              "full_volumetric_expectation": {
+                "data_size_gb": 400,
+                "avg_file_size_mb": 200
+              }
             }
           }
-        },
+        },  
         "staging_to_common": {
           "source_tables": {
-            "morningstar_valuations": {
+            "morningstar_rips": {
               "database": "funds_staging",
-              "table": "morningstar_valuations",
+              "table": "morningstar_rips",
               "primary_keys": [
                 "performanceid",
                 "date",
                 "datadate"
               ]
-            }
+            },
+            "cross_reference_ids": {
+              "database": "funds_common",
+              "table": "cross_reference_ids",
+              "primary_keys": ["reference_source_id",
+              "reference_provider_id"]
+            },
+            "master_providers": {
+              "database": "funds_common",
+              "table": "master_providers",
+              "primary_keys": ["provider_id"]
+            },
+            "master_products_valuations": {
+              "database": "funds_common",
+              "table": "master_products_valuations",
+              "primary_keys": ["valuation_id"]
+            },
+            "fact_products_valuations_results": {
+              "database": "funds_common",
+              "table": "fact_products_valuations_results",
+              "primary_keys": [
+                "valuation_id",
+                "wm_id",
+                "value_date"
+              ]
+            }            
           },
           "target_tables": {
-            "morningstar_valuations": {
+            "morningstar_rips": {
               "database": "funds_common",
-              "table": "morningstar_valuations",
+              "table": "morningstar_rips",
               "primary_keys": [
                 "performanceid",
                 "date",
                 "datadate"
               ]
-            }
+            },
+            "fact_products_valuations_results": {
+              "database": "funds_common",
+              "table": "fact_products_valuations_results",
+              "primary_keys": [
+                "valuation_id",
+                "wm_id",
+                "value_date"
+              ]
+            },
+            "controls_series": {
+              "database": "funds_common",
+              "table": "controls_series",
+              "primary_keys": [
+                "wm_id",
+                "value_date"
+              ]
+            }            
           },
           "processing_specifications": {
             "technology": "emr",
-            "hardware": {
-              "ram": 512
-            },
             "spark_configuration": {
               "default_catalog": true,
-              "warehouse": "funds_staging"
+              "warehouse": "funds_staging",
+              "full_volumetric_expectation": {
+                "data_size_gb": 400,
+                "avg_file_size_mb": 200
+              }
             }
           }
         }
       }
     },
-    "morningstar_valuation_prod": {
+    "prod": {
+      "config_match_by": {
+        "file_name": "*_PROD.*"
+      },
       "processes": {
         "landing_to_raw": {
           "incoming_file": {
-            "filename_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_PROD.ZIP",
-            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_PROD.TXT"
+            "filename_pattern": "RIPS_REG_ROW_\\d{8}_PROD.ZIP",
+            "filename_unzipped_pattern": "RIPS_REG_ROW_\\d{8}_PROD.TXT"
           },
           "output_file": {
-            "table": "morningstar_valuation_prod"
+            "table": "morningstar_rips_prod"
           }
         },
-        "raw_to_staging": {},
+        "raw_to_staging": {
+          "processing_specifications": {
+            "hardware": {
+              "ram": 4
+            },
+            "spark_configuration": {
+              "custom_configuration": [
+                {
+                  "parameter": "spark.sql.shuffle.partitions",
+                  "value": "200"
+                },
+                {
+                  "parameter": "spark.executor.memoryOverhead",
+                  "value": "2g"
+                },
+                {
+                  "parameter": "spark.sql.files.maxPartitionBytes",
+                  "value": "128MB"
+                },
+                {
+                  "parameter": "spark.sql.files.openCostInBytes",
+                  "value": "4MB"
+                }
+              ]
+            }
+          }
+        },
         "staging_to_common": {}
       }
     },
-    "morningstar_valuation_correction": {
+    "correction": {
+      "config_match_by": {
+        "file_name": "*_CORRECTION.*"
+      },
       "processes": {
         "landing_to_raw": {
           "incoming_file": {
-            "filename_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_CORRECTION.ZIP",
-            "filename_unzipped_pattern": "RTPP_REG_ROW_TYPE_VALUATION_V2_\\d{8}_CORRECTION.TXT"
+            "filename_pattern": "RIPS_REG_ROW_\\d{8}_CORRECTION.ZIP",
+            "filename_unzipped_pattern": "RIPS_REG_ROW_\\d{8}_CORRECTION.TXT"
           },
           "output_file": {
-            "table": "morningstar_valuation_correction"
+            "table": "morningstar_rips_correction"
           }
         },
         "raw_to_staging": {},
