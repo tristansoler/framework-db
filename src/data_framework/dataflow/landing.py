@@ -28,7 +28,8 @@ class ProcessingCoordinator(DataFlowInterface):
         if self.parameters.execution_mode == ExecutionMode.DELTA:
             self.process_file()
         else:
-            response = self.storage.list_files(layer=Layer.LANDING, prefix="morningstar_rips/on_demand/")
+            prefix = f'{self.output_file.table}/on_demand/'
+            response = self.storage.list_files(layer=Layer.LANDING, prefix=prefix)
             for s3_key in response.result:
                 current_file = Path(s3_key).name
 
