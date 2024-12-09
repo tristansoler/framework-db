@@ -39,6 +39,12 @@ class ListResponse:
     error: str
     result: list
 
+@dataclass
+class PathResponse:
+    success: bool
+    error: str
+    path: str
+
 
 class CoreStorageInterface(ABC):
 
@@ -64,4 +70,8 @@ class CoreStorageInterface(ABC):
 
     @abstractmethod
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
+        pass
+
+    @abstractmethod
+    def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
         pass

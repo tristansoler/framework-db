@@ -68,9 +68,6 @@ class DynamicConfig:
         elif dataset_size_gb < 10:
             driver_memory_gb = min(4, max_memory_per_executor_gb)
             driver_cores = 2
-        elif dataset_size_gb < 100:
-            driver_memory_gb = min(8, max_memory_per_executor_gb)
-            driver_cores = 2
         elif dataset_size_gb < 500:
             driver_memory_gb = min(8, max_memory_per_executor_gb)
             driver_cores = 2
@@ -81,16 +78,20 @@ class DynamicConfig:
 
     @classmethod
     def determine_disk_size(cls, dataset_size_gb: float) -> int:
-        if dataset_size_gb < 20:
-            return 20
-        elif dataset_size_gb < 40:
-            return 50
+        # Clamps between 20 and 200
+        if dataset_size_gb < 1:
+            disk = 20
+        elif dataset_size_gb < 10:
+            disk = 50
         elif dataset_size_gb < 100:
-            return 100
+            disk = 100
         elif dataset_size_gb < 500:
-            return 200
+            disk = 200
         else:
-            return 200
+            disk = 200
+        
+        return max(20, min(disk, 200))
+        
     @classmethod
     def determine_memory_overhead_factor(cls, dataset_size_gb: float) -> float:
         if dataset_size_gb < 1:
@@ -103,6 +104,47 @@ class DynamicConfig:
             return 0.25
         else:
             return 0.3
+    
+    @classmethod
+    def adjust_resources_to_emr_serverless_constraints(cls, cpu: int, memory_gb: int) -> (int, int):
+        # Adjust CPU and memory to EMR Serverless resource constraints
+        # 1 vCPU -> 2-8GB (1GB increments)
+        # 2 vCPU -> 4-16GB (1GB increments)
+        # 4 vCPU -> 8-30GB (1GB increments)
+        # 8 vCPU ->16-60GB (4GB increments)
+        # 16 vCPU ->32-120GB (8GB increments)
+
+        if cpu <= 1:
+            cpu = 1
+            min_mem, max_mem, increment = 2, 8, 1
+        elif cpu <= 2:
+            cpu = 2
+            min_mem, max_mem, increment = 4, 16, 1
+        elif cpu <= 4:
+            cpu = 4
+            min_mem, max_mem, increment = 8, 30, 1
+        elif cpu <= 8:
+            cpu = 8
+            min_mem, max_mem, increment = 16, 60, 4
+        else:
+            cpu = 16
+            min_mem, max_mem, increment = 32, 120, 8
+
+        if memory_gb < min_mem:
+            memory_gb = min_mem
+        elif memory_gb > max_mem:
+            memory_gb = max_mem
+
+        # Align memory to the allowed increment
+        if increment > 1:
+            remainder = memory_gb % increment
+            if remainder != 0:
+                # Round down to the nearest allowed increment
+                memory_gb = memory_gb - remainder
+                if memory_gb < min_mem:
+                    memory_gb = min_mem
+
+        return cpu, memory_gb
         
     @classmethod
     def recommend_spark_config(
@@ -126,7 +168,7 @@ class DynamicConfig:
         # Driver
         driver_memory_gb, driver_cores = cls.determine_driver_settings(dataset_size_gb, max_memory_per_executor_gb)
         
-        # Particiones
+        # Partitions
         base_partitions = max(20, int(dataset_size_gb * 20))
         desired_partitions_by_file_size = max(50, int((avg_file_size_mb / 256) * base_partitions))
         shuffle_partitions = max(base_partitions, desired_partitions_by_file_size)
@@ -137,12 +179,17 @@ class DynamicConfig:
         # Disco
         disk_gb = cls.determine_disk_size(dataset_size_gb)
         memory_overhead_factor = cls.determine_memory_overhead_factor(dataset_size_gb)
+
+        # Adjust executor resources to EMR Serverless constraints
+        adj_executor_cpu, adj_executor_mem = cls.adjust_resources_to_emr_serverless_constraints(base_cores, executor_memory_gb)
+        # Adjust driver resources as well
+        adj_driver_cpu, adj_driver_mem = cls.adjust_resources_to_emr_serverless_constraints(driver_cores, driver_memory_gb)
         
         config = {
-            "spark.dynamicAllocation.enabled": 'true',
-            "spark.dynamicAllocation.initialExecutors": '2',
-            "spark.dynamicAllocation.minExecutors": '2',
-            "spark.dynamicAllocation.maxExecutors": '14'
+            "spark.dynamicAllocation.enabled": "true",
+            "spark.dynamicAllocation.initialExecutors": "3",
+            "spark.dynamicAllocation.minExecutors": "2",
+            "spark.dynamicAllocation.maxExecutors": str(max_executors)
         }
         
         if job_type == "batch":
@@ -161,10 +208,10 @@ class DynamicConfig:
                 config["spark.dynamicAllocation.maxExecutors"] = str(min(max_executors, 15))
                 
         config.update({
-            "spark.executor.memory": f"{executor_memory_gb}g",
-            "spark.executor.cores": str(base_cores),
-            "spark.driver.memory": f"{driver_memory_gb}g",
-            "spark.driver.cores": str(driver_cores),
+            "spark.executor.memory": f"{adj_executor_mem}g",
+            "spark.executor.cores": str(adj_executor_cpu),
+            "spark.driver.memory": f"{adj_driver_mem}g",
+            "spark.driver.cores": str(adj_driver_cpu),
             "spark.shuffle.partitions": str(shuffle_partitions),
             # "spark.sql.iceberg.handle-timestamp-without-timezone": "true",
             # "spark.sql.iceberg.merge-snapshot.enabled": "true",
@@ -175,14 +222,14 @@ class DynamicConfig:
             "spark.emr-serverless.memoryOverheadFactor": str(memory_overhead_factor)
         })
         
-        if dataset_size_gb > 100 and job_type == "batch":
-            config.update({
-                "spark.sql.adaptive.enabled": "true",
-                "spark.sql.adaptive.shuffle.targetPostShuffleInputSize": "256m",
-                "spark.sql.parquet.enableVectorizedReader": "true"
-            })
-        elif dataset_size_gb < 1:
-            config["spark.sql.adaptive.enabled"] = "false"
+        # if dataset_size_gb > 100 and job_type == "batch":
+        #     config.update({
+        #         "spark.sql.adaptive.enabled": "true",
+        #         "spark.sql.adaptive.shuffle.targetPostShuffleInputSize": "256m",
+        #         "spark.sql.parquet.enableVectorizedReader": "true"
+        #     })
+        # elif dataset_size_gb < 1:
+        #     config["spark.sql.adaptive.enabled"] = "false"
             
         # InIntegration with EMR Serverless API
         # if emr_application_id is not None:

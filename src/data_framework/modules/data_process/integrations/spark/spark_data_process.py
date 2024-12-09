@@ -3,12 +3,14 @@ from data_framework.modules.data_process.interface_data_process import (
     ReadResponse,
     WriteResponse,
 )
+from data_framework.modules.storage.core_storage import Storage, Database
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.config.model.flows import (
-    DatabaseTable
+    DatabaseTable,
+    ExecutionMode
 )
 from typing import List, Any
 from pyspark import SparkConf
@@ -30,6 +32,7 @@ from pyspark.sql.types import (
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 import time
 import random
+from traceback import format_exc
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException']
 
@@ -49,7 +52,6 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalog.iceberg_catalog", "org.apache.iceberg.spark.SparkCatalog"),
             ("spark.jars", "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar"),
             ("spark.sql.catalog.iceberg_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog"),
-            # Configure Iceberg warehouse
             ("spark.sql.catalog.iceberg_catalog.warehouse", "default_warehouse/"),
             # Hive
             ("spark.hadoop.hive.exec.dynamic.partition", "true"),
@@ -64,16 +66,7 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
             ("spark.sql.catalogImplementation", "hive"),
 
-            # Garbage Collection
-            ("spark.executor.extraJavaOptions", '-XX:+UseG1GC'),
-            ("spark.driver.extraJavaOptions", '-XX:+UseG1GC'),
-
-
             ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
-            ("spark.sql.autoBroadcastJoinThreshold", "-1"),
-
-            # Configure hardware
-            #("spark.driver.cores", f'{json_config.hardware.driver_cores}')
             
         ])
 
@@ -99,6 +92,7 @@ class SparkDataProcess(DataProcessInterface):
             .getOrCreate()
         # Others
         self.catalogue = CoreCatalogue()
+        self.storage = Storage()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'iceberg_catalog.{database}.{table}'
@@ -131,45 +125,43 @@ class SparkDataProcess(DataProcessInterface):
                     {sql_update_with_pks}
                 {stratgy}
             """
-            logger.debug(f'merge sql \n{merge_query}')
+            logger.info(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
         except Exception as e:
-            logger.error(e)
-            response = WriteResponse(success=False, error=e)
+            message_error = f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
+            response = WriteResponse(success=False, error=message_error)
         return response
 
     def datacast(
         self,
-        database_source: str,
-        table_source: str,
-        database_target: str,
-        table_target: str,
-        partition_field: str = None,
-        partition_value: str = None
+        table_source: DatabaseTable,
+        table_target: DatabaseTable
     ) -> ReadResponse:
         try:
-            cast = Cast()
-            query = cast.get_query_datacast(
-                database_source,
-                table_source,
-                database_target,
-                table_target,
-                partition_field,
-                partition_value
+            csv_read_config = config().processes.landing_to_raw.incoming_file.csv_specs.read_config()
+
+            read_path = self.storage.raw_layer_path(
+                database=table_source.database,
+                table_name=table_source.table
             )
 
-            logger.debug(
-                f"""
-                    query of casting
-                    {query}
-                """
+            df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
+           
+            if config().parameters.execution_mode == ExecutionMode.DELTA:
+                df_raw = df_raw.filter(table_source.sql_where)
+            
+            df_raw.createOrReplaceTempView("data_to_cast")
+
+            query = Cast().get_query_datacast(
+                table_source=table_source,
+                table_target=table_target
             )
 
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
-            logger.error(e)
+            logger.error(f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}')
             response = ReadResponse(success=False, error=e, data=None)
         return response
 

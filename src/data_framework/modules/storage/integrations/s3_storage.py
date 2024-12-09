@@ -8,9 +8,10 @@ from data_framework.modules.storage.interface_storage import (
     Layer,
     ReadResponse,
     WriteResponse,
-    ListResponse
+    ListResponse,
+    PathResponse
 )
-
+from data_framework.modules.config.model.flows import ExecutionMode
 
 class S3Storage(CoreStorageInterface):
     def __init__(self):
@@ -85,15 +86,34 @@ class S3Storage(CoreStorageInterface):
 
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         bucket = self._build_s3_bucket_name(layer=layer)
+        paginator = self.s3.get_paginator('list_objects_v2')
         logger.info(f'Listing files from bucket {bucket} with prefix {prefix}')
+        keys = []
+        
         try:
-            list_response = self.s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-            status_code = list_response['ResponseMetadata']['HTTPStatusCode']
-            if status_code == 200:
-                file_keys = [obj['Key'] for obj in list_response.get('Contents', [])]
-                return ListResponse(error=None, success=True, result=file_keys)
-            else:
-                return ListResponse(error=f'Status code: {status_code}', success=False, result=[])
+            for pagination_response in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                status_code = pagination_response['ResponseMetadata']['HTTPStatusCode']
+                
+                if status_code == 200 and 'Contents' in pagination_response:
+                    file_keys = [obj['Key'] for obj in pagination_response.get('Contents', [])]
+                    keys.extend(file_keys)
+
+            return ListResponse(error=None, success=True, result=keys)
         except ClientError as error:
             logger.error(f'Error listing files: {error}')
             return ListResponse(error=error, success=False, result=[])
+    
+    def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
+        s3_bucket = self._build_s3_bucket_name(layer=Layer.RAW)
+        partitions = {}
+
+        # if config().parameters.execution_mode == ExecutionMode.DELTA:
+        #     partitions["datadate"] = config().parameters.file_date #TODO: change to data_date
+
+        s3_key = self._build_s3_key_path(database=database, table=table_name, partitions=partitions)
+
+        final_path = f's3://{s3_bucket}/{s3_key}'
+
+        response = PathResponse(success=True, error=None, path=final_path)
+
+        return response

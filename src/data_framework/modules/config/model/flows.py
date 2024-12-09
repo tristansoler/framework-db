@@ -4,21 +4,18 @@ from enum import Enum
 from typing import Optional, List, Tuple, Union
 import os
 
-
 class Environment(Enum):
     LOCAL = "local"
-    REMOTE = "remote"
-
+    DEVELOP = "develop"
+    PRODUCTION = "production"
 
 class DateLocated(Enum):
     FILENAME = "filename"
     COLUMN = "column"
 
-
 class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
-
 
 class LandingFileFormat(Enum):
     CSV = "csv"
@@ -54,7 +51,7 @@ class SparkConfiguration:
     @property
     def volumetric_expectation(self) -> VolumetricExpectation:
         from data_framework.modules.config.core import config
-        if config().parameters.execution_mode == ExecutionMode.FULL.value:
+        if config().parameters.execution_mode == ExecutionMode.FULL:
             return self.full_volumetric_expectation
         
         return self.delta_volumetric_expectation
@@ -78,6 +75,20 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
+    special_character: Optional[str] = None
+
+    def read_config(self) -> dict:
+        config = {
+            "header": str(self.header).lower(),
+            "encoding": self.encoding,
+            "sep": self.delimiter
+        }
+
+        if self.special_character:
+            config["quote"] = self.special_character
+
+        return config
+        
 
 
 @dataclass
@@ -95,7 +106,7 @@ class Parameters:
     table: str
     source_file_path: str
     file_date: Optional[str]
-    execution_mode: ExecutionMode = ExecutionMode.DELTA.value
+    execution_mode: ExecutionMode = ExecutionMode.DELTA
 
     @property
     def region(self) -> str:
@@ -125,7 +136,7 @@ class DatabaseTable:
 
     @property
     def database_relation(self) -> str:
-        return f'rl_{self.database}'
+        return f'rl_{self.database.value}'
 
     @property
     def full_name(self) -> str:
@@ -134,7 +145,10 @@ class DatabaseTable:
     @property
     def sql_where(self) -> str:
         from data_framework.modules.config.core import config
-        return f"{self.partition_field} = '{config().parameters.file_date}'"
+        
+        if config().parameters.execution_mode == ExecutionMode.DELTA:
+            return f"{self.partition_field} = '{config().parameters.file_date}'"
+        return ""
 
 
 @dataclass

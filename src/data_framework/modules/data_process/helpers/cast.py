@@ -2,17 +2,18 @@
 """
 
 from data_framework.modules.utils.logger import logger
-from data_framework.modules.config.core import config
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.config.model.flows import (
+    DatabaseTable,
+    ExecutionMode
+)
 from functools import reduce
 from typing import Any
-
 
 class Cast:
 
     def __init__(self):
         self.logger = logger
-        self.config = config()
 
     def decode_cast(self, col, coltype):
         q = f'{col}'
@@ -53,32 +54,24 @@ class Cast:
 
     def get_query_datacast(
         self,
-        database_source: str,
-        table_source: str,
-        database_target: str,
-        table_target: str,
-        partition_field: str = None,
-        partition_value: str = None
+        table_source: DatabaseTable,
+        table_target: DatabaseTable
     ) -> Any:
 
         catalogue = CoreCatalogue._catalogue
         partitioned = True
-        schema_source = catalogue.get_schema(database_source, table_source)
+
+        schema_source = catalogue.get_schema(table_source.database_relation, table_source.table)
         l_cols_source = schema_source.schema.get_column_names(partitioned)
 
-        schema_target = catalogue.get_schema(database_target, table_target)
+        schema_target = catalogue.get_schema(table_target.database_relation, table_target.table)
         l_types_target = schema_target.schema.get_type_columns(partitioned)
-
-        if partition_field and partition_value:
-            where_source = f"{partition_field} = '{partition_value}'"
-        else:
-            where_source = ""
 
         query = self.get_query_datacast_simple(
             l_cols_source,
             l_types_target,
-            f"{database_source}.{table_source}",
-            where_source
+            "data_to_cast",
+            table_source.sql_where
         )
 
         return query

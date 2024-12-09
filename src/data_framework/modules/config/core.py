@@ -21,6 +21,7 @@ from data_framework.modules.config.model.flows import (
 )
 import threading
 import sys
+from enum import Enum
 
 T = TypeVar('T')
 
@@ -125,6 +126,12 @@ class ConfigSetup:
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
                         kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
+                elif isinstance(field_type, type) and issubclass(field_type, Enum):
+                    value = json_file.get(field)
+                    if value:
+                        kwargs[field] = field_type(value)
+                    else:
+                        kwargs[field] = field_type(getattr(model, field))
                 elif isinstance(field_type, type) and issubclass(field_type, (TableDict)) and json_file:
                     tables = {}
                     for table_name, config in json_file.get(field, {}).items():

@@ -18,11 +18,11 @@ class CoreDataProcess(object):
     @LazyClassProperty
     def _data_process(cls) -> DataProcessInterface:
         technology = config().current_process_config().processing_specifications.technology
-        if technology == Technologies.EMR.value:
+        if technology == Technologies.EMR:
             from data_framework.modules.data_process.integrations.spark.spark_data_process import SparkDataProcess
             
             return SparkDataProcess()
-        elif technology == Technologies.LAMBDA.value:
+        elif technology == Technologies.LAMBDA:
             # TODO: pandas integration
             logger.error(
                 'Lambda technology not implemented yet in data framework. ' +
@@ -31,29 +31,27 @@ class CoreDataProcess(object):
 
     @classmethod
     def merge(cls, dataframe: Any, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
-        return cls._data_process.merge(
+        response = cls._data_process.merge(
             dataframe=dataframe,
             table_config=table_config,
             custom_strategy=custom_strategy
         )
 
+        if response.success == False:
+            logger.error(response.error)
+            raise response.error
+
+        return response
+
     @classmethod
     def datacast(
         cls,
-        database_source: str,
-        table_source: str,
-        database_target: str,
-        table_target: str,
-        partition_field: str = None,
-        partition_value: str = None
+        table_source: DatabaseTable,
+        table_target: DatabaseTable
     ) -> ReadResponse:
         return cls._data_process.datacast(
-            database_source=database_source,
             table_source=table_source,
-            database_target=database_target,
-            table_target=table_target,
-            partition_field=partition_field,
-            partition_value=partition_value
+            table_target=table_target
         )
 
     @classmethod

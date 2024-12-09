@@ -1,4 +1,5 @@
 from data_framework.modules.dataflow.interface_dataflow import *
+from data_framework.modules.config.model.flows import DateLocated
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
@@ -20,18 +21,45 @@ class ProcessingCoordinator(DataFlowInterface):
 
         self.storage = Storage()
         self.catalogue = CoreCatalogue()
+        self.parameters = self.config.parameters
 
     def process(self):
 
+        if self.parameters.execution_mode == ExecutionMode.DELTA:
+            self.process_file()
+        else:
+            response = self.storage.list_files(layer=Layer.LANDING, prefix="morningstar_rips/on_demand/")
+            for s3_key in response.result:
+                current_file = Path(s3_key).name
+
+                pattern = self.incoming_file.filename_pattern
+                valid_filename = bool(re.match(pattern, current_file))
+
+                if valid_filename and '2018' not in current_file:
+                    try:
+                        self.logger.info(f'[PROCESSING] {current_file}')
+                        self.parameters.source_file_path = s3_key
+                        self.process_file()
+                        self.logger.info(f'[DONE] {current_file}')
+                    except Exception:
+                        self.logger.info(f'[ERROR] {current_file}')
+                else:
+                    self.logger.info(f'[SKIP] {current_file}')
+
+    def process_file(self):
         try:
-            self.payload_response.file_name = Path(self.config.parameters.source_file_path).name
+            self.payload_response.file_name = Path(self.parameters.source_file_path).name
             # Read file from S3
             file_contents = self.read_data()
             # Obtain file date
             file_date = self.obtain_file_date()
             self.payload_response.file_date = file_date
             # Apply controls
-            file_validator = FileValidator(file_date, file_contents)
+            file_validator = FileValidator(
+                file_date=file_date,
+                file_contents=file_contents,
+                source_file_path=self.parameters.source_file_path
+            )
 
             self.quality_controls.set_parent(file_validator)
             response = self.quality_controls.validate(
@@ -59,7 +87,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 )
         except Exception as e:
             self.logger.error(
-                f'Error processing file {self.config.parameters.source_file_path}\n' +
+                f'Error processing file {self.parameters.source_file_path}\n' +
                 f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
             )
             raise e
@@ -67,12 +95,12 @@ class ProcessingCoordinator(DataFlowInterface):
     def read_data(self) -> dict:
         response = self.storage.read(
             layer=Layer.LANDING,
-            key_path=self.config.parameters.source_file_path
+            key_path=self.parameters.source_file_path
         )
         if not response.success:
             raise response.error
         s3_file_content = BytesIO(response.data)
-        filename = Path(self.config.parameters.source_file_path).name
+        filename = Path(self.parameters.source_file_path).name
         file_contents = {
             filename: {
                 'content': s3_file_content,
@@ -100,20 +128,20 @@ class ProcessingCoordinator(DataFlowInterface):
         return file_contents
 
     def obtain_file_date(self) -> str:
-        if self.incoming_file.csv_specs.date_located == 'filename':
+        if self.incoming_file.csv_specs.date_located == DateLocated.FILENAME:
             pattern = self.incoming_file.csv_specs.date_located_filename.regex
-            match = re.search(pattern, self.config.parameters.source_file_path)
+            match = re.search(pattern, self.parameters.source_file_path)
             year, month, day = match.groups()
             return f'{year}-{month}-{day}'
-        elif self.incoming_file.csv_specs.date_located == 'column':
+        elif self.incoming_file.csv_specs.date_located == DateLocated.COLUMN:
             # TODO: implementar
             return ''
 
     def compare_with_previous_file(self, file_contents: dict) -> bool:
-        prefix = f'{config().parameters.dataflow}/processed'
+        prefix = f'{self.parameters.dataflow}/processed'
         response = self.storage.list_files(Layer.LANDING, prefix)
         if response.success:
-            incoming_filename = Path(self.config.parameters.source_file_path).name
+            incoming_filename = Path(self.parameters.source_file_path).name
             last_file_key = self.get_last_processed_file_key(incoming_filename, response.result)
             if last_file_key:
                 self.logger.info('Comparing with last processed file')
@@ -177,11 +205,10 @@ class ProcessingCoordinator(DataFlowInterface):
         for filename, file_data in file_contents.items():
             if file_data['validate']:
                 file_data['content'].seek(0)
-                # TODO: revisar
-                database_enum = [db for db in Database if db.value == self.output_file.database][0]
+
                 self.storage.write(
                     layer=Layer.RAW,
-                    database=database_enum,
+                    database=self.output_file.database,
                     table=self.output_file.table,
                     data=file_data['content'],
                     partitions=partitions,

@@ -15,16 +15,11 @@
               "header": true,
               "encoding": "UTF-8",
               "delimiter": ";",
+              "special_character": "\"",
               "date_located": "filename",
               "date_located_filename": {
                 "regex": "(\\d{4})(\\d{2})(\\d{2})"
               }
-            },
-            "validations": {
-              "validate_extension": true,
-              "validate_filename": true,
-              "validate_csv": true,
-              "validate_columns": true
             }
           },
           "output_file": {

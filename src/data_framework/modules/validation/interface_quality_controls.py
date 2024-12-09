@@ -1,8 +1,8 @@
-from data_framework.modules.config.model.flows import DatabaseTable
+from data_framework.modules.config.model.flows import DatabaseTable, Database
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Union, List
 from datetime import datetime, date
@@ -10,6 +10,7 @@ import pandas as pd
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import col, udf, abs
 from pyspark.sql.types import BooleanType
+
 
 
 @dataclass
@@ -32,7 +33,7 @@ class ControlsTable:
     def master(cls) -> Any:
         return cls(
             table_config=DatabaseTable(
-                database='funds_common',
+                database=Database.FUNDS_COMMON,
                 table='controls_master',
                 primary_keys=['control_master_id']
             ),
@@ -49,7 +50,7 @@ class ControlsTable:
     def dataset(cls) -> Any:
         return cls(
             table_config=DatabaseTable(
-                database='funds_common',
+                database=Database.FUNDS_COMMON,
                 table='controls_dataset',
                 primary_keys=['control_master_id', 'control_table_id']
             ),
@@ -77,7 +78,7 @@ class ControlsTable:
     def results(cls) -> Any:
         return cls(
             table_config=DatabaseTable(
-                database='funds_common',
+                database=Database.FUNDS_COMMON,
                 table='controls_results',
                 primary_keys=[
                     'control_master_id', 'control_table_id',
@@ -99,7 +100,7 @@ class ControlsTable:
     @staticmethod
     def filter_rules(layer: Layer, table_config: DatabaseTable) -> str:
         return f"""
-            control_database = '{table_config.database}' AND
+            control_database = '{table_config.database.value}' AND
             control_table = '{table_config.table}' AND
             control_layer = '{layer.value}' AND
             active_control_indicator
@@ -136,7 +137,7 @@ class ThresholdResult:
 class ControlResult:
     master_id: int
     table_id: str
-    outcome = ControlOutcome()
+    outcome: ControlOutcome = field(default_factory=ControlOutcome)
     detail: str = ''
     initial_date: date = datetime.now()
     end_date: date = None

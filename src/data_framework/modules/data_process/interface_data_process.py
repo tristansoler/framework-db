@@ -28,12 +28,8 @@ class DataProcessInterface(ABC):
     @abstractmethod
     def datacast(
         self,
-        database_source: str,
-        table_source: str,
-        database_target: str,
-        table_target: str,
-        partition_field: str = None,
-        partition_value: str = None
+        table_source: DatabaseTable,
+        table_target: DatabaseTable
     ) -> ReadResponse:
         pass
 

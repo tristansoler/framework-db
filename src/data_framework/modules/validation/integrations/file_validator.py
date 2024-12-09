@@ -8,11 +8,13 @@ import re
 from io import BytesIO
 from pathlib import Path
 import pandas as pd
-
+from data_framework.modules.config.model.flows import (
+    Parameters
+)
 
 class FileValidator:
 
-    def __init__(self, file_date: str, file_contents: dict):
+    def __init__(self, file_date: str, file_contents: dict, source_file_path: str):
         self.config = config()
         self.current_process_config = self.config.current_process_config()
         self.logger = logger
@@ -22,7 +24,7 @@ class FileValidator:
         self.incoming_file_config = self.current_process_config.incoming_file
         self.output_file_config = self.current_process_config.output_file
         self.file_contents = file_contents
-        self.file_name = Path(self.config.parameters.source_file_path).name
+        self.file_name = Path(source_file_path).name
         self.file_date = file_date
 
     def validate_filename_pattern(self, rule: ControlRule) -> None:

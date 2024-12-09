@@ -100,43 +100,33 @@ class DataFlowInterface(ABC):
         name_of_staging_table_to_casting: str = None
     ) -> Any:
         input_table = self.source_tables.table(name_of_raw_table)
+
         name_of_staging_table_to_casting = (
             name_of_staging_table_to_casting
             if name_of_staging_table_to_casting
             else name_of_raw_table
         )
 
-        partition_field = input_table.partition_field
-        file_date = self.config.parameters.file_date
-
         executio_mode = self.config.parameters.execution_mode
-
-        if executio_mode == ExecutionMode.FULL.value:
-            partition_field = None
-            file_date = None
 
         casting_table = self.target_tables.table(name_of_staging_table_to_casting)
 
         response = self.data_process.datacast(
-            input_table.database_relation,
-            input_table.table,
-            casting_table.database_relation,
-            casting_table.table,
-            partition_field,
-            file_date
+            table_source=input_table,
+            table_target=casting_table
         )
 
         if response.success:
             df = response.data
             
-            if executio_mode == ExecutionMode.FULL.value:
-                self.logger.info(f'[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name}')
+            if executio_mode == ExecutionMode.FULL:
+                self.logger.info(f'[ExecutionMode:{executio_mode.value}] Read from {input_table.full_name}')
             else:
-                self.logger.info(f"[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name} with partition {input_table.sql_where}")
+                self.logger.info(f"[ExecutionMode:{executio_mode.value}] Read {df.count()} rows from {input_table.full_name} with partition {input_table.sql_where}")
             return df
         else:
             self.logger.error(
-                f'[ExecutionMode:{executio_mode.value}] Error reading data from {input_table.full_name} with filter {input_table.sql_where}: {response.error}'
+                f'[ExecutionMode:{executio_mode}] Error reading data from {input_table.full_name} with filter {input_table.sql_where}: {response.error}'
             )
 
             raise response.error
@@ -202,7 +192,7 @@ class DataFlowInterface(ABC):
     def save_payload_response(self):
         if self.config.parameters.process == 'landing_to_raw':
             dq_table = DataQualityTable(
-                database=self.__current_process_config.output_file.database,
+                database=self.__current_process_config.output_file.database.value,
                 table=self.__current_process_config.output_file.table
             )
             self.payload_response.data_quality.tables.append(dq_table)
@@ -211,7 +201,7 @@ class DataFlowInterface(ABC):
                 table_info = self.__current_process_config.target_tables.table(table_key=tale_name)
 
                 dq_table = DataQualityTable(
-                    database=table_info.database,
+                    database=table_info.database.value,
                     table=table_info.table
                 )
 
