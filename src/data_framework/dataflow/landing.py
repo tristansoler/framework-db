@@ -35,7 +35,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 pattern = self.incoming_file.filename_pattern
                 valid_filename = bool(re.match(pattern, current_file))
 
-                if valid_filename and '2018' not in current_file:
+                if valid_filename:
                     try:
                         self.logger.info(f'[PROCESSING] {current_file}')
                         self.parameters.source_file_path = s3_key
