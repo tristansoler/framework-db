@@ -3,6 +3,7 @@ from data_framework.modules.data_process.interface_data_process import (
     ReadResponse,
     WriteResponse,
 )
+from data_framework.modules.data_process.integrations.spark import utils as utils
 from data_framework.modules.storage.core_storage import Storage, Database
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
@@ -67,7 +68,6 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalogImplementation", "hive"),
 
             ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
-            
         ])
 
         volumetric_expectation = json_config.spark_configuration.volumetric_expectation
@@ -146,7 +146,11 @@ class SparkDataProcess(DataProcessInterface):
                 table_name=table_source.table
             )
 
-            df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
+            schema_source = self.catalogue.get_schema(table_source.database_relation, table_source.table)
+
+            spark_schema = utils.convert_schema(schema=schema_source)
+
+            df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
            
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)

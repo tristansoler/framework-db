@@ -14,7 +14,7 @@ import boto3
 class CatalogueAWSGlue(CatalogueInterface):
 
     def __init__(self):
-
+        self.cache = {}
         self.logger = logger
         self.config = config()
         self.glue_client = boto3.client('glue', region_name=config().parameters.region)
@@ -101,7 +101,13 @@ class CatalogueAWSGlue(CatalogueInterface):
         :param table: name of the table
         :return: SchemaResponse
         """
+        
         try:
+            cache_key = f'schema.{database}.{table}'
+            
+            if cache_key in self.cache:
+                return self.cache.get(cache_key)
+        
             response_gc = self.glue_client.get_table(DatabaseName=database, Name=table)
 
             if 'Errors' in response_gc and response_gc['Errors']:
@@ -134,8 +140,11 @@ class CatalogueAWSGlue(CatalogueInterface):
                 l_schema = [Column(elem[0], elem[1], elem[2], elem[3]) for elem in l_schema_zip]
                 schema = Schema(columns=l_schema)
                 response = SchemaResponse(success=True, error=None, schema=schema)
+                
+                self.cache[cache_key] = response
+                
                 return response
-
+            
         except Exception as error:
             msg_error = f"Error in get_schema(database='{database}' table='{table}'): {str(error)}"
             raise Exception(msg_error)
