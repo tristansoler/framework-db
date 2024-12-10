@@ -167,7 +167,7 @@ class TableDict:
 
     def table_key(self, database: str, table: str) -> Union[str, None]:
         for table_key, database_table in self.tables.items():
-            if database_table.database == database and database_table.table == table:
+            if database_table.database.value == database and database_table.table == table:
                 return table_key
         raise ValueError(f'Table key for {database}.{table} not found in config file')
 
