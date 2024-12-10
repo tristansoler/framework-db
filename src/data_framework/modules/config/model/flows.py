@@ -53,7 +53,7 @@ class SparkConfiguration:
         from data_framework.modules.config.core import config
         if config().parameters.execution_mode == ExecutionMode.FULL:
             return self.full_volumetric_expectation
-        
+
         return self.delta_volumetric_expectation
 
 @dataclass
@@ -88,7 +88,7 @@ class CSVSpecs:
             config["quote"] = self.special_character
 
         return config
-        
+
 
 
 @dataclass
@@ -105,6 +105,7 @@ class Parameters:
     process: str
     table: str
     source_file_path: str
+    file_name: Optional[str]
     file_date: Optional[str]
     execution_mode: ExecutionMode = ExecutionMode.DELTA
 
@@ -145,7 +146,7 @@ class DatabaseTable:
     @property
     def sql_where(self) -> str:
         from data_framework.modules.config.core import config
-        
+
         if config().parameters.execution_mode == ExecutionMode.DELTA:
             return f"{self.partition_field} = '{config().parameters.file_date}'"
         return ""
