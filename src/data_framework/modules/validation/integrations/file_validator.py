@@ -8,9 +8,7 @@ import re
 from io import BytesIO
 from pathlib import Path
 import pandas as pd
-from data_framework.modules.config.model.flows import (
-    Parameters
-)
+
 
 class FileValidator:
 

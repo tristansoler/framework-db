@@ -12,7 +12,6 @@ from pyspark.sql.functions import col, udf, abs
 from pyspark.sql.types import BooleanType
 
 
-
 @dataclass
 class ControlsResponse:
     success: bool
@@ -67,8 +66,8 @@ class ControlsTable:
                 "control_algorithm_type",
                 "control_threshold_min",
                 "control_threshold_max",
-                "control_threshold_rag_max",
                 "control_threshold_rag_min",
+                "control_threshold_rag_max",
                 "control_threshold_type",
                 "blocking_control_indicator"
             ]
@@ -179,9 +178,7 @@ class ControlResult:
 
 class ThresholdType(Enum):
     STANDARD = "Standard"
-    PERCENTAGE = "Percentage"
     ABSOLUTE = "Absolute"
-    COUNT = "Count"
     BINARY = "Binary"
 
     @classmethod
@@ -194,8 +191,8 @@ class ControlThreshold:
     threshold_type: str
     threshold_max: Union[float, None]
     threshold_min: Union[float, None]
-    # threshold_rag_max: Union[float, None]
-    # threshold_rag_min: Union[float, None]
+    threshold_rag_min: Union[float, None]
+    threshold_rag_max: Union[float, None]
 
     def validate(self) -> None:
         threshold_types = ThresholdType.available_threshold_types()
@@ -219,12 +216,38 @@ class ControlThreshold:
                 f'{self.threshold_min} > {self.threshold_max}'
             )
         if (
+            self.threshold_rag_min is not None and
+            self.threshold_rag_max is not None and
+            self.threshold_rag_min > self.threshold_rag_max
+        ):
+            raise ValueError(
+                'Invalid threshold percentages. Min threshold is greater than max threshold: ' +
+                f'{self.threshold_rag_min} > {self.threshold_rag_max}'
+            )
+        if (
+            self.threshold_rag_min is not None and not
+            0.0 <= self.threshold_rag_min <= 1.0
+        ):
+            raise ValueError(
+                'Invalid min threshold percentage. Must be expressed between 0.0 and 1.0: ' +
+                f'{self.threshold_rag_min}'
+            )
+        if (
+            self.threshold_rag_max is not None and not
+            0.0 <= self.threshold_rag_max <= 1.0
+        ):
+            raise ValueError(
+                'Invalid max threshold percentage. Must be expressed between 0.0 and 1.0: ' +
+                f'{self.threshold_rag_max}'
+            )
+        if (
             self.threshold_min is not None and
             self.threshold_max is not None and
             self.threshold_type == ThresholdType.BINARY.value
         ):
             raise ValueError(
-                'Invalid threshold limits. Binary threshold does not need threshold limits'
+                f'Invalid threshold limits. {ThresholdType.BINARY.value} ' +
+                'threshold does not need threshold limits'
             )
 
     def apply_threshold(self, df_result: DataFrame) -> ThresholdResult:
@@ -241,10 +264,6 @@ class ControlThreshold:
             return self.calculate_standard_threshold(df_result)
         elif self.threshold_type == ThresholdType.ABSOLUTE.value:
             return self.calculate_absolute_threshold(df_result)
-        elif self.threshold_type == ThresholdType.PERCENTAGE.value:
-            return self.calculate_percentage_threshold(df_result)
-        elif self.threshold_type == ThresholdType.COUNT.value:
-            return self.calculate_count_threshold(df_result)
         elif self.threshold_type == ThresholdType.BINARY.value:
             return self.calculate_binary_threshold(df_result)
 
@@ -276,40 +295,6 @@ class ControlThreshold:
         valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
         # Records with False result
         invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Calculate threshold
-        total_records = df_result.count()
-        invalid_records = len(invalid_ids)
-        # Build response
-        result = ThresholdResult(
-            total_records=total_records,
-            invalid_records=invalid_records,
-            valid_identifiers=valid_ids,
-            invalid_identifiers=invalid_ids
-        )
-        return result
-
-    def calculate_percentage_threshold(self, df_result: DataFrame) -> ThresholdResult:
-        # Records with True result
-        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Records with False result
-        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Calculate threshold
-        total_records = df_result.count()
-        invalid_records = len(invalid_ids)
-        # Build response
-        result = ThresholdResult(
-            total_records=total_records,
-            invalid_records=invalid_records,
-            valid_identifiers=valid_ids,
-            invalid_identifiers=invalid_ids
-        )
-        return result
-
-    def calculate_count_threshold(self, df_result: DataFrame) -> ThresholdResult:
-        # Records with True result
-        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Records with False result
-        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
         # Calculate threshold
         total_records = df_result.count()
         invalid_records = len(invalid_ids)
@@ -433,15 +418,15 @@ class ControlRule:
                 threshold_min=(
                     None if pd.isna(rule['control_threshold_min'])
                     else rule['control_threshold_min']
+                ),
+                threshold_rag_min=(
+                    None if pd.isna(rule['control_threshold_rag_min'])
+                    else rule['control_threshold_rag_min']
+                ),
+                threshold_rag_max=(
+                    None if pd.isna(rule['control_threshold_rag_max'])
+                    else rule['control_threshold_rag_max']
                 )
-                # threshold_rag_max=(
-                #     None if pd.isna(rule['control_threshold_rag_max'])
-                #     else rule['control_threshold_rag_max']
-                # ),
-                # threshold_rag_min=(
-                #     None if pd.isna(rule['control_threshold_rag_min'])
-                #     else rule['control_threshold_rag_min']
-                # )
             ),
             is_blocker=rule['blocking_control_indicator'],
             result=ControlResult(
