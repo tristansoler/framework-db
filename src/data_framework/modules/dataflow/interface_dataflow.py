@@ -22,10 +22,10 @@ class DataQuality:
 
 
 @dataclass
-class OutputResult:
+class OutputResponse:
     name: str
     success: bool = False
-    error: str = None
+    error: Any = None
 
 
 @dataclass
@@ -35,7 +35,15 @@ class PayloadResponse:
     file_name: str = None
     file_date: str = None
     data_quality: DataQuality = field(default_factory=DataQuality)
-    outputs: List[OutputResult] = field(default_factory=list)
+    outputs: List[OutputResponse] = field(default_factory=list)
+
+    def get_failed_outputs(self) -> List[str]:
+        failed_outputs = [
+            output.name
+            for output in self.outputs
+            if not output.success
+        ]
+        return failed_outputs
 
 
 class DataFlowInterface(ABC):
@@ -118,7 +126,7 @@ class DataFlowInterface(ABC):
 
         if response.success:
             df = response.data
-            
+
             if executio_mode == ExecutionMode.FULL:
                 self.logger.info(f'[ExecutionMode:{executio_mode.value}] Read from {input_table.full_name}')
             else:

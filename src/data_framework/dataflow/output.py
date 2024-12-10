@@ -1,4 +1,4 @@
-from data_framework.modules.dataflow.interface_dataflow import DataFlowInterface, OutputResult
+from data_framework.modules.dataflow.interface_dataflow import DataFlowInterface, OutputResponse
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.model.flows import OutputReport
@@ -27,27 +27,31 @@ class ProcessingCoordinator(DataFlowInterface):
                 try:
                     self.generate_output_file(config_output)
                 except Exception as e:
-                    error_message = f'Error generating output {config_output.name}: {e}'
-                    self.logger.error(error_message)
-
-                    output = OutputResult(
+                    self.logger.error(f'Error generating output {config_output.name}: {e}')
+                    output = OutputResponse(
                         name=config_output.name,
                         success=False,
-                        error=error_message
+                        error=e
                     )
-
                     self.payload_response.outputs.append(output)
                     self.payload_response.success = False
                 else:
-                    output = OutputResult(
+                    output = OutputResponse(
                         name=config_output.name,
                         success=True
                     )
-
                     self.payload_response.outputs.append(output)
         except Exception as e:
             self.logger.error(f'Error generating outputs: {e}')
             self.payload_response.success = False
+            raise e
+        else:
+            if not self.payload_response.success:
+                failed_outputs = self.payload_response.get_failed_outputs()
+                raise Exception(
+                    f"Error generating the following outputs: {', '.join(failed_outputs)}. " +
+                    "Check logs for more information"
+                )
 
     def generate_output_file(self, config_output: OutputReport) -> None:
         self.logger.info(f'Generating output {config_output.name}')
