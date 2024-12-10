@@ -48,10 +48,12 @@ class ProcessingCoordinator(DataFlowInterface):
         else:
             if not self.payload_response.success:
                 failed_outputs = self.payload_response.get_failed_outputs()
-                raise Exception(
+                error_message = (
                     f"Error generating the following outputs: {', '.join(failed_outputs)}. " +
                     "Check logs for more information"
                 )
+                self.logger.error(error_message)
+                raise Exception(error_message)
 
     def generate_output_file(self, config_output: OutputReport) -> None:
         self.logger.info(f'Generating output {config_output.name}')
