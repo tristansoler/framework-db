@@ -146,9 +146,9 @@ class SparkDataProcess(DataProcessInterface):
                 table_name=table_source.table
             )
 
-            schema_source = self.catalogue.get_schema(table_source.database_relation, table_source.table)
+            schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
 
-            spark_schema = utils.convert_schema(schema=schema_source)
+            spark_schema = utils.convert_schema(schema=schema_response.schema)
 
             df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
            
