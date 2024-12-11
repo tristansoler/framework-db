@@ -215,8 +215,10 @@ class QualityControls(InterfaceQualityControls):
         query = rule.algorithm.algorithm_description.format(
             # TODO: estos parámetros son custom para cada regla
             file_date=self.config.parameters.file_date,
+            file_name=self.config.parameters.file_name,
         )
         self.logger.info(f'Executing query {query}')
+        # TODO: aplicar query sobre dataframe de datos en vez de BBDD
         response = self.data_process.query(query)
         if response.success:
             result = rule.calculate_result(response.data)

@@ -124,9 +124,10 @@ class ProcessingCoordinator(DataFlowInterface):
         )
 
     def format_string(self, string_to_format: str, date_format: str = '%Y-%m-%d') -> str:
-        # TODO: permitir argumentos custom (p.ej. country en JPM)
+        # TODO: permitir argumentos custom
         formatted_string = string_to_format.format(
             file_date=self.config.parameters.file_date,
+            file_name=self.config.parameters.file_name,
             current_date=datetime.now(TIME_ZONE).strftime(date_format)
         )
         return formatted_string
