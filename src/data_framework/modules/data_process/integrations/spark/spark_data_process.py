@@ -35,7 +35,7 @@ import time
 import random
 from traceback import format_exc
 
-iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException']
+iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
 
 class SparkDataProcess(DataProcessInterface):
 
@@ -76,7 +76,7 @@ class SparkDataProcess(DataProcessInterface):
             avg_file_size_mb=volumetric_expectation.avg_file_size_mb
         )
 
-        spark_config.setAll(pairs=dynamic_config.items())
+        #spark_config.setAll(pairs=dynamic_config.items())
 
         # Add custom configurations
         for custom_config in json_config.spark_configuration.custom_configuration:
