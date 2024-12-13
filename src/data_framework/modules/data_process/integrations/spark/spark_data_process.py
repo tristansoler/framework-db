@@ -4,7 +4,7 @@ from data_framework.modules.data_process.interface_data_process import (
     WriteResponse,
 )
 from data_framework.modules.data_process.integrations.spark import utils as utils
-from data_framework.modules.storage.core_storage import Storage, Database
+from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
@@ -37,11 +37,12 @@ from traceback import format_exc
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
 
+
 class SparkDataProcess(DataProcessInterface):
 
     def __init__(self):
         # Obtain Spark configuration for the current process
-        json_config = config().current_process_config().processing_specifications            
+        json_config = config().current_process_config().processing_specifications
 
         spark_config = SparkConf() \
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
@@ -82,9 +83,8 @@ class SparkDataProcess(DataProcessInterface):
         for custom_config in json_config.spark_configuration.custom_configuration:
             spark_config.set(custom_config.parameter, custom_config.value)
 
-
         logger.info(spark_config.getAll())
-        
+
         # Create Spark session
         self.spark = SparkSession.builder \
             .config(conf=spark_config) \
@@ -115,7 +115,7 @@ class SparkDataProcess(DataProcessInterface):
                 WHEN NOT MATCHED THEN
                     INSERT *
             """
-            
+
             if custom_strategy:
                 stratgy = custom_strategy
 
@@ -151,10 +151,10 @@ class SparkDataProcess(DataProcessInterface):
             spark_schema = utils.convert_schema(schema=schema_response.schema)
 
             df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
-           
+
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
-            
+
             df_raw.createOrReplaceTempView("data_to_cast")
 
             query = Cast().get_query_datacast(
@@ -400,6 +400,24 @@ class SparkDataProcess(DataProcessInterface):
             else:
                 expression = f.lit(None)
             dataframe = dataframe.withColumn(new_column, expression)
+            response = ReadResponse(success=True, error=None, data=dataframe)
+        except Exception as e:
+            logger.error(e)
+            response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def stack_columns(
+        self,
+        dataframe: Any,
+        source_columns: List[str],
+        target_columns: List[str]
+    ) -> ReadResponse:
+        try:
+            n_columns = len(source_columns)
+            source_columns_str = ', '.join([f"'{column}', {column}" for column in source_columns])
+            target_columns_str = ', '.join(target_columns)
+            stack_expression = f"stack({n_columns}, {source_columns_str}) as ({target_columns_str})"
+            dataframe = dataframe.select(*source_columns).selectExpr(stack_expression)
             response = ReadResponse(success=True, error=None, data=dataframe)
         except Exception as e:
             logger.error(e)

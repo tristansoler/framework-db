@@ -20,7 +20,7 @@ class CoreDataProcess(object):
         technology = config().current_process_config().processing_specifications.technology
         if technology == Technologies.EMR:
             from data_framework.modules.data_process.integrations.spark.spark_data_process import SparkDataProcess
-            
+
             return SparkDataProcess()
         elif technology == Technologies.LAMBDA:
             # TODO: pandas integration
@@ -37,7 +37,7 @@ class CoreDataProcess(object):
             custom_strategy=custom_strategy
         )
 
-        if response.success == False:
+        if not response.success:
             logger.error(response.error)
             raise response.error
 
@@ -133,4 +133,17 @@ class CoreDataProcess(object):
             reference_column=reference_column,
             available_columns=available_columns,
             default_value=default_value
+        )
+
+    @classmethod
+    def stack_columns(
+        cls,
+        dataframe: Any,
+        source_columns: List[str],
+        target_columns: List[str]
+    ) -> ReadResponse:
+        return cls._data_process.stack_columns(
+            dataframe=dataframe,
+            source_columns=source_columns,
+            target_columns=target_columns
         )

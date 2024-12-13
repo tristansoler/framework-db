@@ -131,6 +131,14 @@ class ThresholdResult:
     valid_identifiers: List[str]
     invalid_identifiers: List[str]
 
+    @property
+    def unique_valid_identifiers(self) -> List[str]:
+        return list(set(self.valid_identifiers))
+
+    @property
+    def unique_invalid_identifiers(self) -> List[str]:
+        return list(set(self.invalid_identifiers))
+
 
 @dataclass
 class ControlResult:
@@ -338,6 +346,7 @@ class ControlThreshold:
 class AlgorithmType(Enum):
     PYTHON = "Python"
     SQL = "SQL"
+    REGEX = "Regex"
 
     @classmethod
     def available_algorithm_types(cls) -> List[str]:
@@ -391,6 +400,10 @@ class ControlRule:
     @property
     def id(self) -> str:
         return f"{self.master_id}:{self.table_id}"
+
+    @property
+    def field_list(self) -> List[str]:
+        return [column.strip() for column in self.field.split(',')]
 
     @classmethod
     def from_series(cls, rule: pd.Series) -> Any:

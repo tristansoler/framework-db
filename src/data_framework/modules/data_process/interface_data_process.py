@@ -91,3 +91,12 @@ class DataProcessInterface(ABC):
         default_value: Any = None
     ) -> ReadResponse:
         pass
+
+    @abstractmethod
+    def stack_columns(
+        self,
+        dataframe: Any,
+        source_columns: List[str],
+        target_columns: List[str]
+    ) -> ReadResponse:
+        pass

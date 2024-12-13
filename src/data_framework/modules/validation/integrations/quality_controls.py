@@ -15,7 +15,7 @@ from data_framework.modules.utils.debug import debug_code
 from typing import Any
 from traceback import format_exc
 import pandas as pd
-from pyspark.sql.functions import col, when
+from pyspark.sql.functions import col, when, lit
 from pyspark.sql import DataFrame
 
 
@@ -204,6 +204,8 @@ class QualityControls(InterfaceQualityControls):
                 self._compute_sql_rule(rule)
             elif rule.algorithm.algorithm_type == AlgorithmType.PYTHON.value:
                 self._compute_python_rule(rule, df_data)
+            elif rule.algorithm.algorithm_type == AlgorithmType.REGEX.value:
+                self._compute_regex_rule(rule, df_data)
             rule_result = rule.result.to_series()
             self.logger.info(f'Successfully computed rule {rule.id}')
             return rule_result
@@ -228,7 +230,6 @@ class QualityControls(InterfaceQualityControls):
             raise response.error
 
     def _compute_python_rule(self, rule: ControlRule, df_data: DataFrame) -> None:
-        # TODO: ver si realmente es necesario pasar el dataframe con los datos
         try:
             if not self.parent:
                 self.logger.error('QualityControls parent is not set. Configure it using set_parent method')
@@ -240,3 +241,20 @@ class QualityControls(InterfaceQualityControls):
                 validation_function(rule)
         except AttributeError as e:
             raise ValueError(f'Error executing Python function {function_name}: {e}')
+
+    def _compute_regex_rule(self, rule: ControlRule, df_data: DataFrame) -> None:
+        pattern = rule.algorithm.algorithm_description
+        columns = rule.field_list
+        target_columns = ['identifier', 'value']
+        response = self.data_process.stack_columns(df_data, columns, target_columns)
+        if not response.success:
+            raise response.error
+        df_result = response.data \
+            .withColumn('value', when(col('value').isNull(), lit('')).otherwise(col('value'))) \
+            .withColumn('result', col('value').rlike(pattern)) \
+            .select(['identifier', 'result'])
+        result = rule.calculate_result(df_result)
+        if result.valid_identifiers:
+            rule.result.add_detail(f"Valid columns: {', '.join(result.unique_valid_identifiers)}")
+        if result.invalid_identifiers:
+            rule.result.add_detail(f"Invalid columns: {', '.join(result.unique_invalid_identifiers)}")
