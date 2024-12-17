@@ -96,7 +96,7 @@ class ProcessingCoordinator(DataFlowInterface):
         """
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
         output_folder = self.parse_output_folder(config_output.name)
-        file_path = f"{self.config.parameters.dataflow}/{output_folder}/inbound/{filename}"
+        file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {file_path}')
         if config_output.file_format == "csv":
             csv_file = BytesIO()

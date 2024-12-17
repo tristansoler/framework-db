@@ -139,7 +139,7 @@ class ProcessingCoordinator(DataFlowInterface):
             return ''
 
     def compare_with_previous_file(self, file_contents: dict) -> bool:
-        prefix = f'{self.parameters.dataflow}/processed'
+        prefix = f'{self.config.project_id}/processed'
         response = self.storage.list_files(Layer.LANDING, prefix)
         if response.success:
             incoming_filename = Path(self.parameters.source_file_path).name
