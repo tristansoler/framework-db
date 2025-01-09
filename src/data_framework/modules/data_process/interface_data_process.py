@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Any
-from data_framework.modules.config.model.flows import (
-    DatabaseTable
-)
+from data_framework.modules.config.model.flows import DatabaseTable
 
 
 @dataclass
@@ -99,4 +97,20 @@ class DataProcessInterface(ABC):
         source_columns: List[str],
         target_columns: List[str]
     ) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def is_empty(self, dataframe: Any) -> bool:
+        pass
+
+    @abstractmethod
+    def count_rows(self, dataframe: Any) -> int:
+        pass
+
+    @abstractmethod
+    def select_columns(self, dataframe: Any, columns: List[str]) -> ReadResponse:
+        pass
+
+    @abstractmethod
+    def show_dataframe(self, dataframe: Any) -> WriteResponse:
         pass

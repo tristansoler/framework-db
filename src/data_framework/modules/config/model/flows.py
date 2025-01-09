@@ -115,6 +115,7 @@ class Parameters:
 
     @property
     def bucket_prefix(self) -> str:
+        # TODO: parametrizar por entorno
         return "aihd1airas3aihgdp"
 
 

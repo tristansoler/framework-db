@@ -9,10 +9,8 @@ from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
-from data_framework.modules.config.model.flows import (
-    DatabaseTable,
-    ExecutionMode
-)
+from data_framework.modules.config.model.flows import DatabaseTable, ExecutionMode
+from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
@@ -30,7 +28,6 @@ from pyspark.sql.types import (
     TimestampType,
     DecimalType
 )
-from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 import time
 import random
 from traceback import format_exc
@@ -184,6 +181,7 @@ class SparkDataProcess(DataProcessInterface):
         return df_result
 
     def read_table(self, database: str, table: str, filter: str = None, columns: List[str] = None) -> ReadResponse:
+        # TODO: use DatabaseTable instead of database and table strings
         try:
             table_name = self._build_complete_table_name(database=database, table=table)
             if columns:
@@ -282,10 +280,8 @@ class SparkDataProcess(DataProcessInterface):
                 )
             else:
                 for left_column, right_column in zip(left_on, right_on):
-                    if left_column != right_column:
-                        df_2 = df_2.withColumnRenamed(right_column, left_column)
+                    df_2 = df_2.withColumnRenamed(right_column, left_column)
                 df_result = df_1.join(df_2, on=left_on, how=how)
-            # TODO: revisar tipo de respuesta. ¿TransformationResponse?
             response = ReadResponse(success=True, error=None, data=df_result)
         except Exception as e:
             logger.error(e)
@@ -380,7 +376,7 @@ class SparkDataProcess(DataProcessInterface):
 
     def add_dynamic_column(
         self,
-        dataframe: Any,
+        dataframe: DataFrame,
         new_column: str,
         reference_column: str,
         available_columns: List[str],
@@ -408,11 +404,13 @@ class SparkDataProcess(DataProcessInterface):
 
     def stack_columns(
         self,
-        dataframe: Any,
+        dataframe: DataFrame,
         source_columns: List[str],
         target_columns: List[str]
     ) -> ReadResponse:
         try:
+            if len(target_columns) != 2:
+                raise ValueError(f'Must specify two columns as target_columns. Found {target_columns}')
             n_columns = len(source_columns)
             source_columns_str = ', '.join([f"'{column}', {column}" for column in source_columns])
             target_columns_str = ', '.join(target_columns)
@@ -422,4 +420,31 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
+        return response
+
+    def is_empty(self, dataframe: DataFrame) -> bool:
+        if dataframe is not None:
+            return dataframe.isEmpty()
+        else:
+            return True
+
+    def count_rows(self, dataframe: DataFrame) -> int:
+        return dataframe.count()
+
+    def select_columns(self, dataframe: DataFrame, columns: List[str]) -> ReadResponse:
+        try:
+            dataframe = dataframe.select(*columns)
+            response = ReadResponse(success=True, error=None, data=dataframe)
+        except Exception as e:
+            logger.error(e)
+            response = ReadResponse(success=False, error=e, data=dataframe)
+        return response
+
+    def show_dataframe(self, dataframe: DataFrame) -> WriteResponse:
+        try:
+            dataframe.show(truncate=False)
+            response = WriteResponse(success=True, error=None)
+        except Exception as e:
+            logger.error(e)
+            response = WriteResponse(success=False, error=e)
         return response

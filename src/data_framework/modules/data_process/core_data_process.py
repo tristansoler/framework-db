@@ -6,10 +6,7 @@ from data_framework.modules.data_process.interface_data_process import (
 )
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
-from data_framework.modules.config.model.flows import Technologies
-from data_framework.modules.config.model.flows import (
-    DatabaseTable
-)
+from data_framework.modules.config.model.flows import Technologies, DatabaseTable
 from typing import List, Any
 
 
@@ -23,11 +20,9 @@ class CoreDataProcess(object):
 
             return SparkDataProcess()
         elif technology == Technologies.LAMBDA:
-            # TODO: pandas integration
-            logger.error(
-                'Lambda technology not implemented yet in data framework. ' +
-                'Please choose EMR technology in your config file'
-            )
+            from data_framework.modules.data_process.integrations.pandas.pandas_data_process import PandasDataProcess
+
+            return PandasDataProcess()
 
     @classmethod
     def merge(cls, dataframe: Any, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
@@ -147,3 +142,19 @@ class CoreDataProcess(object):
             source_columns=source_columns,
             target_columns=target_columns
         )
+
+    @classmethod
+    def is_empty(cls, dataframe: Any) -> bool:
+        return cls._data_process.is_empty(dataframe=dataframe)
+
+    @classmethod
+    def count_rows(cls, dataframe: Any) -> int:
+        return cls._data_process.count_rows(dataframe=dataframe)
+
+    @classmethod
+    def select_columns(cls, dataframe: Any, columns: List[str]) -> ReadResponse:
+        return cls._data_process.select_columns(dataframe=dataframe, columns=columns)
+
+    @classmethod
+    def show_dataframe(cls, dataframe: Any) -> WriteResponse:
+        return cls._data_process.show_dataframe(dataframe=dataframe)

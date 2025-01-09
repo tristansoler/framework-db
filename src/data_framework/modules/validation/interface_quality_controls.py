@@ -1,4 +1,4 @@
-from data_framework.modules.config.model.flows import DatabaseTable, Database
+from data_framework.modules.config.model.flows import DatabaseTable, Database, Technologies
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
 from abc import ABC, abstractmethod
@@ -7,9 +7,6 @@ from enum import Enum
 from typing import Any, Union, List
 from datetime import datetime, date
 import pandas as pd
-from pyspark.sql import DataFrame
-from pyspark.sql.functions import col, udf, abs
-from pyspark.sql.types import BooleanType
 
 
 @dataclass
@@ -18,9 +15,9 @@ class ControlsResponse:
     table: DatabaseTable
     overall_result: bool
     error: Any = None
-    data: Union[DataFrame, None] = None
-    rules: Union[DataFrame, None] = None
-    results: Union[DataFrame, None] = None
+    data: Any = None
+    rules: Any = None
+    results: Any = None
 
 
 @dataclass
@@ -142,7 +139,7 @@ class ThresholdResult:
 
 @dataclass
 class ControlResult:
-    master_id: int
+    master_id: str
     table_id: str
     outcome: ControlOutcome = field(default_factory=ControlOutcome)
     detail: str = ''
@@ -258,7 +255,7 @@ class ControlThreshold:
                 'threshold does not need threshold limits'
             )
 
-    def apply_threshold(self, df_result: DataFrame) -> ThresholdResult:
+    def apply_threshold(self, df_result: Any) -> ThresholdResult:
         if (
             df_result is None or
             'identifier' not in df_result.columns or
@@ -275,17 +272,31 @@ class ControlThreshold:
         elif self.threshold_type == ThresholdType.BINARY.value:
             return self.calculate_binary_threshold(df_result)
 
-    def calculate_standard_threshold(self, df_result: DataFrame) -> ThresholdResult:
-        # Apply threshold and absolute value to each record
-        udf_function = udf(self.apply_threshold_limits, BooleanType())
-        df_result = df_result.withColumn('result_flag', udf_function(col('result')))
-        # Records with True result
-        valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Records with False result
-        invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Calculate threshold
-        total_records = df_result.count()
-        invalid_records = len(invalid_ids)
+    def calculate_standard_threshold(self, df_result: Any) -> ThresholdResult:
+        technology = config().current_process_config().processing_specifications.technology
+        if technology == Technologies.EMR:
+            from pyspark.sql.functions import col, udf
+            from pyspark.sql.types import BooleanType
+            # Apply threshold to each record
+            udf_function = udf(self.apply_threshold_limits, BooleanType())
+            df_result = df_result.withColumn('result_flag', udf_function(col('result')))
+            # Records with True result
+            valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Records with False result
+            invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Calculate threshold
+            total_records = df_result.count()
+            invalid_records = len(invalid_ids)
+        else:
+            # Apply threshold to each record
+            df_result['result_flag'] = df_result['result'].apply(self.apply_threshold_limits)
+            # Records with True result
+            valid_ids = df_result[df_result['result_flag']]['identifier'].tolist()
+            # Records with False result
+            invalid_ids = df_result[~df_result['result_flag']]['identifier'].tolist()
+            # Calculate threshold
+            total_records = len(df_result)
+            invalid_records = len(invalid_ids)
         # Build response
         result = ThresholdResult(
             total_records=total_records,
@@ -295,17 +306,31 @@ class ControlThreshold:
         )
         return result
 
-    def calculate_absolute_threshold(self, df_result: DataFrame) -> ThresholdResult:
-        # Apply threshold and absolute value to each record
-        udf_function = udf(self.apply_threshold_limits, BooleanType())
-        df_result = df_result.withColumn('result_flag', udf_function(abs(col('result'))))
-        # Records with True result
-        valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Records with False result
-        invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Calculate threshold
-        total_records = df_result.count()
-        invalid_records = len(invalid_ids)
+    def calculate_absolute_threshold(self, df_result: Any) -> ThresholdResult:
+        technology = config().current_process_config().processing_specifications.technology
+        if technology == Technologies.EMR:
+            from pyspark.sql.functions import col, udf, abs
+            from pyspark.sql.types import BooleanType
+            # Apply threshold and absolute value to each record
+            udf_function = udf(self.apply_threshold_limits, BooleanType())
+            df_result = df_result.withColumn('result_flag', udf_function(abs(col('result'))))
+            # Records with True result
+            valid_ids = df_result.filter(col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Records with False result
+            invalid_ids = df_result.filter(~col('result_flag')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Calculate threshold
+            total_records = df_result.count()
+            invalid_records = len(invalid_ids)
+        else:
+            # Apply threshold and absolute value to each record
+            df_result['result_flag'] = df_result['result'].abs().apply(self.apply_threshold_limits)
+            # Records with True result
+            valid_ids = df_result[df_result['result_flag']]['identifier'].tolist()
+            # Records with False result
+            invalid_ids = df_result[~df_result['result_flag']]['identifier'].tolist()
+            # Calculate threshold
+            total_records = len(df_result)
+            invalid_records = len(invalid_ids)
         # Build response
         result = ThresholdResult(
             total_records=total_records,
@@ -315,14 +340,25 @@ class ControlThreshold:
         )
         return result
 
-    def calculate_binary_threshold(self, df_result: DataFrame) -> ThresholdResult:
-        # Records with True result
-        valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Records with False result
-        invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
-        # Calculate threshold
-        total_records = df_result.count()
-        invalid_records = len(invalid_ids)
+    def calculate_binary_threshold(self, df_result: Any) -> ThresholdResult:
+        technology = config().current_process_config().processing_specifications.technology
+        if technology == Technologies.EMR:
+            from pyspark.sql.functions import col
+            # Records with True result
+            valid_ids = df_result.filter(col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Records with False result
+            invalid_ids = df_result.filter(~col('result')).select('identifier').rdd.flatMap(lambda x: x).collect()
+            # Calculate threshold
+            total_records = df_result.count()
+            invalid_records = len(invalid_ids)
+        else:
+            # Records with True result
+            valid_ids = df_result[df_result['result']]['identifier'].tolist()
+            # Records with False result
+            invalid_ids = df_result[~df_result['result']]['identifier'].tolist()
+            # Calculate threshold
+            total_records = len(df_result)
+            invalid_records = len(invalid_ids)
         # Build response
         result = ThresholdResult(
             total_records=total_records,
@@ -385,7 +421,7 @@ class ControlAlgorithm:
 
 @dataclass
 class ControlRule:
-    master_id: int
+    master_id: str
     table_id: str
     layer: str
     database_table: DatabaseTable
@@ -464,7 +500,7 @@ class ControlRule:
                 f'Available control levels: {", ".join(control_levels)}'
             )
 
-    def calculate_result(self, df_result: DataFrame) -> ThresholdResult:
+    def calculate_result(self, df_result: Any) -> ThresholdResult:
         threshold_result = self.threshold.apply_threshold(df_result)
         self.result.fill(threshold_result)
         return threshold_result
@@ -473,7 +509,7 @@ class ControlRule:
 class InterfaceQualityControls(ABC):
 
     @abstractmethod
-    def validate(self, layer: Layer, table_config: DatabaseTable, df_data: DataFrame = None) -> ControlsResponse:
+    def validate(self, layer: Layer, table_config: DatabaseTable, df_data: Any = None) -> ControlsResponse:
         pass
 
     @abstractmethod

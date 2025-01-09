@@ -10,6 +10,7 @@ class Layer(Enum):
     COMMON = "common"
     BUSINESS = "business"
     OUTPUT = "output"
+    ATHENA = "athena"
 
 
 class Database(Enum):
