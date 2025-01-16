@@ -17,18 +17,26 @@ from data_framework.modules.config.model.flows import (
     GenericProcess,
     TableDict,
     CSVSpecsReport,
-    VolumetricExpectation
+    VolumetricExpectation,
+    Platform
 )
 import threading
+import os
 import sys
 from enum import Enum
+import json
+from pathlib import Path
+import zipfile
+import boto3
 
 T = TypeVar('T')
 
 
-def config() -> Config:
-
-    return ConfigSetup()._instancia.config
+def config(parameters: dict = None, reset: bool = False) -> Config:
+    if ConfigSetup._instancia is None or reset:
+        return ConfigSetup(parameters)._instancia.config
+    else:
+        return ConfigSetup._instancia.config
 
 
 class ConfigSetup:
@@ -51,40 +59,81 @@ class ConfigSetup:
         return cls._instancia
 
     def __init__(self, parameters: dict = None):
+        try:
+            if not parameters:
+                parameters = {}
+                for i in range(1, len(sys.argv), 2):
+                    key = sys.argv[i].replace('--', '').replace('-', '_')
+                    value = sys.argv[i+1]
+                    parameters[key] = value
 
-        if not parameters:
-            parameters = {}
-            for i in range(1, len(sys.argv), 2):
-                key = sys.argv[i].replace('--', '').replace('-', '_')
-                value = sys.argv[i+1]
-                parameters[key] = value
+            data_framework_config = ConfigSetup.read_data_framework_config()
+            parameters['bucket_prefix'] = data_framework_config['s3_bucket_prefix']
 
-        local_file = parameters.get('local_file')
-        dataflow = parameters.get('dataflow')
-        json_config = ConfigSetup.read_config_file(dataflow=dataflow, local_file=local_file)
+            dataflow_config = ConfigSetup.read_dataflow_config(
+                dataflow=parameters.get('dataflow'),
+                local_file=parameters.get('local_file'),
+                environment=data_framework_config['environment'],
+                platform=data_framework_config.get('platform', Platform.DATA_PLATFORM.value)
+            )
 
-        self._instancia.config = ConfigSetup.parse_to_model(model=Config, parameters=parameters, json_file=json_config)
+            self._instancia.config = ConfigSetup.parse_to_model(
+                model=Config,
+                parameters=parameters,
+                json_file=dataflow_config
+            )
+        except Exception as e:
+            self._instancia.config = None
+            raise RuntimeError(f'Error initializing Data Framework config: {e}')
 
     @classmethod
-    def read_config_file(cls, dataflow: str, local_file: str) -> dict:
-        import json
-        from pathlib import Path
-
-        config_json = {}
-
-        if local_file is not None:
-            file = open(local_file)
-            config_json = dict(json.loads(file.read()))
+    def read_data_framework_config(cls) -> dict:
+        # Obtain AWS account ID
+        try:
+            sts_client = boto3.client('sts', region_name=os.environ["AWS_REGION"])
+            sts_client = boto3.client(
+                'sts',
+                region_name=os.environ["AWS_REGION"],
+                endpoint_url=f'https://sts.{os.environ["AWS_REGION"]}.amazonaws.com'
+            )
+            response = sts_client.get_caller_identity()
+            account_id = response['Account']
+        except Exception as e:
+            raise RuntimeError(f'Error obtaining AWS account ID for config setup: {e}')
+        # Read data framework config file
+        path_absolute = Path(__file__).resolve()
+        if 'data_framework.zip' in path_absolute.parts:
+            zip_index = path_absolute.parts.index('data_framework.zip')
+            zip_path = Path(*path_absolute.parts[:zip_index+1])
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                with z.open('data_framework/data_framework_config.json') as file:
+                    config_json = dict(json.loads(file.read()))
         else:
-            import zipfile
+            file_path = (path_absolute.parent / '../../data_framework_config.json').resolve()
+            with open(file_path) as file:
+                config_json = dict(json.loads(file.read()))
+        # Search account ID in config file
+        current_config = config_json.get(account_id)
+        if not current_config:
+            account_ids = ', '.join(current_config.keys())
+            raise KeyError(
+                f'AWS account ID {account_id} not found in Data Framework config. ' +
+                f'Available account IDs: {account_ids}'
+            )
+        else:
+            return current_config
 
+    @classmethod
+    def read_dataflow_config(cls, dataflow: str, local_file: str, environment: str, platform: str) -> dict:
+        if local_file is not None:
+            with open(local_file) as file:
+                config_json = dict(json.loads(file.read()))
+        else:
             path_absolute = Path(__file__).resolve()
             transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
-            archive = zipfile.ZipFile(transformation_path, 'r')
-            config_file = archive.open('transformation.json')
-            config_json = dict(json.loads(config_file.read()))
-            config_file.close()
-
+            with zipfile.ZipFile(transformation_path, 'r') as z:
+                with z.open('transformation.json') as file:
+                    config_json = dict(json.loads(file.read()))
         dataflows = config_json.get('dataflows')
         common_flow_json = dataflows.get('default')
         current_flow_json = dataflows.get(dataflow, None)
@@ -95,9 +144,9 @@ class ConfigSetup:
                 current_dataflow=current_flow_json,
                 default=common_flow_json
             )
-        current_flow_json['environment'] = "develop"
+        current_flow_json['environment'] = environment
+        current_flow_json['platform'] = platform
         current_flow_json['project_id'] = config_json.get('project_id')
-
         return current_flow_json
 
     @classmethod
@@ -154,7 +203,7 @@ class ConfigSetup:
                 else:
                     if hasattr(model, field):
                         default_value = getattr(model, field)
-                        
+
                     if json_file:
                         kwargs[field] = json_file.get(field, default_value)
                     else:

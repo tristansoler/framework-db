@@ -1,4 +1,4 @@
-from data_framework.modules.config.model.flows import DatabaseTable, Database, Technologies
+from data_framework.modules.config.model.flows import DatabaseTable, Database, Technologies, Platform
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
 from abc import ABC, abstractmethod
@@ -27,9 +27,14 @@ class ControlsTable:
 
     @classmethod
     def master(cls) -> Any:
+        # TODO: remove when migrating Infinity to Data Platform
+        database = (
+            Database.INFINITY_COMMON if config().platform == Platform.INFINITY
+            else Database.DATA_QUALITY
+        )
         return cls(
             table_config=DatabaseTable(
-                database=Database.FUNDS_COMMON,
+                database=database,
                 table='controls_master',
                 primary_keys=['control_master_id']
             ),
@@ -44,9 +49,14 @@ class ControlsTable:
 
     @classmethod
     def dataset(cls) -> Any:
+        # TODO: remove when migrating Infinity to Data Platform
+        database = (
+            Database.INFINITY_COMMON if config().platform == Platform.INFINITY
+            else Database.DATA_QUALITY
+        )
         return cls(
             table_config=DatabaseTable(
-                database=Database.FUNDS_COMMON,
+                database=database,
                 table='controls_dataset',
                 primary_keys=['control_master_id', 'control_table_id']
             ),
@@ -72,9 +82,14 @@ class ControlsTable:
 
     @classmethod
     def results(cls) -> Any:
+        # TODO: remove when migrating Infinity to Data Platform
+        database = (
+            Database.INFINITY_COMMON if config().platform == Platform.INFINITY
+            else Database.DATA_QUALITY
+        )
         return cls(
             table_config=DatabaseTable(
-                database=Database.FUNDS_COMMON,
+                database=database,
                 table='controls_results',
                 primary_keys=[
                     'control_master_id', 'control_table_id',

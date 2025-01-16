@@ -4,27 +4,40 @@ from enum import Enum
 from typing import Optional, List, Tuple, Union
 import os
 
+
 class Environment(Enum):
     LOCAL = "local"
     DEVELOP = "develop"
+    PREPRODUCTION = "preproduction"
     PRODUCTION = "production"
+
+
+class Platform(Enum):
+    # TODO: remove when migrating Infinity to Data Platform
+    DATA_PLATFORM = "data_platform"
+    INFINITY = "infinity"
+
 
 class DateLocated(Enum):
     FILENAME = "filename"
     COLUMN = "column"
 
+
 class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
+
 
 class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
     EXCEL = "xls"
 
+
 class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
+
 
 @dataclass
 class Hardware:
@@ -32,15 +45,18 @@ class Hardware:
     cores: int = 2
     disk: int = 20
 
+
 @dataclass
 class VolumetricExpectation:
     data_size_gb: float = 0.1
     avg_file_size_mb: int = 100
 
+
 @dataclass
 class CustomConfiguration:
     parameter: str
     value: str
+
 
 @dataclass
 class SparkConfiguration:
@@ -55,6 +71,7 @@ class SparkConfiguration:
             return self.full_volumetric_expectation
 
         return self.delta_volumetric_expectation
+
 
 @dataclass
 class ProcessingSpecifications:
@@ -90,7 +107,6 @@ class CSVSpecs:
         return config
 
 
-
 @dataclass
 class CSVSpecsReport:
     header: bool
@@ -105,6 +121,7 @@ class Parameters:
     process: str
     table: str
     source_file_path: str
+    bucket_prefix: str
     file_name: Optional[str]
     file_date: Optional[str]
     execution_mode: ExecutionMode = ExecutionMode.DELTA
@@ -112,11 +129,6 @@ class Parameters:
     @property
     def region(self) -> str:
         return os.environ["AWS_REGION"]
-
-    @property
-    def bucket_prefix(self) -> str:
-        # TODO: parametrizar por entorno
-        return "aihd1airas3aihgdp"
 
 
 @dataclass
@@ -134,7 +146,7 @@ class DatabaseTable:
     database: Database
     table: str
     primary_keys: Optional[list] = field(default_factory=list)
-    partition_field: str = "datadate" #TODO: data_date
+    partition_field: str = "datadate"  # TODO: data_date
 
     @property
     def database_relation(self) -> str:
@@ -220,6 +232,8 @@ class Processes:
 class Config:
     processes: Processes
     environment: Environment
+    # TODO: remove when migrating Infinity to Data Platform
+    platform: Platform
     parameters: Parameters
     project_id: str
 

@@ -1,0 +1,32 @@
+{
+    "339712925210": {
+        "environment": "develop",
+        "s3_bucket_prefix": "aihd1airas3aihgdp",
+        "platform": "data_platform"
+    },
+    "058264179632": {
+        "environment": "preproduction",
+        "s3_bucket_prefix": "aihi1airaccaihgdp",
+        "platform": "data_platform"
+    },
+    "767398106025": {
+        "environment": "production",
+        "s3_bucket_prefix": "aihp1airaccaihgdp",
+        "platform": "data_platform"
+    },
+    "893153886291": {
+        "environment": "develop",
+        "s3_bucket_prefix": "wmid1airas3infini-datalake",
+        "platform": "infinity"
+    },
+    "988499468230": {
+        "environment": "preproduction",
+        "s3_bucket_prefix": "wmii1airas3infini-datalake",
+        "platform": "infinity"
+    },
+    "596593451054": {
+        "environment": "production",
+        "s3_bucket_prefix": "wmip1airas3infini-datalake",
+        "platform": "infinity"
+    }
+}

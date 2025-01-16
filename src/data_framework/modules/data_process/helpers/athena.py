@@ -1,5 +1,6 @@
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
+from data_framework.modules.config.model.flows import Platform
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.storage.core_storage import Storage
 import boto3
@@ -15,7 +16,12 @@ class AthenaClient:
         self.logger = logger
         self.athena_client = boto3.client('athena', region_name=config().parameters.region)
         self.storage = Storage()
-        self.output_path = f's3://{config().parameters.bucket_prefix}-athena/{config().project_id}'
+        # TODO: remove when migrating Infinity to Data Platform
+        self.layer = (
+            Layer.TEMP if config().platform == Platform.INFINITY
+            else Layer.ATHENA
+        )
+        self.output_path = f's3://{config().parameters.bucket_prefix}-{self.layer.value}/{config().project_id}'
 
     def execute_query(self, query: str, read_output: bool = True) -> Union[DataFrame, None]:
         response = self.athena_client.start_query_execution(
@@ -45,7 +51,7 @@ class AthenaClient:
 
     def get_query_results(self, output_location: str) -> DataFrame:
         result_path = output_location.replace('s3://', '').split('/', 1)[1]
-        response = self.storage.read(Layer.ATHENA, result_path)
+        response = self.storage.read(self.layer, result_path)
         if not response.success:
             raise response.error
         else:

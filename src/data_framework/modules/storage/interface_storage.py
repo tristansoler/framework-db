@@ -11,14 +11,18 @@ class Layer(Enum):
     BUSINESS = "business"
     OUTPUT = "output"
     ATHENA = "athena"
+    # TODO: bucket for Athena in Infinity. Remove when migrating to Data Platform
+    TEMP = "temp"
 
 
 class Database(Enum):
-    # TODO: parametrizar dinámicamente
     FUNDS_RAW = "funds_raw"
     FUNDS_STAGING = "funds_staging"
     FUNDS_COMMON = "funds_common"
     FUNDS_BUSINESS = "funds_business"
+    DATA_QUALITY = "funds_common"
+    # TODO: DB for Infinity quality controls. Remove when migrating to Data Platform
+    INFINITY_COMMON = "infinity_datalake_common"
 
 
 @dataclass

@@ -132,6 +132,7 @@ class ProcessingCoordinator(DataFlowInterface):
         if self.incoming_file.csv_specs.date_located == DateLocated.FILENAME:
             pattern = self.incoming_file.csv_specs.date_located_filename.regex
             match = re.search(pattern, self.parameters.source_file_path)
+            # TODO: revisar. ¿y si un fichero no trae la fecha ordenada como año-mes-día?
             year, month, day = match.groups()
             return f'{year}-{month}-{day}'
         elif self.incoming_file.csv_specs.date_located == DateLocated.COLUMN:
