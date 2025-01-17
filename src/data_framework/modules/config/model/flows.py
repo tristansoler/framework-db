@@ -150,7 +150,11 @@ class DatabaseTable:
 
     @property
     def database_relation(self) -> str:
-        return f'rl_{self.database.value}'
+        from data_framework.modules.config.core import config
+        if config().platform == Platform.INFINITY:
+            return self.database.value
+        else:
+            return f'rl_{self.database.value}'
 
     @property
     def full_name(self) -> str:

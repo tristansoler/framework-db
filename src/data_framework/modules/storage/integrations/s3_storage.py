@@ -11,16 +11,17 @@ from data_framework.modules.storage.interface_storage import (
     ListResponse,
     PathResponse
 )
-from data_framework.modules.config.model.flows import ExecutionMode
+
 
 class S3Storage(CoreStorageInterface):
     def __init__(self):
 
         self.s3 = boto3.client('s3', region_name=config().parameters.region)
 
-    def read(self, layer: Layer, key_path: str) -> ReadResponse:
-        bucket = self._build_s3_bucket_name(layer=layer)
+    def read(self, layer: Layer, key_path: str, bucket: str = None) -> ReadResponse:
         try:
+            if bucket is None:
+                bucket = self._build_s3_bucket_name(layer=layer)
             response = self.s3.get_object(Bucket=bucket, Key=key_path)
             logger.info(f'Successfully read from path: {key_path}')
             s3_data = response['Body'].read()
@@ -89,11 +90,11 @@ class S3Storage(CoreStorageInterface):
         paginator = self.s3.get_paginator('list_objects_v2')
         logger.info(f'Listing files from bucket {bucket} with prefix {prefix}')
         keys = []
-        
+
         try:
             for pagination_response in paginator.paginate(Bucket=bucket, Prefix=prefix):
                 status_code = pagination_response['ResponseMetadata']['HTTPStatusCode']
-                
+
                 if status_code == 200 and 'Contents' in pagination_response:
                     file_keys = [obj['Key'] for obj in pagination_response.get('Contents', [])]
                     keys.extend(file_keys)
@@ -102,7 +103,7 @@ class S3Storage(CoreStorageInterface):
         except ClientError as error:
             logger.error(f'Error listing files: {error}')
             return ListResponse(error=error, success=False, result=[])
-    
+
     def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
         s3_bucket = self._build_s3_bucket_name(layer=Layer.RAW)
         partitions = {}

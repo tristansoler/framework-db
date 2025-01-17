@@ -4,7 +4,7 @@ from data_framework.modules.config.core import config
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Union, List
+from typing import Any, Union, List, Dict
 from datetime import datetime, date
 import pandas as pd
 
@@ -524,7 +524,13 @@ class ControlRule:
 class InterfaceQualityControls(ABC):
 
     @abstractmethod
-    def validate(self, layer: Layer, table_config: DatabaseTable, df_data: Any = None) -> ControlsResponse:
+    def validate(
+        self,
+        layer: Layer,
+        table_config: DatabaseTable,
+        df_data: Any = None,
+        **kwargs: Dict[str, Any]
+    ) -> ControlsResponse:
         pass
 
     @abstractmethod

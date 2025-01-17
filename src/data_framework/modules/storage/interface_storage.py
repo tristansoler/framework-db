@@ -21,8 +21,12 @@ class Database(Enum):
     FUNDS_COMMON = "funds_common"
     FUNDS_BUSINESS = "funds_business"
     DATA_QUALITY = "funds_common"
-    # TODO: DB for Infinity quality controls. Remove when migrating to Data Platform
+    # TODO: DBs for Infinity quality controls. Remove when migrating to Data Platform
+    INFINITY_STAGING = "infinity_datalake_staging"
     INFINITY_COMMON = "infinity_datalake_common"
+    INFINITY_BUSINESS = "infinity_datalake_business"
+    SAM_STG = "sam_stg"
+    SAM_DWH = "sam_dwh"
 
 
 @dataclass
@@ -54,7 +58,7 @@ class PathResponse:
 class CoreStorageInterface(ABC):
 
     @abstractmethod
-    def read(self, layer: Layer, key_path: str) -> ReadResponse:
+    def read(self, layer: Layer, key_path: str, bucket: str = None) -> ReadResponse:
         pass
 
     @abstractmethod

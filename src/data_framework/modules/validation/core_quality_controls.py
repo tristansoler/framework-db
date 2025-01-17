@@ -2,7 +2,7 @@ from data_framework.modules.code.lazy_class_property import LazyClassProperty
 from data_framework.modules.validation.interface_quality_controls import InterfaceQualityControls, ControlsResponse
 from data_framework.modules.config.model.flows import DatabaseTable
 from data_framework.modules.storage.interface_storage import Layer
-from typing import Any
+from typing import Any, Dict
 
 
 class CoreQualityControls(object):
@@ -13,8 +13,19 @@ class CoreQualityControls(object):
         return QualityControls()
 
     @classmethod
-    def validate(cls, layer: Layer, table_config: DatabaseTable, df_data: Any = None) -> ControlsResponse:
-        return cls._quality_controls.validate(layer=layer, table_config=table_config, df_data=df_data)
+    def validate(
+        cls,
+        layer: Layer,
+        table_config: DatabaseTable,
+        df_data: Any = None,
+        **kwargs: Dict[str, Any]
+    ) -> ControlsResponse:
+        return cls._quality_controls.validate(
+            layer=layer,
+            table_config=table_config,
+            df_data=df_data,
+            **kwargs
+        )
 
     @classmethod
     def set_parent(cls, parent: Any) -> None:

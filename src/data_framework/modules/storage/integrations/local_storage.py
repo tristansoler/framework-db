@@ -11,13 +11,17 @@ from data_framework.modules.storage.interface_storage import (
 )
 import os
 
+
 class LocalStorage(CoreStorageInterface):
     def __init__(self):
         self.logger = logger
 
-    def read(self, layer: Layer, key_path: str) -> ReadResponse:
+    def read(self, layer: Layer, key_path: str, bucket: str = None) -> ReadResponse:
         try:
-            folder = self._build_folder_name(layer)
+            if bucket is not None:
+                folder = bucket
+            else:
+                folder = self._build_folder_name(layer)
             full_path = os.path.join(folder, os.path.normpath(key_path))
             if os.path.exists(full_path):
                 with open(full_path, 'rb') as f:
@@ -109,7 +113,7 @@ class LocalStorage(CoreStorageInterface):
         except Exception as error:
             logger.error(f'Error listing files: {error}')
             return ListResponse(error=error, success=False, result=[])
-        
+
     def raw_layer_path(self, database: Database, table_name: str, data_date: str) -> PathResponse:
         local_folder = self._build_folder_name(layer=Layer.RAW)
         local_path = self._build_file_path(database=database, table=table_name, partitions={"data_date": data_date})

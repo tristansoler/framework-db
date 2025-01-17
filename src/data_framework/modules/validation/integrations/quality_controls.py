@@ -12,7 +12,7 @@ from data_framework.modules.data_process.core_data_process import CoreDataProces
 from data_framework.modules.config.model.flows import Technologies, DatabaseTable
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.utils.debug import debug_code
-from typing import Any
+from typing import Any, Dict
 from traceback import format_exc
 import pandas as pd
 
@@ -32,7 +32,13 @@ class QualityControls(InterfaceQualityControls):
     def set_parent(self, parent: Any) -> None:
         self.parent = parent
 
-    def validate(self, layer: Layer, table_config: DatabaseTable, df_data: Any = None) -> ControlsResponse:
+    def validate(
+        self,
+        layer: Layer,
+        table_config: DatabaseTable,
+        df_data: Any = None,
+        **kwargs: Dict[str, Any]
+    ) -> ControlsResponse:
         try:
             self.logger.info(f'Validating table {table_config.full_name}')
             df_rules = self._get_active_rules(layer, table_config)
@@ -48,7 +54,7 @@ class QualityControls(InterfaceQualityControls):
                     overall_result=True
                 )
             else:
-                df_results = self._compute_rules(df_data, df_rules)
+                df_results = self._compute_rules(df_data, df_rules, **kwargs)
                 if df_results is not None:
                     self._insert_results(df_results)
                     overall_result = self._get_overall_result(df_rules, df_results)
@@ -177,7 +183,7 @@ class QualityControls(InterfaceQualityControls):
         else:
             raise response.error
 
-    def _compute_rules(self, df_data: Any, df_rules: Any) -> Any:
+    def _compute_rules(self, df_data: Any, df_rules: Any, **kwargs: Dict[str, Any]) -> Any:
         if debug_code:
             self.logger.info('Controls definition:')
             self.data_process.show_dataframe(df_rules)
@@ -185,7 +191,7 @@ class QualityControls(InterfaceQualityControls):
             # Transform into Pandas dataframe
             df_rules = df_rules.toPandas()
         # Compute all rules
-        df_results = df_rules.apply(self._compute_generic_rule, axis=1, args=(df_data,))
+        df_results = df_rules.apply(self._compute_generic_rule, axis=1, args=(df_data,), **kwargs)
         if not df_results.empty:
             # Remove rules that raised an exception
             df_results = df_results[
@@ -206,7 +212,7 @@ class QualityControls(InterfaceQualityControls):
                 self.data_process.show_dataframe(df_results)
             return df_results
 
-    def _compute_generic_rule(self, rule_definition: pd.Series, df_data: Any) -> pd.Series:
+    def _compute_generic_rule(self, rule_definition: pd.Series, df_data: Any, **kwargs: Dict[str, Any]) -> pd.Series:
         try:
             # Parse rule
             rule = ControlRule.from_series(rule_definition)
@@ -219,9 +225,9 @@ class QualityControls(InterfaceQualityControls):
             # Calculate rule
             self.logger.info(f'Computing rule {rule.id}')
             if rule.algorithm.algorithm_type == AlgorithmType.SQL.value:
-                self._compute_sql_rule(rule)
+                self._compute_sql_rule(rule, **kwargs)
             elif rule.algorithm.algorithm_type == AlgorithmType.PYTHON.value:
-                self._compute_python_rule(rule, df_data)
+                self._compute_python_rule(rule, df_data, **kwargs)
             elif rule.algorithm.algorithm_type == AlgorithmType.REGEX.value:
                 self._compute_regex_rule(rule, df_data)
             rule_result = rule.result.to_series()
@@ -231,9 +237,9 @@ class QualityControls(InterfaceQualityControls):
             self.logger.error(f'Error computing rule {rule.id}: {e}')
             return pd.Series()
 
-    def _compute_sql_rule(self, rule: ControlRule) -> None:
+    def _compute_sql_rule(self, rule: ControlRule, **kwargs: Dict[str, Any]) -> None:
         query = rule.algorithm.algorithm_description.format(
-            # TODO: estos parámetros son custom para cada regla
+            # TODO: usar kwargs
             file_date=self.config.parameters.file_date,
             file_name=self.config.parameters.file_name,
         )
@@ -247,16 +253,16 @@ class QualityControls(InterfaceQualityControls):
         else:
             raise response.error
 
-    def _compute_python_rule(self, rule: ControlRule, df_data: Any) -> None:
+    def _compute_python_rule(self, rule: ControlRule, df_data: Any, **kwargs: Dict[str, Any]) -> None:
         try:
             if not self.parent:
                 self.logger.error('QualityControls parent is not set. Configure it using set_parent method')
             function_name = rule.algorithm.algorithm_description
             validation_function = getattr(self.parent, function_name)
             if rule.level == ControlLevel.DATA.value:
-                validation_function(rule, df_data)
+                validation_function(rule, df_data, **kwargs)
             elif rule.level == ControlLevel.FILE.value:
-                validation_function(rule)
+                validation_function(rule, **kwargs)
         except AttributeError as e:
             raise ValueError(f'Error executing Python function {function_name}: {e}')
 

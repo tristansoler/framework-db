@@ -25,8 +25,8 @@ class Storage:
             return LocalStorage()
 
     @classmethod
-    def read(cls, layer: Layer, key_path: str) -> ReadResponse:
-        return cls._storage.read(layer=layer, key_path=key_path)
+    def read(cls, layer: Layer, key_path: str, bucket: str = None) -> ReadResponse:
+        return cls._storage.read(layer=layer, key_path=key_path, bucket=bucket)
 
     @classmethod
     def write(
@@ -58,7 +58,7 @@ class Storage:
     @classmethod
     def list_files(cls, layer: Layer, prefix: str) -> ListResponse:
         return cls._storage.list_files(layer=layer, prefix=prefix)
-    
+
     @classmethod
     def raw_layer_path(cls, database: Database, table_name: str) -> PathResponse:
         response = cls._storage.raw_layer_path(
