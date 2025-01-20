@@ -20,7 +20,9 @@ from data_framework.modules.config.model.flows import (
     VolumetricExpectation,
     Platform,
     Notification,
-    NotificationDict
+    NotificationDict,
+    Technologies,
+    Environment
 )
 import threading
 import os
@@ -71,19 +73,42 @@ class ConfigSetup:
 
             data_framework_config = ConfigSetup.read_data_framework_config()
             parameters['bucket_prefix'] = data_framework_config['s3_bucket_prefix']
-
-            dataflow_config = ConfigSetup.read_dataflow_config(
-                dataflow=parameters.get('dataflow'),
-                local_file=parameters.get('local_file'),
-                environment=data_framework_config['environment'],
-                platform=data_framework_config.get('platform', Platform.DATA_PLATFORM.value)
-            )
-
-            self._instancia.config = ConfigSetup.parse_to_model(
-                model=Config,
-                parameters=parameters,
-                json_file=dataflow_config
-            )
+            platform = data_framework_config.get('platform', Platform.DATA_PLATFORM.value)
+            if platform == Platform.INFINITY.value and not parameters.get('local_file'):
+                # Custom configurarion for Infinity execution
+                # TODO: remove when migrating to Data Platform
+                parameters['dataflow'] = 'default'
+                parameters['process'] = 'landing_to_raw'
+                self._instancia.config = Config(
+                    processes=Processes(
+                        landing_to_raw=LandingToRaw(
+                            incoming_file=None,
+                            output_file=None,
+                            processing_specifications=ProcessingSpecifications(
+                                technology=Technologies.LAMBDA,
+                            )
+                        )
+                    ),
+                    environment=Environment(data_framework_config['environment']),
+                    platform=Platform.INFINITY,
+                    parameters=ConfigSetup.parse_to_model(
+                        model=Parameters,
+                        json_file=parameters
+                    ),
+                    project_id=Platform.INFINITY.value
+                )
+            else:
+                dataflow_config = ConfigSetup.read_dataflow_config(
+                    dataflow=parameters.get('dataflow'),
+                    local_file=parameters.get('local_file'),
+                    environment=data_framework_config['environment'],
+                    platform=platform
+                )
+                self._instancia.config = ConfigSetup.parse_to_model(
+                    model=Config,
+                    parameters=parameters,
+                    json_file=dataflow_config
+                )
         except Exception as e:
             self._instancia.config = None
             raise RuntimeError(f'Error initializing Data Framework config: {e}')
