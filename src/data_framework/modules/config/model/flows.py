@@ -39,6 +39,10 @@ class ExecutionMode(Enum):
     FULL = "full"
 
 
+class NotificationType(Enum):
+    EMAIL = "email"
+
+
 @dataclass
 class Hardware:
     ram: int = 4
@@ -142,6 +146,28 @@ class IncomingFileLandingToRaw:
 
 
 @dataclass
+class Notification:
+    type: NotificationType
+    topic: str
+    subject: str
+    body: str
+
+
+@dataclass
+class NotificationDict:
+    notifications: Tuple[str, Notification]
+
+    def get_notification(self, notification_name: str) -> Union[Notification, None]:
+        notification = self.notifications.get(notification_name)
+        if not notification:
+            notification_names = ', '.join(self.notifications.keys())
+            raise ValueError(
+                f'Notification key {notification_name} not found. Available notification keys: {notification_names}'
+            )
+        return notification
+
+
+@dataclass
 class DatabaseTable:
     database: Database
     table: str
@@ -194,6 +220,7 @@ class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
     output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
+    notifications: NotificationDict = field(default_factory=dict)
 
 
 @dataclass
@@ -201,6 +228,7 @@ class GenericProcess:
     source_tables: TableDict
     target_tables: TableDict
     processing_specifications: ProcessingSpecifications
+    notifications: NotificationDict = field(default_factory=dict)
 
 
 @dataclass
@@ -221,6 +249,7 @@ class OutputReport:
 class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
+    notifications: NotificationDict = field(default_factory=dict)
 
 
 @dataclass

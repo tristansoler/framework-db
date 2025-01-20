@@ -42,7 +42,7 @@ class PandasDataProcess(DataProcessInterface):
         except Exception as e:
             error_message = f"{e}\nSQL\n{query}"
             logger.error(error_message)
-            response = ReadResponse(success=False, error=error_message, data=None)
+            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
         return response
 
     def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
@@ -117,7 +117,7 @@ class PandasDataProcess(DataProcessInterface):
         except Exception as e:
             error_message = f"{e}\nSQL\n{sql}"
             logger.error(error_message)
-            response = ReadResponse(success=False, error=error_message, data=None)
+            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
         return response
 
     def overwrite_columns(

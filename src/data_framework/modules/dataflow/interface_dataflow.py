@@ -1,11 +1,18 @@
 from abc import ABC
 from data_framework.modules.config.core import config, Config
-from data_framework.modules.config.model.flows import TableDict, DatabaseTable, OutputReport, ExecutionMode
+from data_framework.modules.config.model.flows import (
+    TableDict,
+    DatabaseTable,
+    OutputReport,
+    ExecutionMode,
+    Notification,
+    NotificationDict
+)
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
 from dataclasses import dataclass, asdict, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import boto3
 import json
 
@@ -36,6 +43,7 @@ class PayloadResponse:
     file_date: str = None
     data_quality: DataQuality = field(default_factory=DataQuality)
     outputs: List[OutputResponse] = field(default_factory=list)
+    notifications: Optional[List[Notification]] = field(default_factory=list)
 
     def get_failed_outputs(self) -> List[str]:
         failed_outputs = [
@@ -44,6 +52,31 @@ class PayloadResponse:
             if not output.success
         ]
         return failed_outputs
+
+    def send_notification(self, notification_name: str, arguments: str) -> None:
+        notifications_dict = config().current_process_config().notifications
+        notification = notifications_dict.get_notification(notification_name)
+        notification.subject = notification.subject.format_map(arguments)
+        notification.body = notification.body.format_map(arguments)
+        notification.type = notification.type.value
+        # Validate length of the notification subject and body
+        # TODO: move to CI/CD
+        max_subject_len = 100
+        if len(notification.subject) > max_subject_len:
+            raise ValueError(
+                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
+            )
+        max_body_length = 500
+        if len(notification.body) > max_body_length:
+            raise ValueError(
+                f'Body of the {notification_name} notifications exceeds the {max_body_length} character limit'
+            )
+        self.notifications.append(notification)
+        # Validate the number of notifications to send
+        # TODO: move to CI/CD
+        max_notifications = 5
+        if len(self.notifications) > max_notifications:
+            raise ValueError(f'The limit of {max_notifications} notifications has been exceeded')
 
 
 class DataFlowInterface(ABC):
@@ -100,7 +133,7 @@ class DataFlowInterface(ABC):
     def process(self):
         message = "It is mandatory to implement this function"
         self.logger.error(message)
-        raise message
+        raise RuntimeError(message)
 
     def read_table_with_casting(
         self,

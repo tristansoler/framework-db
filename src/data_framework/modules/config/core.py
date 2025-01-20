@@ -18,7 +18,9 @@ from data_framework.modules.config.model.flows import (
     TableDict,
     CSVSpecsReport,
     VolumetricExpectation,
-    Platform
+    Platform,
+    Notification,
+    NotificationDict
 )
 import threading
 import os
@@ -48,7 +50,7 @@ class ConfigSetup:
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport,
-        VolumetricExpectation
+        VolumetricExpectation, Notification
     )
 
     def __new__(cls, *args, **kwargs):
@@ -157,9 +159,10 @@ class ConfigSetup:
         for key, value in default.items():
             if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
                 merged[key] = cls.merged_current_dataflow_with_default(merged[key], value)
-            else:
-                if merged.get(key) is None:
-                    merged[key] = value
+            elif key in merged and isinstance(merged[key], list) and isinstance(value, list):
+                merged[key] = merged[key] + value
+            elif merged.get(key) is None:
+                merged[key] = value
 
         return merged
 
@@ -186,6 +189,11 @@ class ConfigSetup:
                     for table_name, config in json_file.get(field, {}).items():
                         tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config)
                     kwargs[field] = TableDict(tables)
+                elif isinstance(field_type, type) and issubclass(field_type, (NotificationDict)) and json_file:
+                    notifications = {}
+                    for notification_name, config in json_file.get(field, {}).items():
+                        notifications[notification_name] = cls.parse_to_model(model=Notification, json_file=config)
+                    kwargs[field] = NotificationDict(notifications)
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                     kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):

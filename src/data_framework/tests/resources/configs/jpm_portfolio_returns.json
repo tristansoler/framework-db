@@ -1,226 +1,251 @@
 {
     "data_framework": {
-      "core_version": "last"
+        "core_version": "last"
     },
     "dataflows": {
         "default": {
             "processes": {
-              "landing_to_raw": {
-                "incoming_file": {
-                  "zipped": "",
-                  "file_format": "csv",
-                  "filename_pattern": "^\\d+_([a-zA-Z]{3})_RETURNS_JP_MORGAN_\\d{4}_\\d{2}_\\d{2}.csv$",
-                  "csv_specs": {
-                    "header_position": 0,
-                    "header": true,
-                    "encoding": "UTF-8",
-                    "delimiter": ",",
-                    "date_located": "filename",
-                    "date_located_filename": {
-                      "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
+                "landing_to_raw": {
+                    "incoming_file": {
+                        "zipped": "",
+                        "file_format": "csv",
+                        "filename_pattern": "^\\d+_([a-zA-Z]{3})_RETURNS_JP_MORGAN_\\d{4}_\\d{2}_\\d{2}.csv$",
+                        "csv_specs": {
+                            "header_position": 0,
+                            "header": true,
+                            "encoding": "UTF-8",
+                            "delimiter": ",",
+                            "date_located": "filename",
+                            "date_located_filename": {
+                                "regex": "(\\d{4})_(\\d{2})_(\\d{2})"
+                            }
+                        },
+                        "compare_with_previous_file": true
+                    },
+                    "output_file": {
+                        "database": "funds_raw",
+                        "partition_field": "data_date"
+                    },
+                    "processing_specifications": {
+                        "technology": "emr",
+                        "hardware": {
+                            "ram": 4096
+                        },
+                        "spark_configuration": {
+                            "catalog": "iceberg_catalog",
+                            "warehouse": "funds_staging"
+                        }
                     }
-                  },
-                  "compare_with_previous_file": true
                 },
-                "output_file": {
-                  "database": "funds_raw",
-                  "table": "luxembourg_portfolio_returns",
-                  "partition_field": "data_date"
+                "raw_to_staging": {
+                    "source_tables": {},
+                    "target_tables": {
+                        "portfolio_returns": {
+                            "database": "funds_staging",
+                            "table": "portfolio_returns",
+                            "partition_field": "data_date",
+                            "primary_keys": [
+                                "input_interface_name",
+                                "data_date",
+                                "country",
+                                "symbol",
+                                "account_number",
+                                "position_date"
+                            ]
+                        }
+                    },
+                    "processing_specifications": {
+                        "technology": "emr",
+                        "hardware": {
+                            "ram": 4096
+                        },
+                        "spark_configuration": {
+                            "catalog": "iceberg_catalog",
+                            "warehouse": "funds_staging"
+                        }
+                    }
                 },
-                "processing_specifications": {
-                  "technology": "emr",
-                  "hardware": {
-                    "ram": 4096
-                  },
-                  "spark_configuration": {
-                    "catalog": "iceberg_catalog",
-                    "warehouse": "funds_staging"
-                  }
+                "staging_to_business": {
+                    "source_tables": {
+                        "portfolio_returns": {
+                            "database": "funds_staging",
+                            "table": "portfolio_returns",
+                            "partition_field": "data_date",
+                            "primary_keys": [
+                                "input_interface_name",
+                                "data_date",
+                                "country",
+                                "symbol",
+                                "account_number",
+                                "position_date"
+                            ]
+                        }
+                    },
+                    "target_tables": {
+                        "portfolio_functional_controls": {
+                            "database": "funds_business",
+                            "table": "portfolio_functional_controls",
+                            "primary_keys": [
+                                "input_interface_name",
+                                "country",
+                                "portfolio_id",
+                                "base_currency",
+                                "position_date",
+                                "id_control"
+                            ]
+                        },
+                        "portfolio_returns_to_factset": {
+                            "database": "funds_business",
+                            "table": "portfolio_returns_to_factset",
+                            "partition_field": "data_date",
+                            "primary_keys": [
+                                "input_interface_name",
+                                "data_date",
+                                "date",
+                                "country",
+                                "portfolio",
+                                "symbol"
+                            ]
+                        }
+                    },
+                    "processing_specifications": {
+                        "technology": "emr",
+                        "hardware": {
+                            "ram": 4096
+                        },
+                        "spark_configuration": {
+                            "catalog": "iceberg_catalog",
+                            "warehouse": "funds_staging"
+                        }
+                    },
+                    "notifications": {
+                        "failed_controls": {
+                            "type": "email",
+                            "topic": "name_of_the_topic",
+                            "subject": "{file_date} - Carga Returns {country} a Factset - Controles funcionales incorrectos",
+                            "body": "Durante el procesado de los ficheros de {country}, se han detectado porfolios que incumplen los controles de calidad. Para más información sobre dichos porfolios, consultar el dashboard de PowerBI disponible en [ENLACE]."
+                        }
+                    }
+                },
+                "business_to_output": {
+                    "output_reports": [],
+                    "processing_specifications": {
+                        "technology": "emr",
+                        "hardware": {
+                            "ram": 4096
+                        },
+                        "spark_configuration": {
+                            "catalog": "iceberg_catalog",
+                            "warehouse": "funds_business"
+                        }
+                    }
                 }
-              },
-              "raw_to_staging": {
-                "source_tables": {
-                    "lux_portfolio_returns": {
-                      "database": "funds_raw",
-                      "table": "luxembourg_portfolio_returns",
-                      "partition_field": "data_date"
-                    }
-                },
-                "target_tables": {
-                    "lux_portfolio_returns": {
-                      "database": "funds_staging",
-                      "table": "luxembourg_portfolio_returns",
-                      "partition_field": "data_date",
-                      "primary_keys": [
-                        "data_date"
-                      ]
-                    },
-                    "portfolio_returns": {
-                      "database": "funds_staging",
-                      "table": "portfolio_returns",
-                      "partition_field": "data_date",
-                      "primary_keys": [
-                        "data_date",
-                        "country",
-                        "account_number",
-                        "base_currency",
-                        "position_date",
-                        "security_number_full",
-                        "trading_currency",
-                        "category_description"
-                      ]
-                    }
-                },
-                "processing_specifications": {
-                  "technology": "emr",
-                  "hardware": {
-                    "ram": 4096
-                  },
-                  "spark_configuration": {
-                    "catalog": "iceberg_catalog",
-                    "warehouse": "funds_staging"
-                  }
-                }
-              },
-              "staging_to_business": {
-                "source_tables": {
-                    "portfolio_returns": {
-                      "database": "funds_staging",
-                      "table": "portfolio_returns",
-                      "partition_field": "data_date",
-                      "primary_keys": [
-                        "data_date",
-                        "country",
-                        "account_number",
-                        "base_currency",
-                        "position_date",
-                        "security_number_full",
-                        "trading_currency",
-                        "category_description"
-                      ]
-                    }
-                },
-                "target_tables": {
-                    "portfolio_functional_controls": {
-                      "database": "funds_business",
-                      "table": "portfolio_functional_controls",
-                      "primary_keys": [
-                        "country",
-                        "portfolio_id",
-                        "base_currency",
-                        "position_date",
-                        "id_control"
-                      ]
-                    },
-                    "portfolio_returns_to_factset": {
-                      "database": "funds_business",
-                      "table": "portfolio_returns_to_factset",
-                      "partition_field": "data_date",
-                      "primary_keys": [
-                        "data_date",
-                        "date",
-                        "country",
-                        "portfolio",
-                        "symbol"
-                      ]
-                    }
-                },
-                "processing_specifications": {
-                  "technology": "emr",
-                  "hardware": {
-                    "ram": 4096
-                  },
-                  "spark_configuration": {
-                    "catalog": "iceberg_catalog",
-                    "warehouse": "funds_staging"
-                  }
-                }
-              },
-              "business_to_output": {
-                "output_reports": [
-                  {
-                    "name": "JPM to Factset",
-                    "description": "Collect JP Morgan returns data to send it to Factset",
-                    "source_table": {
-                      "database" : "funds_business",
-                      "table": "portfolio_returns_to_factset",
-                      "partition_field": "data_date"
-                    },
-                    "columns": [
-                      "date",
-                      "country",
-                      "portfolio",
-                      "asset_type",
-                      "symbol",
-                      "security_description",
-                      "shares",
-                      "market_value",
-                      "price_iso",
-                      "price",
-                      "total_return_local",
-                      "total_return_base",
-                      "holding_portfolio",
-                      "prior_cost_base",
-                      "cost_base",
-                      "change_in_cost_base",
-                      "prior_accrued_income_base",
-                      "accrued_income_base",
-                      "change_in_accrued_income_base",
-                      "nominal_value",
-                      "strike_price",
-                      "bond_original_price",
-                      "category_long_description",
-                      "contract_size",
-                      "coupon",
-                      "gics_economic_group_description",
-                      "gics_industry_group_description",
-                      "gics_sector_group_description",
-                      "gics_sub_sector_group_description",
-                      "underlying_security",
-                      "prior_trading_currency_fx_rate",
-                      "exchange_rate",
-                      "cusip",
-                      "isin",
-                      "sedol",
-                      "base_currency",
-                      "call_date",
-                      "effective_maturity_date",
-                      "expiration_date"
-                    ],
-                    "where": "data_date='{file_date}' AND country = 'LUX'",
-                    "file_format": "csv",
-                    "filename_pattern": "LUX_FACTSET_{current_date}.csv",
-                    "filename_date_format": "%Y%m%d_%H%M%S",
-                    "csv_specs": {
-                      "header": true,
-                      "index": false,
-                      "encoding": "UTF-8",
-                      "delimiter": ","
-                    }
-                  }
-                ],
-                "processing_specifications": {
-                    "technology": "emr",
-                    "hardware": {
-                      "ram": 4096
-                    },
-                    "spark_configuration": {
-                      "catalog": "iceberg_catalog",
-                      "warehouse": "funds_business"
-                    }
-                  }
-              }
             }
         },
-        "jpm_portfolio_returns": {
+        "jp_morgan": {
             "config_match_by": {
                 "file_name": "*LUX_RETURNS_JP_MORGAN_*"
             },
             "processes": {
-                "landing_to_raw": {},
-                "raw_to_staging": {},
+                "landing_to_raw": {
+                    "output_file": {
+                        "table": "luxembourg_portfolio_returns"
+                    }
+                },
+                "raw_to_staging": {
+                    "source_tables": {
+                        "lux_portfolio_returns": {
+                            "database": "funds_raw",
+                            "table": "luxembourg_portfolio_returns",
+                            "partition_field": "data_date"
+                        }
+                    },
+                    "target_tables": {
+                        "lux_portfolio_returns": {
+                            "database": "funds_staging",
+                            "table": "luxembourg_portfolio_returns",
+                            "partition_field": "data_date"
+                        },
+                        "portfolio_returns": {
+                            "database": "funds_staging",
+                            "table": "portfolio_returns",
+                            "partition_field": "data_date",
+                            "primary_keys": [
+                                "input_interface_name",
+                                "data_date",
+                                "country",
+                                "symbol",
+                                "account_number",
+                                "position_date"
+                            ]
+                        }
+                    }
+                },
                 "staging_to_business": {},
-                "business_to_output": {}
+                "business_to_output": {
+                    "output_reports": [
+                        {
+                            "name": "JPM to Factset",
+                            "description": "Collect JP Morgan returns data to send it to Factset",
+                            "source_table": {
+                                "database": "funds_business",
+                                "table": "portfolio_returns_to_factset",
+                                "partition_field": "data_date"
+                            },
+                            "columns": [
+                                "DATE_FORMAT(date, 'yyyyMMdd') as date",
+                                "country",
+                                "portfolio",
+                                "asset_type",
+                                "symbol",
+                                "security_description",
+                                "shares",
+                                "market_value",
+                                "price_iso",
+                                "price",
+                                "total_return_local",
+                                "total_return_base",
+                                "holding_portfolio",
+                                "prior_cost_base",
+                                "cost_base",
+                                "change_in_cost_base",
+                                "prior_accrued_income_base",
+                                "accrued_income_base",
+                                "change_in_accrued_income_base",
+                                "nominal_value",
+                                "strike_price",
+                                "bond_original_price",
+                                "category_long_description",
+                                "contract_size",
+                                "coupon",
+                                "gics_economic_group_description",
+                                "gics_industry_group_description",
+                                "gics_sector_group_description",
+                                "gics_sub_sector_group_description",
+                                "underlying_security",
+                                "prior_trading_currency_fx_rate",
+                                "exchange_rate",
+                                "cusip",
+                                "isin",
+                                "sedol",
+                                "base_currency",
+                                "DATE_FORMAT(call_date, 'yyyyMMdd') as call_date",
+                                "DATE_FORMAT(effective_maturity_date, 'yyyyMMdd') as effective_maturity_date",
+                                "DATE_FORMAT(expiration_date, 'yyyyMMdd') as expiration_date"
+                            ],
+                            "where": "input_interface_name='{file_name}'",
+                            "file_format": "csv",
+                            "filename_pattern": "LUX_FACTSET_{current_date}.csv",
+                            "filename_date_format": "%Y%m%d_%H%M%S",
+                            "csv_specs": {
+                                "header": true,
+                                "index": false,
+                                "encoding": "UTF-8",
+                                "delimiter": ","
+                            }
+                        }
+                    ]
+                }
             }
         }
     }

@@ -127,7 +127,8 @@ class SparkDataProcess(DataProcessInterface):
             response = WriteResponse(success=True, error=None)
         except Exception as e:
             message_error = f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
-            response = WriteResponse(success=False, error=message_error)
+            logger.error(message_error)
+            response = WriteResponse(success=False, error=RuntimeError(message_error))
         return response
 
     def datacast(
@@ -162,8 +163,9 @@ class SparkDataProcess(DataProcessInterface):
             df = self._execute_query(query)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
-            logger.error(f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}')
-            response = ReadResponse(success=False, error=e, data=None)
+            message_error = f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
+            logger.error(message_error)
+            response = ReadResponse(success=False, error=RuntimeError(message_error), data=None)
         return response
 
     def _execute_query(self, query: str) -> DataFrame:
@@ -196,7 +198,7 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             error_message = f"{e}\nSQL\n{query}"
             logger.error(error_message)
-            response = ReadResponse(success=False, error=error_message, data=None)
+            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
         return response
 
     def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
@@ -208,7 +210,7 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             error_message = f"{e}\nSQL\n{query}"
             logger.error(error_message)
-            response = WriteResponse(success=False, error=error_message)
+            response = WriteResponse(success=False, error=RuntimeError(error_message))
         return response
 
     def insert_dataframe(self, dataframe: DataFrame, table_config: DatabaseTable) -> WriteResponse:
@@ -332,7 +334,7 @@ class SparkDataProcess(DataProcessInterface):
         except Exception as e:
             error_message = f"{e}\nSQL\n{sql}"
             logger.error(error_message)
-            response = ReadResponse(success=False, error=error_message, data=None)
+            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
         return response
 
     def overwrite_columns(
