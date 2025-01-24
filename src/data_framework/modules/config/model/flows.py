@@ -259,6 +259,7 @@ class Processes:
     staging_to_common: Optional[GenericProcess] = None
     staging_to_business: Optional[GenericProcess] = None
     common_to_business: Optional[GenericProcess] = None
+    common_to_output: Optional[ToOutput] = None
     business_to_output: Optional[ToOutput] = None
 
 
