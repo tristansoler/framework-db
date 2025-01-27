@@ -6,12 +6,12 @@
     },
     "058264179632": {
         "environment": "preproduction",
-        "s3_bucket_prefix": "aihi1airaccaihgdp",
+        "s3_bucket_prefix": "aihi1airas3aihgdp",
         "platform": "data_platform"
     },
     "767398106025": {
         "environment": "production",
-        "s3_bucket_prefix": "aihp1airaccaihgdp",
+        "s3_bucket_prefix": "aihp1airas3aihgdp",
         "platform": "data_platform"
     },
     "893153886291": {
