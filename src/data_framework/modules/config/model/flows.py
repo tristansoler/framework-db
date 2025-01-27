@@ -148,7 +148,8 @@ class IncomingFileLandingToRaw:
 @dataclass
 class Notification:
     type: NotificationType
-    topic: str
+    internal: bool
+    external: bool
     subject: str
     body: str
 
