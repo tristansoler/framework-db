@@ -43,6 +43,11 @@ class NotificationType(Enum):
     EMAIL = "email"
 
 
+class Topic(Enum):
+    INTERNAL = "internal"
+    EXTERNAL = "external"
+
+
 @dataclass
 class Hardware:
     ram: int = 4
@@ -148,8 +153,7 @@ class IncomingFileLandingToRaw:
 @dataclass
 class Notification:
     type: NotificationType
-    internal: bool
-    external: bool
+    topics: List[Topic]
     subject: str
     body: str
 

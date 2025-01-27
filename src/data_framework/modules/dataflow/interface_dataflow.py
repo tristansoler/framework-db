@@ -59,6 +59,7 @@ class PayloadResponse:
         notification.subject = notification.subject.format_map(arguments)
         notification.body = notification.body.format_map(arguments)
         notification.type = notification.type.value
+        notification.topics = [topic.value for topic in notification.topics]
         # Validate length of the notification subject and body
         # TODO: move to CI/CD
         max_subject_len = 100

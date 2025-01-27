@@ -233,6 +233,8 @@ class ConfigSetup:
                             cls.parse_to_model(model=field_model, json_file=field_item)
                             for field_item in json_file.get(field)
                         ]
+                elif get_origin(field_type) is list and all(issubclass(item, Enum) for item in get_args(field_type)):
+                    kwargs[field] = [get_args(field_type)[0](value) for value in json_file.get(field)]
                 else:
                     if hasattr(model, field):
                         default_value = getattr(model, field)
