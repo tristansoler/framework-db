@@ -6,7 +6,7 @@ from data_framework.modules.config.model.flows import (
     OutputReport,
     ExecutionMode,
     Notification,
-    NotificationDict
+    Environment
 )
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
@@ -56,8 +56,13 @@ class PayloadResponse:
     def send_notification(self, notification_name: str, arguments: str) -> None:
         notifications_dict = config().current_process_config().notifications
         notification = notifications_dict.get_notification(notification_name)
-        notification.subject = notification.subject.format_map(arguments)
-        notification.body = notification.body.format_map(arguments)
+        if config().environment == Environment.DEVELOP:
+            notification.subject = '[DEV] ' + notification.subject.format_map(arguments)
+        if config().environment == Environment.PREPRODUCTION:
+            notification.subject = '[PRE]' + notification.subject.format_map(arguments)
+        else:
+            notification.subject = notification.subject.format_map(arguments)
+        notification.body = notification.body.format_map(arguments) + '\n\n\n--\nEmail sent from Data Platfrom SAM INH'
         notification.type = notification.type.value
         notification.topics = [topic.value for topic in notification.topics]
         # Validate length of the notification subject and body

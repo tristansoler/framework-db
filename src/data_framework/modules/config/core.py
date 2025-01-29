@@ -215,9 +215,10 @@ class ConfigSetup:
                         tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config)
                     kwargs[field] = TableDict(tables)
                 elif isinstance(field_type, type) and issubclass(field_type, (NotificationDict)) and json_file:
-                    notifications = {}
-                    for notification_name, config in json_file.get(field, {}).items():
-                        notifications[notification_name] = cls.parse_to_model(model=Notification, json_file=config)
+                    notifications = {
+                        notification_name: cls.parse_to_model(model=Notification, json_file=config)
+                        for notification_name, config in json_file.get(field, {}).items()
+                    }
                     kwargs[field] = NotificationDict(notifications)
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
                     kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)

@@ -1,7 +1,7 @@
 from data_framework.modules.storage.interface_storage import Database
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Dict
 import os
 
 
@@ -160,9 +160,11 @@ class Notification:
 
 @dataclass
 class NotificationDict:
-    notifications: Tuple[str, Notification]
+    notifications: Dict[str, Notification] = field(default_factory=dict)
 
     def get_notification(self, notification_name: str) -> Union[Notification, None]:
+        if not self.notifications:
+            raise ValueError(f'Notification key {notification_name} not found. No notifications defined')
         notification = self.notifications.get(notification_name)
         if not notification:
             notification_names = ', '.join(self.notifications.keys())
@@ -225,7 +227,7 @@ class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
     output_file: DatabaseTable
     processing_specifications: ProcessingSpecifications
-    notifications: NotificationDict = field(default_factory=dict)
+    notifications: NotificationDict = field(default_factory=NotificationDict)
 
 
 @dataclass
@@ -233,7 +235,7 @@ class GenericProcess:
     source_tables: TableDict
     target_tables: TableDict
     processing_specifications: ProcessingSpecifications
-    notifications: NotificationDict = field(default_factory=dict)
+    notifications: NotificationDict = field(default_factory=NotificationDict)
 
 
 @dataclass
@@ -254,7 +256,7 @@ class OutputReport:
 class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
-    notifications: NotificationDict = field(default_factory=dict)
+    notifications: NotificationDict = field(default_factory=NotificationDict)
 
 
 @dataclass
