@@ -247,7 +247,7 @@ class GenericProcess:
     target_tables: TableDict
     processing_specifications: ProcessingSpecifications
     notifications: NotificationDict = field(default_factory=NotificationDict)
-    vars: Optional[ProcessVars]
+    vars: Optional[ProcessVars] = field(default_factory=ProcessVars)
 
 @dataclass
 class OutputReport:
