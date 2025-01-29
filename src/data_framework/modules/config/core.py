@@ -17,12 +17,14 @@ from data_framework.modules.config.model.flows import (
     GenericProcess,
     TableDict,
     CSVSpecsReport,
+    JSONSpecsReport,
     VolumetricExpectation,
     Platform,
     Notification,
     NotificationDict,
     Technologies,
-    Environment
+    Environment,
+    ProcessVars
 )
 import threading
 import os
@@ -42,16 +44,17 @@ def config(parameters: dict = None, reset: bool = False) -> Config:
     else:
         return ConfigSetup._instancia.config
 
-
 class ConfigSetup:
 
     _instancia = None
     _lock = threading.Lock()
+    _environment: None
 
     _models = (
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
-        Hardware, SparkConfiguration, CustomConfiguration, OutputReport, CSVSpecsReport,
+        Hardware, SparkConfiguration, CustomConfiguration,
+        OutputReport, CSVSpecsReport, JSONSpecsReport,
         VolumetricExpectation, Notification
     )
 
@@ -104,10 +107,12 @@ class ConfigSetup:
                     environment=data_framework_config['environment'],
                     platform=platform
                 )
+
                 self._instancia.config = ConfigSetup.parse_to_model(
                     model=Config,
                     parameters=parameters,
-                    json_file=dataflow_config
+                    json_file=dataflow_config,
+                    environment=data_framework_config['environment']
                 )
         except Exception as e:
             self._instancia.config = None
@@ -192,17 +197,18 @@ class ConfigSetup:
         return merged
 
     @classmethod
-    def parse_to_model(cls, model: Type[T], json_file: dict, parameters: dict = None) -> T:
+    def parse_to_model(cls, model: Type[T], json_file: dict, environment: str, parameters: dict = None) -> T:
         # TODO: refactorizar
         fieldtypes = get_type_hints(model)
         kwargs = {}
+        model_instantiated = None
 
         try:
             for field, field_type in fieldtypes.items():
                 default_value = None
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
-                        kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field))
+                        kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field), environment=environment)
                 elif isinstance(field_type, type) and issubclass(field_type, Enum):
                     value = json_file.get(field)
                     if value:
@@ -212,26 +218,38 @@ class ConfigSetup:
                 elif isinstance(field_type, type) and issubclass(field_type, (TableDict)) and json_file:
                     tables = {}
                     for table_name, config in json_file.get(field, {}).items():
-                        tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config)
+                        tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config, environment=environment)
                     kwargs[field] = TableDict(tables)
                 elif isinstance(field_type, type) and issubclass(field_type, (NotificationDict)) and json_file:
                     notifications = {
-                        notification_name: cls.parse_to_model(model=Notification, json_file=config)
+                        notification_name: cls.parse_to_model(model=Notification, json_file=config, environment=environment)
                         for notification_name, config in json_file.get(field, {}).items()
                     }
                     kwargs[field] = NotificationDict(notifications)
                 elif isinstance(field_type, type) and issubclass(field_type, (Parameters)):
-                    kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters)
+                    kwargs[field] = cls.parse_to_model(model=field_type, json_file=parameters, environment=environment)
+                elif ProcessVars in get_args(field_type):
+                    default = {'default': {}, 'develop': {}, 'preproduction': {}, 'production': {}}
+                    all_vars = json_file.get(field, default)
+
+                    variables = cls.merged_current_dataflow_with_default(
+                        current_dataflow=all_vars.get(environment),
+                        default=all_vars.get('default')
+                    )
+
+                    kwargs[field] = ProcessVars(_variables=variables)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
+
                     if json_file.get(field):
-                        kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field))
+                        kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field), environment=environment)
+                    elif type(None) in get_args(field_type):
+                        kwargs[field] = None
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-
                     if json_file and json_file.get(field):
                         kwargs[field] = [
-                            cls.parse_to_model(model=field_model, json_file=field_item)
+                            cls.parse_to_model(model=field_model, json_file=field_item, environment=environment)
                             for field_item in json_file.get(field)
                         ]
                 elif get_origin(field_type) is list and all(issubclass(item, Enum) for item in get_args(field_type)):
@@ -244,6 +262,7 @@ class ConfigSetup:
                         kwargs[field] = json_file.get(field, default_value)
                     else:
                         kwargs[field] = default_value
+            model_instantiated = model(**kwargs)
         except Exception as e:
             import traceback
             expection = type(e).__name__
@@ -253,11 +272,14 @@ class ConfigSetup:
             # Imprimir la información de la excepción
             print(
                 f"""
-                    vars: field:{field} field_type:{field_type} parameters:{parameters} json_file:{json_file} default_value:{default_value}
+                    model: {model}
+                    kwargs: {kwargs}
+                    vars: field: {field} field_type: {field_type} parameters:{parameters} json_file:{json_file} default_value:{default_value}
                     Exception: {expection}
                     Error: {error}
                     Trace:
-                    {trace}
+                        {trace}
                 """
             )
-        return model(**kwargs)
+
+        return model_instantiated

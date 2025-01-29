@@ -10,7 +10,6 @@ import re
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
 
-
 class ProcessingCoordinator(DataFlowInterface):
 
     def __init__(self):
@@ -98,6 +97,7 @@ class ProcessingCoordinator(DataFlowInterface):
         output_folder = self.parse_output_folder(config_output.name)
         file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {file_path}')
+
         if config_output.file_format == "csv":
             csv_file = BytesIO()
             pdf = df.toPandas()
@@ -111,8 +111,19 @@ class ProcessingCoordinator(DataFlowInterface):
             response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
             if not response.success:
                 raise response.error
-        # TODO: Salida a excel y json
-
+        
+        if config_output.file_format == "json":
+            json_file = BytesIO()
+            pdf = df.toPandas()
+            pdf.to_json(
+                json_file,
+                orient="records",
+                lines=True
+            )
+            response = self.storage.write_to_path(Layer.OUTPUT, file_path, json_file.getvalue())
+            if not response.success:
+                raise response.error
+    
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
         return re.sub(
