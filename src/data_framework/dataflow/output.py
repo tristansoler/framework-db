@@ -62,7 +62,7 @@ class ProcessingCoordinator(DataFlowInterface):
         # Upload output data to S3
         if df and not df.isEmpty():
             self.write_data_to_file(df, config_output)
-            self.logger.info(f'Output {config_output.name} generated successfully')
+            self.logger.info(f"Output '{config_output.name}' generated successfully")
         else:
             raise ValueError(f'No data available for output {config_output.name}')
 
@@ -103,7 +103,7 @@ class ProcessingCoordinator(DataFlowInterface):
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
         output_folder = self.parse_output_folder(config_output.name)
         file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
-        self.logger.info(f'Saving output {config_output.name} in {file_path}')
+        self.logger.info(f"Saving output '{config_output.name}' in {file_path}")
 
         file_to_save = BytesIO()
 
@@ -120,11 +120,19 @@ class ProcessingCoordinator(DataFlowInterface):
         if config_output.file_format == "json":
             column_order = df.columns
 
+            self.logger.info(f"Columns '{column_order}'")
+            df.show()
+            df.printSchema()
+
             columns_to_convert = [column for column, type in df.dtypes if type.startswith("array") or type.startswith("struct")]
             for column in columns_to_convert:
                 df = df.withColumn(column, f.to_json(f.col(column)))
+
+            df.printSchema()
+            df.show()
             
             df = df.select(column_order)
+            df.show()
 
             pdf = df.toPandas()
 
