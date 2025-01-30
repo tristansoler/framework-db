@@ -1,7 +1,7 @@
 from data_framework.modules.dataflow.interface_dataflow import DataFlowInterface, OutputResponse
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
-from data_framework.modules.config.model.flows import OutputReport
+from data_framework.modules.config.model.flows import OutputReport, OutputFileFormat
 from pyspark.sql import DataFrame
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -9,6 +9,7 @@ from io import BytesIO
 import re
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
+
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -76,10 +77,16 @@ class ProcessingCoordinator(DataFlowInterface):
             ]
         else:
             columns = config_output.columns
-        _filter = self.format_string(config_output.where)
-        self.logger.info(
-            f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
-        )
+        if config_output.where:
+            _filter = self.format_string(config_output.where)
+            self.logger.info(
+                f'Obtaining data from {config_output.source_table.full_name} with filter {_filter}'
+            )
+        else:
+            _filter = None
+            self.logger.info(
+                f'Obtaining data from {config_output.source_table.full_name}'
+            )
         response = self.data_process.read_table(
             config_output.source_table.database_relation, config_output.source_table.table, _filter, columns
         )
@@ -98,7 +105,7 @@ class ProcessingCoordinator(DataFlowInterface):
         file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {file_path}')
 
-        if config_output.file_format == "csv":
+        if config_output.file_format == OutputFileFormat.CSV:
             csv_file = BytesIO()
             pdf = df.toPandas()
             pdf.to_csv(
@@ -111,8 +118,8 @@ class ProcessingCoordinator(DataFlowInterface):
             response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
             if not response.success:
                 raise response.error
-        
-        if config_output.file_format == "json":
+
+        elif config_output.file_format == OutputFileFormat.JSON:
             json_file = BytesIO()
             pdf = df.toPandas()
             pdf.to_json(
@@ -123,7 +130,7 @@ class ProcessingCoordinator(DataFlowInterface):
             response = self.storage.write_to_path(Layer.OUTPUT, file_path, json_file.getvalue())
             if not response.success:
                 raise response.error
-    
+
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
         return re.sub(

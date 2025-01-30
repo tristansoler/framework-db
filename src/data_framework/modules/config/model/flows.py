@@ -34,6 +34,11 @@ class LandingFileFormat(Enum):
     EXCEL = "xls"
 
 
+class OutputFileFormat(Enum):
+    CSV = "csv"
+    JSON = "json"
+
+
 class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
@@ -261,12 +266,12 @@ class OutputReport:
     name: str
     source_table: DatabaseTable
     columns: List[str]
-    where: str
-    file_format: str
+    file_format: OutputFileFormat
     filename_pattern: str
     csv_specs: Optional[CSVSpecsReport]
     json_specs: Optional[JSONSpecsReport]
     description: Optional[str]
+    where: Optional[str]
     columns_alias: Optional[List[str]] = field(default_factory=list)
     filename_date_format: Optional[str] = '%Y-%m-%d'
 
