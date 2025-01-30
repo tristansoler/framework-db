@@ -117,35 +117,34 @@ class ProcessingCoordinator(DataFlowInterface):
                 encoding=config_output.csv_specs.encoding,
             )
             
-        if config_output.file_format == "json":
-            column_order = df.columns
+        column_order = df.columns
 
-            self.logger.info(f"Columns '{column_order}'")
-            df.show()
-            df.printSchema()
+        self.logger.info(f"Columns '{column_order}'")
+        df.show()
+        df.printSchema()
 
-            columns_to_convert = [column for column, type in df.dtypes if type.startswith("array") or type.startswith("struct")]
-            for column in columns_to_convert:
-                df = df.withColumn(column, f.to_json(f.col(column)))
+        columns_to_convert = [column for column, type in df.dtypes if type.startswith("array") or type.startswith("struct")]
+        for column in columns_to_convert:
+            df = df.withColumn(column, f.to_json(f.col(column)))
 
-            df.printSchema()
-            df.show()
-            
-            df = df.select(column_order)
-            df.show()
-
-            pdf = df.toPandas()
-
-            pdf.to_json(
-                file_to_save,
-                orient="records",
-                lines=True,
-                force_ascii=False
-            )
+        df.printSchema()
+        df.show()
         
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
-            if not response.success:
-                raise response.error
+        df = df.select(column_order)
+        df.show()
+
+        pdf = df.toPandas()
+
+        pdf.to_json(
+            file_to_save,
+            orient="records",
+            lines=True,
+            force_ascii=False
+        )
+        
+        response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
+        if not response.success:
+            raise response.error
     
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
