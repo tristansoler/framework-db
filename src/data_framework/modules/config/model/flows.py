@@ -34,6 +34,11 @@ class LandingFileFormat(Enum):
     EXCEL = "xls"
 
 
+class OutputFileFormat(Enum):
+    CSV = "csv"
+    JSON = "json"
+
+
 class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
@@ -47,8 +52,10 @@ class Topic(Enum):
     INTERNAL = "internal"
     EXTERNAL = "external"
 
+
 class JSONSpectFormat(Enum):
     LINES = "lines"
+
 
 @dataclass
 class Hardware:
@@ -125,6 +132,7 @@ class CSVSpecsReport:
     encoding: str
     delimiter: str
 
+
 @dataclass
 class JSONSpecsReport:
     format: JSONSpectFormat = JSONSpectFormat.LINES
@@ -162,6 +170,7 @@ class Notification:
     topics: List[Topic]
     subject: str
     body: str
+
 
 @dataclass
 class NotificationDict:
@@ -234,12 +243,14 @@ class LandingToRaw:
     processing_specifications: ProcessingSpecifications
     notifications: NotificationDict = field(default_factory=NotificationDict)
 
+
 @dataclass
 class ProcessVars:
     _variables: dict = field(default_factory=dict)
 
     def get_variable(self, name: str):
-        self._variables.get(name)
+        return self._variables.get(name)
+
 
 @dataclass
 class GenericProcess:
@@ -249,25 +260,28 @@ class GenericProcess:
     notifications: NotificationDict = field(default_factory=NotificationDict)
     vars: Optional[ProcessVars] = field(default_factory=ProcessVars)
 
+
 @dataclass
 class OutputReport:
     name: str
     source_table: DatabaseTable
     columns: List[str]
-    where: str
-    file_format: str
+    file_format: OutputFileFormat
     filename_pattern: str
     csv_specs: Optional[CSVSpecsReport]
     json_specs: Optional[JSONSpecsReport]
     description: Optional[str]
+    where: Optional[str]
     columns_alias: Optional[List[str]] = field(default_factory=list)
     filename_date_format: Optional[str] = '%Y-%m-%d'
+
 
 @dataclass
 class ToOutput:
     output_reports: List[OutputReport]
     processing_specifications: ProcessingSpecifications
     notifications: NotificationDict = field(default_factory=NotificationDict)
+
 
 @dataclass
 class Processes:
@@ -278,6 +292,7 @@ class Processes:
     common_to_business: Optional[GenericProcess] = None
     common_to_output: Optional[ToOutput] = None
     business_to_output: Optional[ToOutput] = None
+
 
 @dataclass
 class Config:
