@@ -140,9 +140,9 @@ class DataFlowInterface(ABC):
         message = "It is mandatory to implement this function"
         self.logger.error(message)
         raise RuntimeError(message)
-    
+
     def vars(self, name: str):
-        return self.__current_process_config.vars.get_var(name=name)
+        return self.__current_process_config.vars.get_variable(name=name)
 
     def read_table_with_casting(
         self,
