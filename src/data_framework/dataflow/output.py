@@ -143,9 +143,9 @@ class ProcessingCoordinator(DataFlowInterface):
                 force_ascii=False
             )
         
-        response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
-        if not response.success:
-            raise response.error
+            response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
+            if not response.success:
+                raise response.error
     
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
