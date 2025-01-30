@@ -3,13 +3,13 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.model.flows import OutputReport, OutputFileFormat
 from pyspark.sql import DataFrame
+from pyspark.sql import functions as f
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import re
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
-
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -105,32 +105,40 @@ class ProcessingCoordinator(DataFlowInterface):
         file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
         self.logger.info(f'Saving output {config_output.name} in {file_path}')
 
-        if config_output.file_format == OutputFileFormat.CSV:
-            csv_file = BytesIO()
+        file_to_save = BytesIO()
+
+        if config_output.file_format == "csv":
             pdf = df.toPandas()
             pdf.to_csv(
-                csv_file,
+                file_to_save,
                 sep=config_output.csv_specs.delimiter,
                 header=config_output.csv_specs.header,
                 index=config_output.csv_specs.index,
                 encoding=config_output.csv_specs.encoding,
             )
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
-            if not response.success:
-                raise response.error
+            
+        if config_output.file_format == "json":
+            column_order = df.columns
 
-        elif config_output.file_format == OutputFileFormat.JSON:
-            json_file = BytesIO()
+            columns_to_convert = [column for column, type in df.dtypes if type.startswith("array") or type.startswith("struct")]
+            for column in columns_to_convert:
+                df = df.withColumn(column, f.to_json(f.col(column)))
+            
+            df = df.select(column_order)
+
             pdf = df.toPandas()
-            pdf.to_json(
-                json_file,
-                orient="records",
-                lines=True
-            )
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, json_file.getvalue())
-            if not response.success:
-                raise response.error
 
+            pdf.to_json(
+                file_to_save,
+                orient="records",
+                lines=True,
+                force_ascii=False
+            )
+        
+        response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
+        if not response.success:
+            raise response.error
+    
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
         return re.sub(
