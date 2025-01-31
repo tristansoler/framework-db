@@ -232,7 +232,7 @@ class DatabaseTable:
     database: Database
     table: str
     primary_keys: Optional[list] = field(default_factory=list)
-    casting: Optional[Casting] = field(default_factory=Casting)
+    casting: Casting = field(default_factory=Casting)
     partition_field: str = "datadate"  # TODO: data_date
 
     @property

@@ -209,14 +209,13 @@ class ConfigSetup:
         try:
             for field, field_type in fieldtypes.items():
                 default_value = None
-                if isinstance(field_type, type) and issubclass(field_type, cls._models):
-                    if json_file:
-                        kwargs[field] = cls.parse_to_model(
-                            model=field_type,
-                            json_file=json_file.get(field),
-                            environment=environment
-                        )
-                elif isinstance(field_type, type) and issubclass(field_type, Enum):
+                if isinstance(field_type, type) and issubclass(field_type, cls._models) and json_file:
+                    kwargs[field] = cls.parse_to_model(
+                        model=field_type,
+                        json_file=json_file.get(field),
+                        environment=environment
+                    )
+                elif isinstance(field_type, type) and issubclass(field_type, Enum) and json_file:
                     value = json_file.get(field)
                     if value:
                         kwargs[field] = field_type(value)
@@ -263,9 +262,9 @@ class ConfigSetup:
                         )
                     elif type(None) in get_args(field_type):
                         kwargs[field] = None
-                elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
+                elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models) and json_file:
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-                    if json_file and json_file.get(field):
+                    if json_file.get(field):
                         kwargs[field] = [
                             cls.parse_to_model(
                                 model=field_model.get_subclass_from_dict(field_item),
@@ -276,7 +275,7 @@ class ConfigSetup:
                             cls.parse_to_model(model=field_model, json_file=field_item, environment=environment)
                             for field_item in json_file.get(field)
                         ]
-                elif get_origin(field_type) is list and all(issubclass(item, Enum) for item in get_args(field_type)):
+                elif get_origin(field_type) is list and all(issubclass(item, Enum) for item in get_args(field_type)) and json_file:
                     kwargs[field] = [get_args(field_type)[0](value) for value in json_file.get(field)]
                 else:
                     if hasattr(model, field):
