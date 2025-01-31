@@ -157,7 +157,24 @@
                         "lux_portfolio_returns": {
                             "database": "funds_raw",
                             "table": "luxembourg_portfolio_returns",
-                            "partition_field": "data_date"
+                            "partition_field": "data_date",
+                            "casting": {
+                                "strategy": "one_by_one",
+                                "transformations": [
+                                    {
+                                        "type": "parse_dates",
+                                        "source_format": "%d-%b-%Y",
+                                        "target_format": "%Y-%m-%d",
+                                        "columns": [
+                                            "position_date",
+                                            "prior_holdings_date",
+                                            "call_date",
+                                            "effective_maturity_date",
+                                            "expiration_date"
+                                        ]
+                                    }
+                                ]
+                            }
                         }
                     },
                     "target_tables": {

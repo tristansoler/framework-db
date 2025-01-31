@@ -24,7 +24,9 @@ from data_framework.modules.config.model.flows import (
     NotificationDict,
     Technologies,
     Environment,
-    ProcessVars
+    ProcessVars,
+    Casting,
+    Transformation
 )
 import threading
 import os
@@ -44,6 +46,7 @@ def config(parameters: dict = None, reset: bool = False) -> Config:
     else:
         return ConfigSetup._instancia.config
 
+
 class ConfigSetup:
 
     _instancia = None
@@ -55,7 +58,7 @@ class ConfigSetup:
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
-        VolumetricExpectation, Notification
+        VolumetricExpectation, Notification, Casting, Transformation
     )
 
     def __new__(cls, *args, **kwargs):
@@ -208,7 +211,11 @@ class ConfigSetup:
                 default_value = None
                 if isinstance(field_type, type) and issubclass(field_type, cls._models):
                     if json_file:
-                        kwargs[field] = cls.parse_to_model(model=field_type, json_file=json_file.get(field), environment=environment)
+                        kwargs[field] = cls.parse_to_model(
+                            model=field_type,
+                            json_file=json_file.get(field),
+                            environment=environment
+                        )
                 elif isinstance(field_type, type) and issubclass(field_type, Enum):
                     value = json_file.get(field)
                     if value:
@@ -216,13 +223,22 @@ class ConfigSetup:
                     else:
                         kwargs[field] = field_type(getattr(model, field))
                 elif isinstance(field_type, type) and issubclass(field_type, (TableDict)) and json_file:
-                    tables = {}
-                    for table_name, config in json_file.get(field, {}).items():
-                        tables[table_name] = cls.parse_to_model(model=DatabaseTable, json_file=config, environment=environment)
+                    tables = {
+                        table_name: cls.parse_to_model(
+                            model=DatabaseTable,
+                            json_file=config,
+                            environment=environment
+                        )
+                        for table_name, config in json_file.get(field, {}).items()
+                    }
                     kwargs[field] = TableDict(tables)
                 elif isinstance(field_type, type) and issubclass(field_type, (NotificationDict)) and json_file:
                     notifications = {
-                        notification_name: cls.parse_to_model(model=Notification, json_file=config, environment=environment)
+                        notification_name: cls.parse_to_model(
+                            model=Notification,
+                            json_file=config,
+                            environment=environment
+                        )
                         for notification_name, config in json_file.get(field, {}).items()
                     }
                     kwargs[field] = NotificationDict(notifications)
@@ -231,7 +247,6 @@ class ConfigSetup:
                 elif ProcessVars in get_args(field_type):
                     default = {'default': {}, 'develop': {}, 'preproduction': {}, 'production': {}}
                     all_vars = json_file.get(field, default)
-
                     variables = cls.merged_current_dataflow_with_default(
                         current_dataflow=all_vars.get(environment),
                         default=all_vars.get('default')
@@ -240,15 +255,24 @@ class ConfigSetup:
                     kwargs[field] = ProcessVars(_variables=variables)
                 elif get_origin(field_type) is Union and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
-
                     if json_file.get(field):
-                        kwargs[field] = cls.parse_to_model(model=field_model, json_file=json_file.get(field), environment=environment)
+                        kwargs[field] = cls.parse_to_model(
+                            model=field_model,
+                            json_file=json_file.get(field),
+                            environment=environment
+                        )
                     elif type(None) in get_args(field_type):
                         kwargs[field] = None
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models):
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
                     if json_file and json_file.get(field):
                         kwargs[field] = [
+                            cls.parse_to_model(
+                                model=field_model.get_subclass_from_dict(field_item),
+                                json_file=field_item,
+                                environment=environment
+                            )
+                            if field_model == Transformation else
                             cls.parse_to_model(model=field_model, json_file=field_item, environment=environment)
                             for field_item in json_file.get(field)
                         ]
@@ -257,7 +281,6 @@ class ConfigSetup:
                 else:
                     if hasattr(model, field):
                         default_value = getattr(model, field)
-
                     if json_file:
                         kwargs[field] = json_file.get(field, default_value)
                     else:
