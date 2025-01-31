@@ -170,14 +170,14 @@
                                 "transformations": [
                                     {
                                         "type": "parse_dates",
-                                        "source_format": "%d-%b-%Y",
-                                        "target_format": "%Y-%m-%d",
+                                        "source_format": "dd-MMM-yyyy",
+                                        "target_format": "yyyy-MM-dd",
                                         "columns": [
-                                            "position_date",
-                                            "prior_holdings_date",
-                                            "call_date",
-                                            "effective_maturity_date",
-                                            "expiration_date"
+                                            "Position Date",
+                                            "Prior Holdings Date",
+                                            "Call Date",
+                                            "Effective Maturity Date",
+                                            "Expiration date"
                                         ]
                                     }
                                 ]
