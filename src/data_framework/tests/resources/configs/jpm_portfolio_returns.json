@@ -157,6 +157,13 @@
                         "lux_portfolio_returns": {
                             "database": "funds_raw",
                             "table": "luxembourg_portfolio_returns",
+                            "partition_field": "data_date"
+                        }
+                    },
+                    "target_tables": {
+                        "lux_portfolio_returns": {
+                            "database": "funds_staging",
+                            "table": "luxembourg_portfolio_returns",
                             "partition_field": "data_date",
                             "casting": {
                                 "strategy": "one_by_one",
@@ -175,13 +182,6 @@
                                     }
                                 ]
                             }
-                        }
-                    },
-                    "target_tables": {
-                        "lux_portfolio_returns": {
-                            "database": "funds_staging",
-                            "table": "luxembourg_portfolio_returns",
-                            "partition_field": "data_date"
                         },
                         "portfolio_returns": {
                             "database": "funds_staging",
