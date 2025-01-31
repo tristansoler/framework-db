@@ -57,7 +57,7 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
-    def create_dataframe(self, data: Any, schema: dict = None) -> ReadResponse:
+    def create_dataframe(self, data: Any, schema: str = None) -> ReadResponse:
         pass
 
     @abstractmethod
