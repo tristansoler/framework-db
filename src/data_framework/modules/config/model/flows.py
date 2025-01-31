@@ -215,9 +215,9 @@ class Transformation:
 
 @dataclass
 class ParseDatesTransformation(Transformation):
-    source_format: str
-    target_format: str
     columns: List[str]
+    source_format: str
+    target_format: str = "yyyy-MM-dd"
 
 
 @dataclass
