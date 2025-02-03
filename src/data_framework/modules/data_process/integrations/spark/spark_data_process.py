@@ -24,6 +24,7 @@ from pyspark.sql.functions import when
 import time
 import random
 from traceback import format_exc
+from pyspark.sql.types import StructType, StructField, StringType
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
 
@@ -148,19 +149,20 @@ class SparkDataProcess(DataProcessInterface):
                 df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
 
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
-                # TODO: finalizar casting con esquema dinámico
-                # Esquema definido -> rellenar nombre de la BBDD
+
                 source_schema_response = self.catalogue.get_schema(
                     Database.CONFIG_SCHEMAS.value, table_target.table
                 )
 
-                df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
-                # Obtener esquema del df
+                df_temp = self.spark.read.options(**csv_read_config).csv(read_path.path)
+                expected_schema = {column.name: utils.map_to_spark_type(column.type) for column in source_schema_response.schema.columns}
+                dynamic_schema = StructType([
+                    StructField(col_name, expected_schema.get(col_name, StringType()), True)
+                    for col_name in df_temp.columns
+                ])
 
-                # Columnas con match -> se dejan con el tipo de dato que venga en el schema de tabla
-                # Columnas sin match -> se dejan con tipo string
-                # Dejar guardado en algún sitio las columnas sin match
-                raise NotImplementedError('Casting with dynamic schema not implemented')
+                df_raw = self.spark.read.schema(dynamic_schema).options(**csv_read_config).csv(read_path.path)
+
 
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
