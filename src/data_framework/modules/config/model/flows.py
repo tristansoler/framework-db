@@ -325,7 +325,7 @@ class ToOutput:
 
 @dataclass
 class Processes:
-    landing_to_raw: LandingToRaw
+    landing_to_raw: Optional[LandingToRaw]
     raw_to_staging: Optional[GenericProcess] = None
     staging_to_common: Optional[GenericProcess] = None
     staging_to_business: Optional[GenericProcess] = None
