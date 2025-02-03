@@ -21,6 +21,7 @@ class Database(Enum):
     FUNDS_COMMON = "funds_common"
     FUNDS_BUSINESS = "funds_business"
     DATA_QUALITY = "funds_common"
+    CONFIG_SCHEMAS = 'df_config_schemas'
     # TODO: DBs for Infinity quality controls. Remove when migrating to Data Platform
     INFINITY_STAGING = "infinity_datalake_staging"
     INFINITY_COMMON = "infinity_datalake_common"

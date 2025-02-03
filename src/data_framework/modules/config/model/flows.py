@@ -57,6 +57,15 @@ class JSONSpectFormat(Enum):
     LINES = "lines"
 
 
+class CastingStrategy(Enum):
+    ONE_BY_ONE = "one_by_one"
+    DYNAMIC = "dynamic"
+
+
+class TransformationType(Enum):
+    PARSE_DATES = "parse_dates"
+
+
 @dataclass
 class Hardware:
     ram: int = 4
@@ -189,10 +198,41 @@ class NotificationDict:
 
 
 @dataclass
+class Transformation:
+    type: TransformationType
+
+    @classmethod
+    def get_subclass_from_dict(cls, transformation: dict):
+        transformation_type = transformation.get('type')
+        transformation_mapping = {
+            TransformationType.PARSE_DATES.value: ParseDatesTransformation
+        }
+        subclass = transformation_mapping.get(transformation_type)
+        if not subclass:
+            raise NotImplementedError(f'Transformation type {transformation_type} not implemented')
+        return subclass
+
+
+@dataclass
+class ParseDatesTransformation(Transformation):
+    columns: List[str]
+    source_format: List[str]
+    target_format: str = "yyyy-MM-dd"
+
+
+@dataclass
+class Casting:
+    strategy: CastingStrategy = CastingStrategy.ONE_BY_ONE
+    master_table: Optional[str] = None
+    transformations: List[Transformation] = field(default_factory=list)
+
+
+@dataclass
 class DatabaseTable:
     database: Database
     table: str
     primary_keys: Optional[list] = field(default_factory=list)
+    casting: Casting = field(default_factory=Casting)
     partition_field: str = "datadate"  # TODO: data_date
 
     @property
