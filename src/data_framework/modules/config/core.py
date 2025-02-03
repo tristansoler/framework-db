@@ -280,6 +280,8 @@ class ConfigSetup:
                 else:
                     if hasattr(model, field):
                         default_value = getattr(model, field)
+                    elif get_origin(field_type) is list:
+                        default_value = []
                     if json_file:
                         kwargs[field] = json_file.get(field, default_value)
                     else:
