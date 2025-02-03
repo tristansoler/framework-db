@@ -8,6 +8,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import re
+import subprocess
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
 
@@ -107,41 +108,28 @@ class ProcessingCoordinator(DataFlowInterface):
 
         file_to_save = BytesIO()
 
-        if config_output.file_format == "csv":
+        if config_output.csv_specs:
             pdf = df.toPandas()
             pdf.to_csv(
                 file_to_save,
                 sep=config_output.csv_specs.delimiter,
                 header=config_output.csv_specs.header,
                 index=config_output.csv_specs.index,
-                encoding=config_output.csv_specs.encoding,
-            )
+                encoding=config_output.csv_specs.encoding
+            ) 
             
-        column_order = df.columns
+        if config_output.json_specs:
+            response = Storage.base_layer_path(layer=Layer.OUTPUT)
+            tmp_write_path = f"{response.path}/{self.config.project_id}/{output_folder}/tmp/"
+            df.coalesce(1).write.mode("overwrite").json(path=tmp_write_path)
 
-        self.logger.info(f"Columns '{column_order}'")
-        df.show()
-        df.printSchema()
+            tmp_read_path = f"{self.config.project_id}/{output_folder}/tmp/"
+            response = Storage.list_files(layer=Layer.OUTPUT, prefix=tmp_read_path)
+            path_output_file = next((path for path in response.result if ".json" in path), "")
+            
+            response = Storage.read(layer=Layer.OUTPUT, key_path=path_output_file)
+            file_to_save = BytesIO(response.data)
 
-        columns_to_convert = [column for column, type in df.dtypes if type.startswith("array") or type.startswith("struct")]
-        for column in columns_to_convert:
-            df = df.withColumn(column, f.to_json(f.col(column)))
-
-        df.printSchema()
-        df.show()
-        
-        df = df.select(column_order)
-        df.show()
-
-        pdf = df.toPandas()
-
-        pdf.to_json(
-            file_to_save,
-            orient="records",
-            lines=True,
-            force_ascii=False
-        )
-        
         response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
         if not response.success:
             raise response.error

@@ -118,3 +118,12 @@ class S3Storage(CoreStorageInterface):
         response = PathResponse(success=True, error=None, path=final_path)
 
         return response
+    
+    def base_layer_path(self, layer: Layer) -> PathResponse:
+        s3_bucket = self._build_s3_bucket_name(layer=layer)
+
+        final_path = f's3://{s3_bucket}'
+
+        response = PathResponse(success=True, error=None, path=final_path)
+        
+        return response

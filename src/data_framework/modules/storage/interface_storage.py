@@ -84,3 +84,7 @@ class CoreStorageInterface(ABC):
     @abstractmethod
     def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
         pass
+    
+    @abstractmethod
+    def base_layer_path(self, layer: Layer) -> PathResponse:
+        pass
