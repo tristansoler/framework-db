@@ -300,7 +300,6 @@ class GenericProcess:
     notifications: NotificationDict = field(default_factory=NotificationDict)
     vars: Optional[ProcessVars] = field(default_factory=ProcessVars)
 
-
 @dataclass
 class OutputReport:
     name: str
@@ -310,6 +309,7 @@ class OutputReport:
     filename_pattern: str
     csv_specs: Optional[CSVSpecsReport]
     json_specs: Optional[JSONSpecsReport]
+    replaces: Optional[List[dict]]
     description: Optional[str]
     where: Optional[str]
     columns_alias: Optional[List[str]] = field(default_factory=list)
