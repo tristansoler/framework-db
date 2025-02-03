@@ -4,7 +4,9 @@ from importlib import import_module
 from typing import List, Dict, Any
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType, StructField, StringType
-
+from pyspark.sql.types import (
+     IntegerType, FloatType, DoubleType, BooleanType, DateType, TimestampType
+)
 
 def convert_schema(schema: catalogue.Schema) -> StructType:
     schema_columns = []
@@ -14,6 +16,32 @@ def convert_schema(schema: catalogue.Schema) -> StructType:
         schema_columns.append(struct_field)
 
     return StructType(schema_columns)
+
+
+
+
+def map_to_spark_type(db_type: str):
+
+    mapping = {
+        "string": StringType(),
+        "varchar": StringType(),
+        "char": StringType(),
+        "text": StringType(),
+        "integer": IntegerType(),
+        "int": IntegerType(),
+        "bigint": IntegerType(),
+        "smallint": IntegerType(),
+        "tinyint": IntegerType(),
+        "decimal": DoubleType(),
+        "numeric": DoubleType(),
+        "float": FloatType(),
+        "double": DoubleType(),
+        "boolean": BooleanType(),
+        "date": DateType(),
+        "timestamp": TimestampType()
+    }
+
+    return mapping.get(db_type.lower(), StringType())
 
 
 def apply_transformations(
