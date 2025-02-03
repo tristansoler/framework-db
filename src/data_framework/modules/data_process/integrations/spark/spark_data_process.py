@@ -5,6 +5,7 @@ from data_framework.modules.data_process.interface_data_process import (
 )
 from data_framework.modules.data_process.integrations.spark import utils as utils
 from data_framework.modules.storage.core_storage import Storage
+from data_framework.modules.storage.interface_storage import Database
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
@@ -143,7 +144,17 @@ class SparkDataProcess(DataProcessInterface):
 
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
                 # TODO: finalizar casting con esquema dinámico
+                # Esquema definido -> rellenar nombre de la BBDD
+                source_schema_response = self.catalogue.get_schema(
+                    Database.CONFIG_SCHEMAS.value, table_target.table
+                )
+
                 df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
+                # Obtener esquema del df
+
+                # Columnas con match -> se dejan con el tipo de dato que venga en el schema de tabla
+                # Columnas sin match -> se dejan con tipo string
+                # Dejar guardado en algún sitio las columnas sin match
                 raise NotImplementedError('Casting with dynamic schema not implemented')
 
             if config().parameters.execution_mode == ExecutionMode.DELTA:
