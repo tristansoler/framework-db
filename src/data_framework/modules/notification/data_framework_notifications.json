@@ -1,0 +1,8 @@
+{
+    "file_arrival": {
+        "type": "email",
+        "topics": ["internal"],
+        "subject": "[{dataflow}][{process}] File arrival",
+        "body": "The file {file_name} with date {file_date} has been received in Landing."
+    }
+}

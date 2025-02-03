@@ -180,6 +180,33 @@ class Notification:
     subject: str
     body: str
 
+    def format_subject(self, arguments: dict, environment: Environment) -> None:
+        if environment == Environment.DEVELOP:
+            self.subject = '[DEV] ' + self.subject.format_map(arguments)
+        elif environment == Environment.PREPRODUCTION:
+            self.subject = '[PRE]' + self.subject.format_map(arguments)
+        else:
+            self.subject = self.subject.format_map(arguments)
+
+    def format_body(self, arguments: dict, add_signature: bool = True) -> None:
+        if add_signature:
+            signature = '\n\n\n--\nEmail sent from Data Platfrom SAM INH'
+            self.body = self.body.format_map(arguments) + signature
+        else:
+            self.body = self.body.format_map(arguments)
+
+    def validate_subject_length(self, notification_name: str, max_subject_len: int = 100) -> None:
+        if len(self.subject) > max_subject_len:
+            raise ValueError(
+                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
+            )
+
+    def validate_body_length(self, notification_name: str, max_body_len: int = 500) -> None:
+        if len(self.body) > max_body_len:
+            raise ValueError(
+                f'Body of the {notification_name} notifications exceeds the {max_body_len} character limit'
+            )
+
 
 @dataclass
 class NotificationDict:
@@ -342,6 +369,7 @@ class Config:
     platform: Platform
     parameters: Parameters
     project_id: str
+    data_framework_notifications: NotificationDict = field(default_factory=NotificationDict)
 
     def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
         try:
