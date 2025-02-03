@@ -38,6 +38,9 @@ class SparkDataProcess(DataProcessInterface):
             .setAppName(f"[{config().parameters.dataflow}] {config().parameters.process}")
 
         spark_config.setAll([
+            # S3
+            ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "3000"),
+            ("fs.s3.maxConnections", "100"),
             # Iceberg
             ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
             ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
@@ -59,6 +62,8 @@ class SparkDataProcess(DataProcessInterface):
             ("spark.sql.catalogImplementation", "hive"),
 
             ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
+
+            
         ])
 
         volumetric_expectation = json_config.spark_configuration.volumetric_expectation
