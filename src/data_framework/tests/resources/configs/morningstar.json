@@ -8,7 +8,6 @@
         "landing_to_raw": {
           "incoming_file": {
             "zipped": "zip",
-            "file_format": "csv",
             "filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})",
             "csv_specs": {
               "header_position": 0,

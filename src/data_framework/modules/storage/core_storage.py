@@ -69,3 +69,7 @@ class Storage:
         logger.info(f'response path ~> {response.path}')
 
         return response
+    
+    @classmethod
+    def base_layer_path(cls, layer: Layer) -> PathResponse:
+        return cls._storage.base_layer_path(layer=layer)

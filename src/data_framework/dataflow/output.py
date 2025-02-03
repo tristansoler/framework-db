@@ -3,13 +3,14 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.model.flows import OutputReport, OutputFileFormat
 from pyspark.sql import DataFrame
+from pyspark.sql import functions as f
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import re
+import subprocess
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
-
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -62,7 +63,7 @@ class ProcessingCoordinator(DataFlowInterface):
         # Upload output data to S3
         if df and not df.isEmpty():
             self.write_data_to_file(df, config_output)
-            self.logger.info(f'Output {config_output.name} generated successfully')
+            self.logger.info(f"Output '{config_output.name}' generated successfully")
         else:
             raise ValueError(f'No data available for output {config_output.name}')
 
@@ -103,34 +104,36 @@ class ProcessingCoordinator(DataFlowInterface):
         filename = self.format_string(config_output.filename_pattern, config_output.filename_date_format)
         output_folder = self.parse_output_folder(config_output.name)
         file_path = f"{self.config.project_id}/{output_folder}/inbound/{filename}"
-        self.logger.info(f'Saving output {config_output.name} in {file_path}')
+        self.logger.info(f"Saving output '{config_output.name}' in {file_path}")
 
-        if config_output.file_format == OutputFileFormat.CSV:
-            csv_file = BytesIO()
+        file_to_save = BytesIO()
+
+        if config_output.csv_specs:
             pdf = df.toPandas()
             pdf.to_csv(
-                csv_file,
+                file_to_save,
                 sep=config_output.csv_specs.delimiter,
                 header=config_output.csv_specs.header,
                 index=config_output.csv_specs.index,
-                encoding=config_output.csv_specs.encoding,
-            )
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, csv_file.getvalue())
-            if not response.success:
-                raise response.error
+                encoding=config_output.csv_specs.encoding
+            ) 
+            
+        if config_output.json_specs:
+            response = Storage.base_layer_path(layer=Layer.OUTPUT)
+            tmp_write_path = f"{response.path}/{self.config.project_id}/{output_folder}/tmp/"
+            df.coalesce(1).write.mode("overwrite").json(path=tmp_write_path)
 
-        elif config_output.file_format == OutputFileFormat.JSON:
-            json_file = BytesIO()
-            pdf = df.toPandas()
-            pdf.to_json(
-                json_file,
-                orient="records",
-                lines=True
-            )
-            response = self.storage.write_to_path(Layer.OUTPUT, file_path, json_file.getvalue())
-            if not response.success:
-                raise response.error
+            tmp_read_path = f"{self.config.project_id}/{output_folder}/tmp/"
+            response = Storage.list_files(layer=Layer.OUTPUT, prefix=tmp_read_path)
+            path_output_file = next((path for path in response.result if ".json" in path), "")
+            
+            response = Storage.read(layer=Layer.OUTPUT, key_path=path_output_file)
+            file_to_save = BytesIO(response.data)
 
+        response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
+        if not response.success:
+            raise response.error
+    
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
         return re.sub(
