@@ -15,7 +15,6 @@ from data_framework.modules.config.model.flows import (
     CastingStrategy
 )
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
-from data_framework.modules.data_process.integrations.spark.transformations import apply_transformations
 from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
@@ -150,7 +149,7 @@ class SparkDataProcess(DataProcessInterface):
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
 
-            df_raw = apply_transformations(df_raw, table_target.casting.transformations)
+            df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
 
