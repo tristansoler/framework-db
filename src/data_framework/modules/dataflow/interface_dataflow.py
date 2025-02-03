@@ -157,7 +157,7 @@ class DataFlowInterface(ABC):
             else name_of_raw_table
         )
 
-        executio_mode = self.config.parameters.execution_mode
+        execution_mode = self.config.parameters.execution_mode
 
         casting_table = self.target_tables.table(name_of_staging_table_to_casting)
 
@@ -169,14 +169,20 @@ class DataFlowInterface(ABC):
         if response.success:
             df = response.data
 
-            if executio_mode == ExecutionMode.FULL:
-                self.logger.info(f'[ExecutionMode:{executio_mode.value}] Read from {input_table.full_name}')
+            if execution_mode == ExecutionMode.FULL:
+                self.logger.info(
+                    f'[ExecutionMode:{execution_mode.value}] Read from {input_table.full_name}'
+                )
             else:
-                self.logger.info(f"[ExecutionMode:{executio_mode.value}] Read {df.count()} rows from {input_table.full_name} with partition {input_table.sql_where}")
+                self.logger.info(
+                    f"[ExecutionMode:{execution_mode.value}] Read {df.count()} rows " +
+                    f"from {input_table.full_name} with partition {input_table.sql_where}"
+                )
             return df
         else:
             self.logger.error(
-                f'[ExecutionMode:{executio_mode}] Error reading data from {input_table.full_name} with filter {input_table.sql_where}: {response.error}'
+                f'[ExecutionMode:{execution_mode}] Error reading data from {input_table.full_name} ' +
+                f'with filter {input_table.sql_where}: {response.error}'
             )
 
             raise response.error
@@ -184,11 +190,11 @@ class DataFlowInterface(ABC):
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
 
-        executio_mode = self.config.parameters.execution_mode
+        execution_mode = self.config.parameters.execution_mode
 
         sql_where = input_table.sql_where
 
-        if executio_mode == ExecutionMode.FULL.value:
+        if execution_mode == ExecutionMode.FULL.value:
             sql_where = None
 
         response = self.data_process.read_table(
@@ -200,14 +206,14 @@ class DataFlowInterface(ABC):
         if response.success:
             df = response.data
 
-            if executio_mode == ExecutionMode.FULL.value:
-                self.logger.info(f'[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name}')
+            if execution_mode == ExecutionMode.FULL.value:
+                self.logger.info(f'[ExecutionMode:{execution_mode}] Read {df.count()} rows from {input_table.full_name}')
             else:
-                self.logger.info(f"[ExecutionMode:{executio_mode}] Read {df.count()} rows from {input_table.full_name} with partition {sql_where}")
+                self.logger.info(f"[ExecutionMode:{execution_mode}] Read {df.count()} rows from {input_table.full_name} with partition {sql_where}")
             return df
         else:
             self.logger.error(
-                f'[ExecutionMode:{executio_mode.value}] Error reading data from {input_table.full_name} with filter {sql_where}: {response.error}'
+                f'[ExecutionMode:{execution_mode.value}] Error reading data from {input_table.full_name} with filter {sql_where}: {response.error}'
             )
             raise response.error
 

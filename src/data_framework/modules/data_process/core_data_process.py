@@ -83,7 +83,7 @@ class CoreDataProcess(object):
         )
 
     @classmethod
-    def create_dataframe(cls, data: Any, schema: dict = None) -> ReadResponse:
+    def create_dataframe(cls, data: Any, schema: str = None) -> ReadResponse:
         return cls._data_process.create_dataframe(data=data, schema=schema)
 
     @classmethod

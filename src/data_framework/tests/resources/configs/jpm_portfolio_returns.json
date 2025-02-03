@@ -121,9 +121,9 @@
                     "notifications": {
                         "failed_controls": {
                             "type": "email",
-                            "topic": "name_of_the_topic",
+                            "topics": ["external"],
                             "subject": "{file_date} - Carga Returns {country} a Factset - Controles funcionales incorrectos",
-                            "body": "Durante el procesado de los ficheros de {country}, se han detectado porfolios que incumplen los controles de calidad. Para más información sobre dichos porfolios, consultar el dashboard de PowerBI disponible en [ENLACE]."
+                            "body": "Durante el procesado del fichero de {country} con fecha {file_date}, se han detectado porfolios que incumplen los controles de calidad. Para más información sobre dichos porfolios, consultar el dashboard de PowerBI disponible en https://app.powerbi.com/Redirect?action=OpenApp&appId=b60cebb8-cbc7-46f6-b02d-2e2ce7bc5138&ctid=35595a02-4d6d-44ac-99e1-f9ab4cd872db&experience=power-bi."
                         }
                     }
                 },
@@ -164,7 +164,24 @@
                         "lux_portfolio_returns": {
                             "database": "funds_staging",
                             "table": "luxembourg_portfolio_returns",
-                            "partition_field": "data_date"
+                            "partition_field": "data_date",
+                            "casting": {
+                                "strategy": "one_by_one",
+                                "transformations": [
+                                    {
+                                        "type": "parse_dates",
+                                        "source_format": ["dd-MMM-yyyy"],
+                                        "target_format": "yyyy-MM-dd",
+                                        "columns": [
+                                            "position_date",
+                                            "prior_holdings_date",
+                                            "call_date",
+                                            "effective_maturity_date",
+                                            "expiration_date"
+                                        ]
+                                    }
+                                ]
+                            }
                         },
                         "portfolio_returns": {
                             "database": "funds_staging",

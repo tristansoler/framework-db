@@ -95,7 +95,7 @@ class PandasDataProcess(DataProcessInterface):
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
-    def create_dataframe(self, data: Any, schema: dict = None) -> ReadResponse:
+    def create_dataframe(self, data: Any, schema: str = None) -> ReadResponse:
         try:
             if schema:
                 # TODO: implementar

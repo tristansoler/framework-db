@@ -5,29 +5,22 @@ from data_framework.modules.data_process.interface_data_process import (
 )
 from data_framework.modules.data_process.integrations.spark import utils as utils
 from data_framework.modules.storage.core_storage import Storage
+from data_framework.modules.storage.interface_storage import Database
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
-from data_framework.modules.config.model.flows import DatabaseTable, ExecutionMode
+from data_framework.modules.config.model.flows import (
+    DatabaseTable,
+    ExecutionMode,
+    CastingStrategy
+)
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 from typing import List, Any
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as f
 from pyspark.sql.functions import when
-from pyspark.sql.types import (
-    StructType,
-    StructField,
-    IntegerType,
-    StringType,
-    DoubleType,
-    BooleanType,
-    DateType,
-    FloatType,
-    TimestampType,
-    DecimalType
-)
 import time
 import random
 from traceback import format_exc
@@ -144,24 +137,42 @@ class SparkDataProcess(DataProcessInterface):
                 table_name=table_source.table
             )
 
-            schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
+            if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
+                schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
+                spark_schema = utils.convert_schema(schema=schema_response.schema)
+                df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
 
-            spark_schema = utils.convert_schema(schema=schema_response.schema)
+            elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
+                # TODO: finalizar casting con esquema dinámico
+                # Esquema definido -> rellenar nombre de la BBDD
+                source_schema_response = self.catalogue.get_schema(
+                    Database.CONFIG_SCHEMAS.value, table_target.table
+                )
 
-            df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
+                df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
+                # Obtener esquema del df
+
+                # Columnas con match -> se dejan con el tipo de dato que venga en el schema de tabla
+                # Columnas sin match -> se dejan con tipo string
+                # Dejar guardado en algún sitio las columnas sin match
+                raise NotImplementedError('Casting with dynamic schema not implemented')
 
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
 
-            df_raw.createOrReplaceTempView("data_to_cast")
+            df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
-            query = Cast().get_query_datacast(
-                table_source=table_source,
-                table_target=table_target
-            )
+            if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
 
-            df = self._execute_query(query)
-            response = ReadResponse(success=True, error=None, data=df)
+                df_raw.createOrReplaceTempView("data_to_cast")
+
+                query = Cast().get_query_datacast(
+                    table_source=table_source,
+                    table_target=table_target
+                )
+
+                df_raw = self._execute_query(query)
+            response = ReadResponse(success=True, error=None, data=df_raw)
         except Exception as e:
             message_error = f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
             logger.error(message_error)
@@ -290,42 +301,14 @@ class SparkDataProcess(DataProcessInterface):
             response = ReadResponse(success=False, error=e, data=None)
         return response
 
-    def create_dataframe(self, data: Any, schema: dict = None) -> ReadResponse:
+    def create_dataframe(self, data: Any, schema: str = None) -> ReadResponse:
         try:
-            if schema:
-                spark_schema = self._parse_schema(schema)
-                df = self.spark.createDataFrame(data, spark_schema)
-            else:
-                df = self.spark.createDataFrame(data)
+            df = self.spark.createDataFrame(data, schema)
             response = ReadResponse(success=True, error=None, data=df)
         except Exception as e:
             logger.error(e)
             response = ReadResponse(success=False, error=e, data=None)
         return response
-
-    def _parse_schema(self, schema: dict) -> StructType:
-        parsed_types = {
-            'int': IntegerType(),
-            'string': StringType(),
-            'double': DoubleType(),
-            'float': FloatType(),
-            'decimal': DecimalType(),
-            'bool': BooleanType(),
-            'date': DateType(),
-            'timestamp': TimestampType()
-        }
-        parsed_fields = []
-        for field, field_info in schema.items():
-            _type = field_info['type']
-            is_null = field_info['is_null']
-            parsed_type = parsed_types.get(_type)
-            if not parsed_type:
-                raise ValueError(f'Invalid type: {_type}. Allowed types: {list(parsed_types.keys())}')
-            parsed_fields.append(
-                StructField(field, parsed_type, is_null)
-            )
-        spark_schema = StructType(parsed_fields)
-        return spark_schema
 
     def query(self, sql: str) -> ReadResponse:
         try:
