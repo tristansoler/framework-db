@@ -55,6 +55,16 @@ class ProcessingCoordinator(DataFlowInterface):
             # Obtain file date
             file_date = self.obtain_file_date()
             self.payload_response.file_date = file_date
+            # TODO: eliminar notificación
+            self.notifications.send_notification(
+                'file_arrival',
+                {
+                    'dataflow': self.parameters.dataflow,
+                    'process': self.parameters.process,
+                    'file_name': Path(self.parameters.source_file_path).name,
+                    'file_date': file_date
+                }
+            )
             # Apply controls
             file_validator = FileValidator(
                 file_date=file_date,
