@@ -241,7 +241,7 @@ class DataFlowInterface(ABC):
                 self.payload_response.data_quality.tables.append(dq_table)
 
         # Add notifications to send
-        self.payload_response.set_notifications_to_send(self.__notifications.notifications_to_send)
+        self.payload_response.set_notifications_to_send(self.__notifications.get_notifications_to_send())
 
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 

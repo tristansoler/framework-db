@@ -2,12 +2,11 @@ from data_framework.modules.notification.interface_notifications import Interfac
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.model.flows import (
-    Environment,
     NotificationDict,
     Notification,
     NotificationType
 )
-from typing import Dict, Any
+from typing import Dict, Any, List
 from copy import deepcopy
 
 
@@ -65,3 +64,6 @@ class Notifications(InterfaceNotifications):
             self.notifications_to_send.append(notification_to_send)
         else:
             raise ValueError(f'The limit of {max_notifications} notifications has been exceeded')
+
+    def get_notifications_to_send(self) -> List[Notification]:
+        return self.notifications_to_send

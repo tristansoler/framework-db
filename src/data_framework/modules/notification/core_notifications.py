@@ -1,6 +1,7 @@
 from data_framework.modules.code.lazy_class_property import LazyClassProperty
 from data_framework.modules.notification.interface_notifications import InterfaceNotifications
-from typing import Any, Dict
+from data_framework.modules.config.model.flows import Notification
+from typing import Any, Dict, List
 
 
 class CoreNotifications(object):
@@ -16,3 +17,7 @@ class CoreNotifications(object):
             notification_name=notification_name,
             arguments=arguments
         )
+
+    @classmethod
+    def get_notifications_to_send(cls) -> List[Notification]:
+        return cls._notifications.get_notifications_to_send()
