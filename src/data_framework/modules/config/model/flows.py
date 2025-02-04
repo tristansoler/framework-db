@@ -184,7 +184,7 @@ class Notification:
         if environment == Environment.DEVELOP:
             self.subject = '[DEV] ' + self.subject.format_map(arguments)
         elif environment == Environment.PREPRODUCTION:
-            self.subject = '[PRE]' + self.subject.format_map(arguments)
+            self.subject = '[PRE] ' + self.subject.format_map(arguments)
         else:
             self.subject = self.subject.format_map(arguments)
 
