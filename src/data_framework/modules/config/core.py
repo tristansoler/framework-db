@@ -142,8 +142,8 @@ class ConfigSetup:
             raise RuntimeError(f'Error obtaining AWS account ID for config setup: {e}')
         # Read data framework config file
         config_json = cls.read_config_file(
-            absolute_path='data_framework/data_framework_config.json',
-            relative_path='../../data_framework_config.json'
+            absolute_path='data_framework/modules/config/data_framework_config.json',
+            relative_path='data_framework_config.json'
         )
         # Search account ID in config file
         current_config = config_json.get(account_id)
