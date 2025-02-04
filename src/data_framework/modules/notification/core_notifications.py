@@ -1,6 +1,8 @@
 from data_framework.modules.code.lazy_class_property import LazyClassProperty
-from data_framework.modules.notification.interface_notifications import InterfaceNotifications
-from data_framework.modules.config.model.flows import Notification
+from data_framework.modules.notification.interface_notifications import (
+    InterfaceNotifications,
+    Notification
+)
 from typing import Any, Dict, List
 
 

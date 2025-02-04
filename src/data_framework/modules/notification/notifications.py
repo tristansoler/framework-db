@@ -1,13 +1,13 @@
-from data_framework.modules.notification.interface_notifications import InterfaceNotifications
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
-from data_framework.modules.config.model.flows import (
+from data_framework.modules.config.model.flows import Environment
+from data_framework.modules.notification.interface_notifications import (
+    InterfaceNotifications,
     NotificationDict,
-    Notification,
-    NotificationType
+    NotificationType,
+    NotificationToSend
 )
 from typing import Dict, Any, List
-from copy import deepcopy
 
 
 class Notifications(InterfaceNotifications):
@@ -15,20 +15,15 @@ class Notifications(InterfaceNotifications):
     def __init__(self):
         self.config = config()
         self.logger = logger
-        self.notifications = self._combine_notifications(
-            config().data_framework_notifications,
-            config().current_process_config().notifications
-        )
+        self.notifications = self._combine_notifications()
         self.notifications_to_send = []
 
-    @staticmethod
-    def _combine_notifications(
-            data_framework_notifications: NotificationDict,
-            custom_notifications: NotificationDict
-    ) -> NotificationDict:
-        df_keys = data_framework_notifications.notifications.keys()
+    def _combine_notifications(self) -> NotificationDict:
+        default_notifications = self.config.data_framework_notifications.notifications
+        custom_notifications = self.config.current_process_config().notifications
+        default_keys = default_notifications.notifications.keys()
         custom_keys = custom_notifications.notifications.keys()
-        common_keys = set(df_keys) & set(custom_keys)
+        common_keys = set(default_keys) & set(custom_keys)
         if common_keys:
             common_keys_str = ', '.join(common_keys)
             raise ValueError(
@@ -37,7 +32,7 @@ class Notifications(InterfaceNotifications):
             )
         else:
             combined_notifications = NotificationDict({
-                **data_framework_notifications.notifications,
+                **default_notifications.notifications,
                 **custom_notifications.notifications
             })
             return combined_notifications
@@ -46,24 +41,55 @@ class Notifications(InterfaceNotifications):
         # Obtain notification info
         notification = self.notifications.get_notification(notification_name)
         if notification.type == NotificationType.EMAIL:
-            notification_to_send = deepcopy(notification)
-            notification_to_send.format_subject(arguments, self.config.environment)
-            notification_to_send.validate_subject_length(notification_name)
-            notification_to_send.format_body(arguments)
-            notification_to_send.validate_body_length(notification_name)
-            # TODO: ver si mover a otro sitio el cambio de type y topics
-            notification_to_send.type = notification_to_send.type.value
-            notification_to_send.topics = [topic.value for topic in notification_to_send.topics]
+            subject = self._format_subject(notification.subject, arguments)
+            body = self._format_body(notification.body, arguments)
+            self._validate_subject_length(subject, notification_name)
+            self._validate_body_length(body, notification_name)
+            notification_to_send = NotificationToSend(
+                type=notification.type.value,
+                topics=[topic.value for topic in notification.topics],
+                subject=subject,
+                body=body
+            )
             self._add_notification(notification_to_send)
-            # TODO: ¿parametrizar longitud máxima y número de notificaciones máximo en el fichero config?
         else:
             raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
 
-    def _add_notification(self, notification_to_send: Notification, max_notifications: int = 5) -> None:
+    def _format_subject(self, subject: str, arguments: Dict[str, Any]) -> str:
+        if self.config.environment == Environment.DEVELOP:
+            return '[DEV]' + subject.format_map(arguments)
+        elif self.config.environment == Environment.PREPRODUCTION:
+            return '[PRE]' + subject.format_map(arguments)
+        else:
+            return subject.format_map(arguments)
+
+    def _format_body(self, body: str, arguments: dict) -> str:
+        signature = self.config.data_framework_notifications.parameters.signature
+        if signature:
+            return body.format_map(arguments) + signature
+        else:
+            return body.format_map(arguments)
+
+    def _validate_subject_length(self, subject: str, notification_name: str) -> None:
+        max_subject_len = self.config.data_framework_notifications.parameters.max_subject_length
+        if len(subject) > max_subject_len:
+            raise ValueError(
+                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
+            )
+
+    def _validate_body_length(self, body: str, notification_name: str) -> None:
+        max_body_len = self.config.data_framework_notifications.parameters.max_body_length
+        if len(body) > max_body_len:
+            raise ValueError(
+                f'Body of the {notification_name} notifications exceeds the {max_body_len} character limit'
+            )
+
+    def _add_notification(self, notification_to_send: NotificationToSend) -> None:
+        max_notifications = self.config.data_framework_notifications.parameters.max_number_of_notifications
         if len(self.notifications_to_send) < max_notifications:
             self.notifications_to_send.append(notification_to_send)
         else:
             raise ValueError(f'The limit of {max_notifications} notifications has been exceeded')
 
-    def get_notifications_to_send(self) -> List[Notification]:
+    def get_notifications_to_send(self) -> List[NotificationToSend]:
         return self.notifications_to_send

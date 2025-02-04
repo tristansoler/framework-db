@@ -1,7 +1,11 @@
 from data_framework.modules.storage.interface_storage import Database
+from data_framework.modules.notification.interface_notifications import (
+    NotificationDict,
+    DataFrameworkNotifications
+)
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Tuple, Union, Dict
+from typing import Optional, List, Tuple, Union
 import os
 
 
@@ -42,15 +46,6 @@ class OutputFileFormat(Enum):
 class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
-
-
-class NotificationType(Enum):
-    EMAIL = "email"
-
-
-class Topic(Enum):
-    INTERNAL = "internal"
-    EXTERNAL = "external"
 
 
 class JSONSpectFormat(Enum):
@@ -171,57 +166,6 @@ class IncomingFileLandingToRaw:
     filename_unzipped_pattern: Optional[str]
     csv_specs: CSVSpecs
     compare_with_previous_file: Optional[bool] = False
-
-
-@dataclass
-class Notification:
-    type: NotificationType
-    topics: List[Topic]
-    subject: str
-    body: str
-
-    def format_subject(self, arguments: dict, environment: Environment) -> None:
-        if environment == Environment.DEVELOP:
-            self.subject = '[DEV] ' + self.subject.format_map(arguments)
-        elif environment == Environment.PREPRODUCTION:
-            self.subject = '[PRE] ' + self.subject.format_map(arguments)
-        else:
-            self.subject = self.subject.format_map(arguments)
-
-    def format_body(self, arguments: dict, add_signature: bool = True) -> None:
-        if add_signature:
-            signature = '\n\n\n--\nEmail sent from Data Platfrom SAM INH'
-            self.body = self.body.format_map(arguments) + signature
-        else:
-            self.body = self.body.format_map(arguments)
-
-    def validate_subject_length(self, notification_name: str, max_subject_len: int = 100) -> None:
-        if len(self.subject) > max_subject_len:
-            raise ValueError(
-                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
-            )
-
-    def validate_body_length(self, notification_name: str, max_body_len: int = 500) -> None:
-        if len(self.body) > max_body_len:
-            raise ValueError(
-                f'Body of the {notification_name} notifications exceeds the {max_body_len} character limit'
-            )
-
-
-@dataclass
-class NotificationDict:
-    notifications: Dict[str, Notification] = field(default_factory=dict)
-
-    def get_notification(self, notification_name: str) -> Union[Notification, None]:
-        if not self.notifications:
-            raise ValueError(f'Notification key {notification_name} not found. No notifications defined')
-        notification = self.notifications.get(notification_name)
-        if not notification:
-            notification_names = ', '.join(self.notifications.keys())
-            raise ValueError(
-                f'Notification key {notification_name} not found. Available notification keys: {notification_names}'
-            )
-        return notification
 
 
 @dataclass
@@ -369,7 +313,7 @@ class Config:
     platform: Platform
     parameters: Parameters
     project_id: str
-    data_framework_notifications: NotificationDict = field(default_factory=NotificationDict)
+    data_framework_notifications: DataFrameworkNotifications
 
     def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
         try:

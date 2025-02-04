@@ -20,13 +20,17 @@ from data_framework.modules.config.model.flows import (
     JSONSpecsReport,
     VolumetricExpectation,
     Platform,
-    Notification,
-    NotificationDict,
     Technologies,
     Environment,
     ProcessVars,
     Casting,
     Transformation
+)
+from data_framework.modules.notification.interface_notifications import (
+    NotificationDict,
+    DataFrameworkNotifications,
+    Notification,
+    NotificationsParameters
 )
 import threading
 import os
@@ -58,7 +62,8 @@ class ConfigSetup:
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
-        VolumetricExpectation, Notification, Casting, Transformation
+        VolumetricExpectation, Notification, Casting, Transformation,
+        DataFrameworkNotifications, NotificationsParameters
     )
 
     def __new__(cls, *args, **kwargs):

@@ -4,13 +4,13 @@ from data_framework.modules.config.model.flows import (
     TableDict,
     DatabaseTable,
     OutputReport,
-    ExecutionMode,
-    Notification
+    ExecutionMode
 )
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
 from data_framework.modules.notification.core_notifications import CoreNotifications
+from data_framework.modules.notification.interface_notifications import NotificationToSend
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional
 import boto3
@@ -43,7 +43,7 @@ class PayloadResponse:
     file_date: str = None
     data_quality: DataQuality = field(default_factory=DataQuality)
     outputs: List[OutputResponse] = field(default_factory=list)
-    notifications: Optional[List[Notification]] = field(default_factory=list)
+    notifications: Optional[List[NotificationToSend]] = field(default_factory=list)
 
     def get_failed_outputs(self) -> List[str]:
         failed_outputs = [
@@ -52,9 +52,6 @@ class PayloadResponse:
             if not output.success
         ]
         return failed_outputs
-
-    def set_notifications_to_send(self, notifications: List[Notification]) -> None:
-        self.notifications = notifications
 
 
 class DataFlowInterface(ABC):
@@ -241,7 +238,7 @@ class DataFlowInterface(ABC):
                 self.payload_response.data_quality.tables.append(dq_table)
 
         # Add notifications to send
-        self.payload_response.set_notifications_to_send(self.__notifications.get_notifications_to_send())
+        self.payload_response.notifications = self.__notifications.get_notifications_to_send()
 
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 

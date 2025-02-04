@@ -57,8 +57,8 @@ class ProcessingCoordinator(DataFlowInterface):
             self.payload_response.file_date = file_date
             # TODO: eliminar notificación
             self.notifications.send_notification(
-                'file_arrival',
-                {
+                notification_name='file_arrival',
+                arguments={
                     'dataflow': self.parameters.dataflow,
                     'process': self.parameters.process,
                     'file_name': Path(self.parameters.source_file_path).name,
