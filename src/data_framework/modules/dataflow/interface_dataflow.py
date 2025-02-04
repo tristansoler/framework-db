@@ -43,7 +43,6 @@ class PayloadResponse:
     file_date: str = None
     data_quality: DataQuality = field(default_factory=DataQuality)
     outputs: List[OutputResponse] = field(default_factory=list)
-    # TODO: revisar notificationes
     notifications: Optional[List[Notification]] = field(default_factory=list)
 
     def get_failed_outputs(self) -> List[str]:
@@ -53,6 +52,9 @@ class PayloadResponse:
             if not output.success
         ]
         return failed_outputs
+
+    def set_notifications_to_send(self, notifications: List[Notification]) -> None:
+        self.notifications = notifications
 
 
 class DataFlowInterface(ABC):
@@ -237,6 +239,9 @@ class DataFlowInterface(ABC):
                 )
 
                 self.payload_response.data_quality.tables.append(dq_table)
+
+        # Add notifications to send
+        self.payload_response.set_notifications_to_send(self.__notifications.notifications_to_send)
 
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 
