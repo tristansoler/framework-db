@@ -19,6 +19,7 @@ class Notification:
     topics: List[Topic]
     subject: str
     body: str
+    active: bool = True
 
 
 @dataclass
