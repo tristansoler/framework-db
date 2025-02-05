@@ -118,7 +118,7 @@ class DataFlowInterface(ABC):
 
         if self.config.is_first_process:
             self.__monitoring.track_process_metric(
-                name=MetricNames.PROCESS_END_EVENT,
+                name=MetricNames.DATAFLOW_START_EVENT,
                 value=1
             )
 
@@ -248,7 +248,7 @@ class DataFlowInterface(ABC):
             value=seconds
         )
         
-        if self.config.has_next_process:
+        if self.config.has_next_process == False:
             self.__monitoring.track_process_metric(
                 name=MetricNames.DATAFLOW_END_EVENT,
                 value=1,
