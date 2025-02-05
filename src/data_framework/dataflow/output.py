@@ -126,9 +126,18 @@ class ProcessingCoordinator(DataFlowInterface):
             tmp_read_path = f"{self.config.project_id}/{output_folder}/tmp/"
             response = Storage.list_files(layer=Layer.OUTPUT, prefix=tmp_read_path)
             path_output_file = next((path for path in response.result if ".json" in path), "")
-
             response = Storage.read(layer=Layer.OUTPUT, key_path=path_output_file)
-            file_to_save = BytesIO(response.data)
+
+            file = response.data
+
+            if config_output.replaces:
+                file = file.decode('utf-8')
+                for replace_dict in config_output.replaces:
+                    for replace, new_value in replace_dict.items():
+                        file = file.replace(replace, new_value)
+                file = file.encode('utf-8')
+                    
+            file_to_save = BytesIO(file)
 
         response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
         if not response.success:
