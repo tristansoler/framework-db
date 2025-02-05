@@ -1,0 +1,22 @@
+{
+    "parameters": {
+        "max_subject_length": 100,
+        "max_body_length": 500,
+        "max_number_of_notifications": 5,
+        "signature": "\n\n\n--\nEmail sent from Data Platfrom SAM INH"
+    },
+    "notifications": {
+        "file_arrival": {
+            "type": "email",
+            "topics": ["internal"],
+            "subject": "[{dataflow}][{process}] File arrival",
+            "body": "The file {file_name} with date {file_date} has been received in Landing."
+        },
+        "output_generated": {
+            "type": "email",
+            "topics": ["internal"],
+            "subject": "[{dataflow}][{process}] Output generated",
+            "body": "The output {output_name} has been successfully generated in {file_path}."
+        }
+    }
+}

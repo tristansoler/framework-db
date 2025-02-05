@@ -20,13 +20,17 @@ from data_framework.modules.config.model.flows import (
     JSONSpecsReport,
     VolumetricExpectation,
     Platform,
-    Notification,
-    NotificationDict,
     Technologies,
     Environment,
     ProcessVars,
     Casting,
     Transformation
+)
+from data_framework.modules.notification.interface_notifications import (
+    NotificationDict,
+    DataFrameworkNotifications,
+    Notification,
+    NotificationsParameters
 )
 import threading
 import os
@@ -58,7 +62,8 @@ class ConfigSetup:
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
-        VolumetricExpectation, Notification, Casting, Transformation
+        VolumetricExpectation, Notification, Casting, Transformation,
+        DataFrameworkNotifications, NotificationsParameters
     )
 
     def __new__(cls, *args, **kwargs):
@@ -136,17 +141,10 @@ class ConfigSetup:
         except Exception as e:
             raise RuntimeError(f'Error obtaining AWS account ID for config setup: {e}')
         # Read data framework config file
-        path_absolute = Path(__file__).resolve()
-        if 'data_framework.zip' in path_absolute.parts:
-            zip_index = path_absolute.parts.index('data_framework.zip')
-            zip_path = Path(*path_absolute.parts[:zip_index+1])
-            with zipfile.ZipFile(zip_path, 'r') as z:
-                with z.open('data_framework/data_framework_config.json') as file:
-                    config_json = dict(json.loads(file.read()))
-        else:
-            file_path = (path_absolute.parent / '../../data_framework_config.json').resolve()
-            with open(file_path) as file:
-                config_json = dict(json.loads(file.read()))
+        config_json = cls.read_config_file(
+            absolute_path='data_framework/modules/config/data_framework_config.json',
+            relative_path='data_framework_config.json'
+        )
         # Search account ID in config file
         current_config = config_json.get(account_id)
         if not current_config:
@@ -157,6 +155,30 @@ class ConfigSetup:
             )
         else:
             return current_config
+
+    @classmethod
+    def read_notifications_config(cls) -> dict:
+        # Read data framework notifications file
+        notifications_config = cls.read_config_file(
+            absolute_path='data_framework/modules/notification/data_framework_notifications.json',
+            relative_path='../notification/data_framework_notifications.json'
+        )
+        return notifications_config
+
+    @classmethod
+    def read_config_file(cls, absolute_path: str, relative_path: str) -> dict:
+        current_path = Path(__file__).resolve()
+        if 'data_framework.zip' in current_path.parts:
+            zip_index = current_path.parts.index('data_framework.zip')
+            zip_path = Path(*current_path.parts[:zip_index+1])
+            with zipfile.ZipFile(zip_path, 'r') as z:
+                with z.open(absolute_path) as file:
+                    config_json = dict(json.loads(file.read()))
+        else:
+            file_path = (current_path.parent / relative_path).resolve()
+            with open(file_path) as file:
+                config_json = dict(json.loads(file.read()))
+        return config_json
 
     @classmethod
     def read_dataflow_config(cls, dataflow: str, local_file: str, environment: str, platform: str) -> dict:
@@ -182,6 +204,7 @@ class ConfigSetup:
         current_flow_json['environment'] = environment
         current_flow_json['platform'] = platform
         current_flow_json['project_id'] = config_json.get('project_id')
+        current_flow_json['data_framework_notifications'] = cls.read_notifications_config()
         return current_flow_json
 
     @classmethod

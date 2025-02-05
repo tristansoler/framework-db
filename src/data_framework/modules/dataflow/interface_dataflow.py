@@ -4,13 +4,13 @@ from data_framework.modules.config.model.flows import (
     TableDict,
     DatabaseTable,
     OutputReport,
-    ExecutionMode,
-    Notification,
-    Environment
+    ExecutionMode
 )
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.core_data_process import CoreDataProcess
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
+from data_framework.modules.notification.core_notifications import CoreNotifications
+from data_framework.modules.notification.interface_notifications import NotificationToSend
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional
 import boto3
@@ -43,7 +43,7 @@ class PayloadResponse:
     file_date: str = None
     data_quality: DataQuality = field(default_factory=DataQuality)
     outputs: List[OutputResponse] = field(default_factory=list)
-    notifications: Optional[List[Notification]] = field(default_factory=list)
+    notifications: Optional[List[NotificationToSend]] = field(default_factory=list)
 
     def get_failed_outputs(self) -> List[str]:
         failed_outputs = [
@@ -52,37 +52,6 @@ class PayloadResponse:
             if not output.success
         ]
         return failed_outputs
-
-    def send_notification(self, notification_name: str, arguments: str) -> None:
-        notifications_dict = config().current_process_config().notifications
-        notification = notifications_dict.get_notification(notification_name)
-        if config().environment == Environment.DEVELOP:
-            notification.subject = '[DEV] ' + notification.subject.format_map(arguments)
-        if config().environment == Environment.PREPRODUCTION:
-            notification.subject = '[PRE]' + notification.subject.format_map(arguments)
-        else:
-            notification.subject = notification.subject.format_map(arguments)
-        notification.body = notification.body.format_map(arguments) + '\n\n\n--\nEmail sent from Data Platfrom SAM INH'
-        notification.type = notification.type.value
-        notification.topics = [topic.value for topic in notification.topics]
-        # Validate length of the notification subject and body
-        # TODO: move to CI/CD
-        max_subject_len = 100
-        if len(notification.subject) > max_subject_len:
-            raise ValueError(
-                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
-            )
-        max_body_length = 500
-        if len(notification.body) > max_body_length:
-            raise ValueError(
-                f'Body of the {notification_name} notifications exceeds the {max_body_length} character limit'
-            )
-        self.notifications.append(notification)
-        # Validate the number of notifications to send
-        # TODO: move to CI/CD
-        max_notifications = 5
-        if len(self.notifications) > max_notifications:
-            raise ValueError(f'The limit of {max_notifications} notifications has been exceeded')
 
 
 class DataFlowInterface(ABC):
@@ -102,6 +71,10 @@ class DataFlowInterface(ABC):
     @property
     def quality_controls(self) -> CoreQualityControls:
         return self.__quality_controls
+
+    @property
+    def notifications(self) -> CoreNotifications:
+        return self.__notifications
 
     @property
     def source_tables(self) -> TableDict:
@@ -133,6 +106,7 @@ class DataFlowInterface(ABC):
         self.__logger = logger
         self.__data_process = CoreDataProcess()
         self.__quality_controls = CoreQualityControls()
+        self.__notifications = CoreNotifications()
         self.__payload_response = PayloadResponse()
         self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
 
@@ -262,6 +236,9 @@ class DataFlowInterface(ABC):
                 )
 
                 self.payload_response.data_quality.tables.append(dq_table)
+
+        # Add notifications to send
+        self.payload_response.notifications = self.__notifications.get_notifications_to_send()
 
         payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
 

@@ -116,8 +116,8 @@ class ProcessingCoordinator(DataFlowInterface):
                 header=config_output.csv_specs.header,
                 index=config_output.csv_specs.index,
                 encoding=config_output.csv_specs.encoding
-            ) 
-            
+            )
+
         if config_output.json_specs:
             response = Storage.base_layer_path(layer=Layer.OUTPUT)
             tmp_write_path = f"{response.path}/{self.config.project_id}/{output_folder}/tmp/"
@@ -142,7 +142,17 @@ class ProcessingCoordinator(DataFlowInterface):
         response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
         if not response.success:
             raise response.error
-    
+        else:
+            self.notifications.send_notification(
+                notification_name='output_generated',
+                arguments={
+                    'dataflow': self.config.parameters.dataflow,
+                    'process': self.config.parameters.process,
+                    'output_name': config_output.name,
+                    'file_path': file_path
+                }
+            )
+
     @staticmethod
     def parse_output_folder(output_folder: str) -> str:
         return re.sub(
