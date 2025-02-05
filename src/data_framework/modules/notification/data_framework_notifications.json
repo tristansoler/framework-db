@@ -11,6 +11,12 @@
             "topics": ["internal"],
             "subject": "[{dataflow}][{process}] File arrival",
             "body": "The file {file_name} with date {file_date} has been received in Landing."
+        },
+        "output_generated": {
+            "type": "email",
+            "topics": ["internal"],
+            "subject": "[{dataflow}][{process}] Output generated",
+            "body": "The output {output_name} has been successfully generated in {file_path}."
         }
     }
 }
