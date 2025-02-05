@@ -3,7 +3,7 @@ from data_framework.modules.notification.interface_notifications import (
     NotificationDict,
     DataFrameworkNotifications
 )
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Optional, List, Tuple, Union
 import os
@@ -167,7 +167,6 @@ class IncomingFileLandingToRaw:
     csv_specs: CSVSpecs
     compare_with_previous_file: Optional[bool] = False
 
-
 @dataclass
 class Transformation:
     type: TransformationType
@@ -314,6 +313,25 @@ class Config:
     parameters: Parameters
     project_id: str
     data_framework_notifications: DataFrameworkNotifications
+
+    @property
+    def has_next_process(self) -> bool:
+        processes = [field.name for field in fields(Processes)]
+        current_process_index = processes.index(self.parameters.process)
+        posible_processes_begind_index = current_process_index + 1
+
+        possible_processes = processes[posible_processes_begind_index:]
+        next_processes = [process for process in possible_processes if getattr(self.processes, process) is not None]
+
+        return not next_processes
+    
+    @property
+    def is_first_process(self) -> bool:
+        procesess = [field.name for field in fields(Processes)]
+        next_processes = [process for process in procesess if getattr(self.processes, process) is not None]
+        current_process_index = next_processes.index(self.parameters.process)
+
+        return current_process_index == 0
 
     def current_process_config(self) -> Union[LandingToRaw, GenericProcess, ToOutput]:
         try:

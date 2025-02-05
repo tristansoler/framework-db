@@ -11,10 +11,15 @@ from data_framework.modules.data_process.core_data_process import CoreDataProces
 from data_framework.modules.validation.core_quality_controls import CoreQualityControls
 from data_framework.modules.notification.core_notifications import CoreNotifications
 from data_framework.modules.notification.interface_notifications import NotificationToSend
+from data_framework.modules.monitoring.core_monitoring import (
+    CoreMonitoring,
+    Metric,
+    MetricNames
+)
 from dataclasses import dataclass, asdict, field
 from typing import Any, Dict, List, Optional
 import boto3
-import json
+import json, time
 
 
 @dataclass
@@ -109,6 +114,15 @@ class DataFlowInterface(ABC):
         self.__notifications = CoreNotifications()
         self.__payload_response = PayloadResponse()
         self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
+        self.__monitoring = CoreMonitoring()
+
+        if self.config.is_first_process:
+            self.__monitoring.track_process_metric(
+                name=MetricNames.PROCESS_END_EVENT,
+                value=1
+            )
+
+        self.__start_process = time.time()
 
     def process(self):
         message = "It is mandatory to implement this function"
@@ -218,6 +232,29 @@ class DataFlowInterface(ABC):
         else:
             self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
             raise response.error
+    
+    def save_monitorization(self):
+
+        seconds = time.time() - self.__start_process
+
+        self.__monitoring.track_process_metric(
+            name=MetricNames.PROCESS_END_EVENT,
+            value=1,
+            success=True
+        )
+
+        self.__monitoring.track_process_metric(
+            name=MetricNames.PROCESS_DURATION,
+            value=seconds
+        )
+        
+        if self.config.has_next_process:
+            self.__monitoring.track_process_metric(
+                name=MetricNames.DATAFLOW_END_EVENT,
+                value=1,
+                success=True
+            )
+
 
     def save_payload_response(self):
         if self.config.parameters.process == 'landing_to_raw':

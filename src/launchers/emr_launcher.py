@@ -38,6 +38,7 @@ class Launcher:
 
         _instance_class = _class()
         _instance_class.process()
+        _instance_class.save_monitorization()
         _instance_class.save_payload_response()
 
 if __name__ == '__main__':

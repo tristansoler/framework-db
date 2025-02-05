@@ -10,6 +10,10 @@ from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
+from data_framework.modules.monitoring.core_monitoring import (
+    CoreMonitoring,
+    MetricNames
+)
 from data_framework.modules.config.model.flows import (
     DatabaseTable,
     ExecutionMode,
@@ -30,6 +34,15 @@ iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException',
 
 
 class SparkDataProcess(DataProcessInterface):
+
+    __iceberg_snapshot_metrics_map = {
+        'added-records': MetricNames.TABLE_WRITE_ADDED_RECORDS,
+        'added-files-size': MetricNames.TABLE_WRITE_ADDED_SIZE,
+        'deleted-records': MetricNames.TABLE_WRITE_DELETED_RECORDS,
+        'removed-files-size': MetricNames.TABLE_WRITE_DELETED_SIZE,
+        'total-records': MetricNames.TABLE_WRITE_TOTAL_RECORDS,
+        'total-files-size': MetricNames.TABLE_WRITE_TOTAL_SIZE
+    }
 
     def __init__(self):
         # Obtain Spark configuration for the current process
@@ -89,9 +102,42 @@ class SparkDataProcess(DataProcessInterface):
         # Others
         self.catalogue = CoreCatalogue()
         self.storage = Storage()
+        self.__monitoring = CoreMonitoring()
 
     def _build_complete_table_name(self, database: str, table: str) -> str:
         return f'iceberg_catalog.{database}.{table}'
+    
+    def _track_table_metric(self, table_config: DatabaseTable, data_frame: DataFrame = None):
+
+        if data_frame:
+            self.__monitoring.track_table_metric(
+                name=MetricNames.TABLE_READ_RECORDS,
+                database=table_config.database.value,
+                table=table_config.table,
+                value=float(data_frame.count())
+            )
+        else:
+            table_name = self._build_complete_table_name(database=table_config.database_relation, table=table_config.table)
+
+            iceberg_table = self.spark._jvm.org.apache.iceberg.spark.Spark3Util.loadIcebergTable(
+                self.spark._jsparkSession, table_name
+            )
+
+            snapshot = iceberg_table.currentSnapshot()
+
+            if snapshot is not None:
+                java_summary = snapshot.summary()
+
+                iterator = java_summary.entrySet().iterator()
+                while iterator.hasNext():
+                    entry = iterator.next()
+                    if entry.getKey() in self.__iceberg_snapshot_metrics_map.keys():
+                        self.__monitoring.track_table_metric(
+                            name=self.__iceberg_snapshot_metrics_map.get(entry.getKey()),
+                            database=table_config.database.value,
+                            table=table_config.table,
+                            value=float(entry.getValue())
+                        )
 
     def merge(self, dataframe: DataFrame, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
         try:
@@ -124,6 +170,9 @@ class SparkDataProcess(DataProcessInterface):
             logger.info(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
             response = WriteResponse(success=True, error=None)
+
+            self._track_table_metric(table_config=table_config)
+
         except Exception as e:
             message_error = f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
             logger.error(message_error)
@@ -163,9 +212,10 @@ class SparkDataProcess(DataProcessInterface):
 
                 df_raw = self.spark.read.schema(dynamic_schema).options(**csv_read_config).csv(read_path.path)
 
-
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
+
+            self._track_table_metric(table_config=table_source, data_frame=df_raw)
 
             df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
