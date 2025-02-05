@@ -49,6 +49,8 @@ class Notifications(InterfaceNotifications):
                 raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
         except Exception as e:
             logger.error(f'Error sending notification {notification_name}: {e}')
+        else:
+            logger.info(f'Notification {notification_name} sent successfully')
 
     def _send_email_notification(
         self,
@@ -58,16 +60,15 @@ class Notifications(InterfaceNotifications):
     ) -> None:
         subject = self._format_subject(notification.subject, arguments)
         body = self._format_body(notification.body, arguments)
-        valid_subject = self._validate_subject_length(subject, notification_name)
-        valid_body = self._validate_body_length(body, notification_name)
-        if valid_subject and valid_body:
-            notification_to_send = NotificationToSend(
-                type=notification.type.value,
-                topics=[topic.value for topic in notification.topics],
-                subject=subject,
-                body=body
-            )
-            self._add_notification(notification_to_send)
+        self._validate_subject_length(subject, notification_name)
+        self._validate_body_length(body, notification_name)
+        notification_to_send = NotificationToSend(
+            type=notification.type.value,
+            topics=[topic.value for topic in notification.topics],
+            subject=subject,
+            body=body
+        )
+        self._add_notification(notification_to_send)
 
     def _format_subject(self, subject: str, arguments: Dict[str, Any]) -> str:
         if self.config.environment == Environment.DEVELOP:
