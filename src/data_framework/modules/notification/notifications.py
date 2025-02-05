@@ -5,7 +5,8 @@ from data_framework.modules.notification.interface_notifications import (
     InterfaceNotifications,
     NotificationDict,
     NotificationType,
-    NotificationToSend
+    NotificationToSend,
+    Notification
 )
 from typing import Dict, Any, List
 
@@ -14,7 +15,6 @@ class Notifications(InterfaceNotifications):
 
     def __init__(self):
         self.config = config()
-        self.logger = logger
         self.notifications = self._combine_notifications()
         self.notifications_to_send = []
 
@@ -38,13 +38,29 @@ class Notifications(InterfaceNotifications):
             return combined_notifications
 
     def send_notification(self, notification_name: str, arguments: Dict[str, Any]) -> None:
-        # Obtain notification info
-        notification = self.notifications.get_notification(notification_name)
-        if notification.type == NotificationType.EMAIL:
-            subject = self._format_subject(notification.subject, arguments)
-            body = self._format_body(notification.body, arguments)
-            self._validate_subject_length(subject, notification_name)
-            self._validate_body_length(body, notification_name)
+        try:
+            # Obtain notification info
+            notification = self.notifications.get_notification(notification_name)
+            if not notification.active:
+                raise ValueError(f'Notification {notification_name} is deactivated')
+            elif notification.type == NotificationType.EMAIL:
+                self._send_email_notification(notification, notification_name, arguments)
+            else:
+                raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
+        except Exception as e:
+            logger.error(f'Error sending notification {notification_name}: {e}')
+
+    def _send_email_notification(
+        self,
+        notification: Notification,
+        notification_name: str,
+        arguments: Dict[str, Any]
+    ) -> None:
+        subject = self._format_subject(notification.subject, arguments)
+        body = self._format_body(notification.body, arguments)
+        valid_subject = self._validate_subject_length(subject, notification_name)
+        valid_body = self._validate_body_length(body, notification_name)
+        if valid_subject and valid_body:
             notification_to_send = NotificationToSend(
                 type=notification.type.value,
                 topics=[topic.value for topic in notification.topics],
@@ -52,8 +68,6 @@ class Notifications(InterfaceNotifications):
                 body=body
             )
             self._add_notification(notification_to_send)
-        else:
-            raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
 
     def _format_subject(self, subject: str, arguments: Dict[str, Any]) -> str:
         if self.config.environment == Environment.DEVELOP:
