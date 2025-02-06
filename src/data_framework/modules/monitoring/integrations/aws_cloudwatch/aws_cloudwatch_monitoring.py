@@ -84,7 +84,7 @@ class AWSCloudWatch(MonitoringInterface):
             'Name': 'Process', 'Value': config().parameters.process
         },
         { # TODO: Move to another class (? Cloud -> AWS Parameters?)
-            'Name': 'JobId', 'Value': os.environ.get("EMR_SERVERLESS_JOB_ID", "Unknown")
+            'Name': 'JobId', 'Value': os.environ.get("EMR_SERVERLESS_JOB_RUN_ID", "Unknown")
         }
     ]
 
