@@ -140,10 +140,29 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def obtain_file_date(self) -> str:
         if self.incoming_file.csv_specs.date_located == DateLocated.FILENAME:
+            filename = Path(self.parameters.source_file_path).name
             pattern = self.incoming_file.csv_specs.date_located_filename.regex
-            match = re.search(pattern, self.parameters.source_file_path)
-            # TODO: revisar. ¿y si un fichero no trae la fecha ordenada como año-mes-día?
-            year, month, day = match.groups()
+            match = re.search(pattern, filename)
+            if not match:
+                raise ValueError(
+                    f'The date in the filename {filename} does not match the pattern {pattern}. ' +
+                    'Please check the date regex pattern in your config file.'
+                )
+            elif match.groupdict():
+                # Custom year-month-day order
+                try:
+                    year = match.group('year')
+                    month = match.group('month')
+                    day = match.group('day')
+                except IndexError:
+                    raise ValueError(
+                        f'The name of the groups in the date regex pattern {pattern} must be year, month and day. ' +
+                        'Example: (?P<year>\\d{4})_(?P<month>\\d{2})_(?P<day>\\d{2}). ' +
+                        'Please check the date regex pattern in your config file.'
+                    )
+            else:
+                # Default year-month-day order
+                year, month, day = match.groups()
             return f'{year}-{month}-{day}'
         elif self.incoming_file.csv_specs.date_located == DateLocated.COLUMN:
             # TODO: implementar
