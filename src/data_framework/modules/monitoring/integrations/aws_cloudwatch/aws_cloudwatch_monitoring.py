@@ -104,13 +104,13 @@ class AWSCloudWatch(MonitoringInterface):
         )
 
     def track_metric(self, metric: InternalMetric):
-
-        response = self._client.put_metric_data(
-            Namespace=self.namespace,
-            MetricData=[
-                metric.parse
-            ]
-        )
+        pass
+        # response = self._client.put_metric_data(
+        #     Namespace=self.namespace,
+        #     MetricData=[
+        #         metric.parse
+        #     ]
+        # )
 
     def track_table_metric(
         self,
