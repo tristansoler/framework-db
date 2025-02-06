@@ -248,12 +248,12 @@ class DataFlowInterface(ABC):
             value=seconds
         )
         
-        if self.config.has_next_process == False:
-            self.__monitoring.track_process_metric(
-                name=MetricNames.DATAFLOW_END_EVENT,
-                value=1,
-                success=True
-            )
+        # if self.config.has_next_process == False:
+        #     self.__monitoring.track_process_metric(
+        #         name=MetricNames.DATAFLOW_END_EVENT,
+        #         value=1,
+        #         success=True
+        #     )
 
 
     def save_payload_response(self):
