@@ -32,6 +32,15 @@ from data_framework.modules.notification.interface_notifications import (
     Notification,
     NotificationsParameters
 )
+from data_framework.modules.exception.config_exceptions import (
+    ConfigError,
+    ConfigFileNotFoundError,
+    ConfigParseError,
+    AccountNotFoundError,
+    ParameterParseError,
+    TransformationConfigError
+)
+from data_framework.modules.exception.aws_exceptions import STSError
 import threading
 import os
 import sys
@@ -77,10 +86,13 @@ class ConfigSetup:
         try:
             if not parameters:
                 parameters = {}
-                for i in range(1, len(sys.argv), 2):
-                    key = sys.argv[i].replace('--', '').replace('-', '_')
-                    value = sys.argv[i+1]
-                    parameters[key] = value
+                try:
+                    for i in range(1, len(sys.argv), 2):
+                        key = sys.argv[i].replace('--', '').replace('-', '_')
+                        value = sys.argv[i+1]
+                        parameters[key] = value
+                except Exception:
+                    raise ParameterParseError(arguments=sys.argv)
 
             data_framework_config = ConfigSetup.read_data_framework_config()
             parameters['bucket_prefix'] = data_framework_config['s3_bucket_prefix']
@@ -122,9 +134,9 @@ class ConfigSetup:
                     json_file=dataflow_config,
                     environment=data_framework_config['environment']
                 )
-        except Exception as e:
+        except Exception:
             self._instancia.config = None
-            raise RuntimeError(f'Error initializing Data Framework config: {e}')
+            raise ConfigError()
 
     @classmethod
     def read_data_framework_config(cls) -> dict:
@@ -138,8 +150,8 @@ class ConfigSetup:
             )
             response = sts_client.get_caller_identity()
             account_id = response['Account']
-        except Exception as e:
-            raise RuntimeError(f'Error obtaining AWS account ID for config setup: {e}')
+        except Exception:
+            raise STSError(error_message='Error obtaining AWS account ID from STS for config setup')
         # Read data framework config file
         config_json = cls.read_config_file(
             absolute_path='data_framework/modules/config/data_framework_config.json',
@@ -148,10 +160,8 @@ class ConfigSetup:
         # Search account ID in config file
         current_config = config_json.get(account_id)
         if not current_config:
-            account_ids = ', '.join(current_config.keys())
-            raise KeyError(
-                f'AWS account ID {account_id} not found in Data Framework config. ' +
-                f'Available account IDs: {account_ids}'
+            raise AccountNotFoundError(
+                account_id=account_id, available_ids=list(config_json.keys())
             )
         else:
             return current_config
@@ -167,30 +177,38 @@ class ConfigSetup:
 
     @classmethod
     def read_config_file(cls, absolute_path: str, relative_path: str) -> dict:
-        current_path = Path(__file__).resolve()
-        if 'data_framework.zip' in current_path.parts:
-            zip_index = current_path.parts.index('data_framework.zip')
-            zip_path = Path(*current_path.parts[:zip_index+1])
-            with zipfile.ZipFile(zip_path, 'r') as z:
-                with z.open(absolute_path) as file:
+        try:
+            current_path = Path(__file__).resolve()
+            if 'data_framework.zip' in current_path.parts:
+                config_path = absolute_path
+                zip_index = current_path.parts.index('data_framework.zip')
+                zip_path = Path(*current_path.parts[:zip_index+1])
+                with zipfile.ZipFile(zip_path, 'r') as z:
+                    with z.open(config_path) as file:
+                        config_json = dict(json.loads(file.read()))
+            else:
+                config_path = (current_path.parent / relative_path).resolve()
+                with open(config_path) as file:
                     config_json = dict(json.loads(file.read()))
-        else:
-            file_path = (current_path.parent / relative_path).resolve()
-            with open(file_path) as file:
-                config_json = dict(json.loads(file.read()))
-        return config_json
+            return config_json
+        except FileNotFoundError:
+            raise ConfigFileNotFoundError(config_file_path=config_path)
 
     @classmethod
     def read_dataflow_config(cls, dataflow: str, local_file: str, environment: str, platform: str) -> dict:
-        if local_file is not None:
-            with open(local_file) as file:
-                config_json = dict(json.loads(file.read()))
-        else:
-            path_absolute = Path(__file__).resolve()
-            transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
-            with zipfile.ZipFile(transformation_path, 'r') as z:
-                with z.open('transformation.json') as file:
+        try:
+            if local_file is not None:
+                transformation_path = local_file
+                with open(transformation_path) as file:
                     config_json = dict(json.loads(file.read()))
+            else:
+                path_absolute = Path(__file__).resolve()
+                transformation_path = str(path_absolute.parent.parent.parent.parent.parent) + '/transformation.zip'
+                with zipfile.ZipFile(transformation_path, 'r') as z:
+                    with z.open('transformation.json') as file:
+                        config_json = dict(json.loads(file.read()))
+        except Exception:
+            raise TransformationConfigError(config_file_path=transformation_path)
         dataflows = config_json.get('dataflows')
         common_flow_json = dataflows.get('default')
         current_flow_json = dataflows.get(dataflow, None)
@@ -310,23 +328,7 @@ class ConfigSetup:
                     else:
                         kwargs[field] = default_value
             model_instantiated = model(**kwargs)
-        except Exception as e:
-            import traceback
-            expection = type(e).__name__
-            error = str(e)
-            trace = traceback.format_exc()
-
-            # Imprimir la información de la excepción
-            print(
-                f"""
-                    model: {model}
-                    kwargs: {kwargs}
-                    vars: field: {field} field_type: {field_type} parameters:{parameters} json_file:{json_file} default_value:{default_value}
-                    Exception: {expection}
-                    Error: {error}
-                    Trace:
-                        {trace}
-                """
-            )
+        except Exception:
+            raise ConfigParseError(field=field, field_type=str(field_type))
 
         return model_instantiated
