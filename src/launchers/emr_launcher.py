@@ -44,6 +44,12 @@ class Launcher:
             _instance_class.save_payload_response()
         except DataFrameworkError as e:
             print(e.format_exception())
+            raise e
+        except Exception as e:
+            # Unhandled exception
+            e = DataFrameworkError(str(e))
+            print(e.format_exception())
+            raise e
 
 
 if __name__ == '__main__':
