@@ -39,9 +39,43 @@ class ConfigParseError(DataFrameworkError):
         )
 
 
-class TransformationConfigError(DataFrameworkError):
+class DataflowConfigError(DataFrameworkError):
 
     def __init__(self, config_file_path: str):
         super().__init__(
             f'Error reading transformation config file {config_file_path}'
+        )
+
+
+class EmptyProcessConfigError(DataFrameworkError):
+
+    def __init__(self, process: str):
+        super().__init__(
+            f'Configuration of process {process} is empty'
+        )
+
+
+class ProcessNotFoundError(DataFrameworkError):
+
+    def __init__(self, process: str, available_processes: List[str]):
+        available_processes = ', '.join(available_processes)
+        super().__init__(
+            f'Process {process} not found in config. Available processes: {available_processes}'
+        )
+
+
+class TableKeyError(DataFrameworkError):
+
+    def __init__(self, table_key: str, available_table_keys: List[str]):
+        available_table_keys = ', '.join(available_table_keys)
+        super().__init__(
+            f'Table key {table_key} not found in config file. Available table keys: {available_table_keys}'
+        )
+
+
+class TableConfigNotFoundError(DataFrameworkError):
+
+    def __init__(self, database: str, table: str):
+        super().__init__(
+            f'Table key for {database}.{table} not found in config file'
         )
