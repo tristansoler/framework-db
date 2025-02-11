@@ -37,8 +37,7 @@ from data_framework.modules.exception.config_exceptions import (
     ConfigFileNotFoundError,
     ConfigParseError,
     AccountNotFoundError,
-    ParameterParseError,
-    DataflowConfigError
+    ParameterParseError
 )
 from data_framework.modules.exception.aws_exceptions import STSError
 import threading
@@ -208,7 +207,7 @@ class ConfigSetup:
                     with z.open('transformation.json') as file:
                         config_json = dict(json.loads(file.read()))
         except Exception:
-            raise DataflowConfigError(config_file_path=transformation_path)
+            raise ConfigFileNotFoundError(config_file_path=transformation_path)
         dataflows = config_json.get('dataflows')
         common_flow_json = dataflows.get('default')
         current_flow_json = dataflows.get(dataflow, None)
