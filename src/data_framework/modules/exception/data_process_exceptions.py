@@ -10,3 +10,10 @@ class TransformationNotImplementedError(DataFrameworkError):
         super().__init__(
             f'Transformation type {transformation} not implemented. Available transformations: {available_types}'
         )
+
+
+class CastQueryError(DataFrameworkError):
+    """Error raised when the generation of a query to cast data fails"""
+
+    def __init__(self):
+        super().__init__('Error generating query for data casting')
