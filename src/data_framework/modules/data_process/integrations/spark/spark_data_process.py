@@ -55,6 +55,8 @@ class SparkDataProcess(DataProcessInterface):
             # S3
             ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "3000"),
             ("fs.s3.maxConnections", "100"),
+            # Memory
+            ("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
             # Iceberg
             ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
             ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
