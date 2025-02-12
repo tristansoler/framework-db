@@ -7,6 +7,11 @@ from data_framework.modules.data_process.helpers.athena import AthenaClient
 from data_framework.modules.data_process.helpers.cast import Cast
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.model.flows import DatabaseTable
+from data_framework.modules.exception.data_process_exceptions import (
+    ReadDataError,
+    WriteDataError,
+    DataProcessError
+)
 from typing import List, Any
 import pandas as pd
 from pandas import DataFrame
@@ -38,12 +43,9 @@ class PandasDataProcess(DataProcessInterface):
             if filter:
                 query += f" WHERE {filter}"
             df = self.athena.execute_query(query)
-            response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            error_message = f"{e}\nSQL\n{query}"
-            logger.error(error_message)
-            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=df)
+        except Exception:
+            raise ReadDataError(query=query)
 
     def delete_from_table(self, table_config: DatabaseTable, _filter: str) -> WriteResponse:
         raise NotImplementedError('Function delete_from_table not available in Pandas data process')
@@ -52,11 +54,9 @@ class PandasDataProcess(DataProcessInterface):
         try:
             query = Cast().get_query_to_insert_dataframe(dataframe, table_config)
             self.athena.execute_query(query, read_output=False)
-            response = WriteResponse(success=True, error=None)
-        except Exception as e:
-            logger.error(e)
-            response = WriteResponse(success=False, error=e)
-        return response
+            return WriteResponse(success=True, error=None)
+        except Exception:
+            raise WriteDataError(database=table_config.database_relation, table=table_config.table)
 
     def join(
         self,
@@ -89,11 +89,9 @@ class PandasDataProcess(DataProcessInterface):
                     how=how,
                     suffixes=(left_suffix, right_suffix)
                 )
-            response = ReadResponse(success=True, error=None, data=df_result)
-        except Exception as e:
-            logger.error(e)
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=df_result)
+        except Exception:
+            raise DataProcessError(error_message='Error performing join of two dataframes')
 
     def create_dataframe(self, data: Any, schema: str = None) -> ReadResponse:
         try:
@@ -104,21 +102,16 @@ class PandasDataProcess(DataProcessInterface):
                 )
             else:
                 df = pd.DataFrame(data)
-            response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            logger.error(e)
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=df)
+        except Exception:
+            raise DataProcessError(error_message='Error creating dataframe')
 
     def query(self, sql: str) -> ReadResponse:
         try:
             df = self.athena.execute_query(sql)
-            response = ReadResponse(success=True, error=None, data=df)
-        except Exception as e:
-            error_message = f"{e}\nSQL\n{sql}"
-            logger.error(error_message)
-            response = ReadResponse(success=False, error=RuntimeError(error_message), data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=df)
+        except Exception:
+            raise ReadDataError(query=sql)
 
     def overwrite_columns(
         self,
@@ -135,11 +128,9 @@ class PandasDataProcess(DataProcessInterface):
                 dataframe[column] = dataframe[custom_column].fillna(dataframe[default_column])
                 if drop_columns:
                     dataframe = dataframe.drop([custom_column, default_column], axis=1)
-            response = ReadResponse(success=True, error=None, data=dataframe)
-        except Exception as e:
-            logger.error(e)
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=dataframe)
+        except Exception:
+            raise DataProcessError()
 
     def unfold_string_values(self, dataframe: DataFrame, column_name: str, separator: str) -> ReadResponse:
         raise NotImplementedError('Function unfold_string_values not available in Pandas data process')
@@ -172,11 +163,9 @@ class PandasDataProcess(DataProcessInterface):
                 value_name=target_columns[1]
             )
             dataframe = dataframe[target_columns]
-            response = ReadResponse(success=True, error=None, data=dataframe)
-        except Exception as e:
-            logger.error(e)
-            response = ReadResponse(success=False, error=e, data=None)
-        return response
+            return ReadResponse(success=True, error=None, data=dataframe)
+        except Exception:
+            raise DataProcessError()
 
     def is_empty(self, dataframe: DataFrame) -> bool:
         if dataframe is not None:
@@ -190,21 +179,13 @@ class PandasDataProcess(DataProcessInterface):
     def select_columns(self, dataframe: DataFrame, columns: List[str]) -> ReadResponse:
         try:
             dataframe = dataframe[columns]
-            response = ReadResponse(success=True, error=None, data=dataframe)
-        except Exception as e:
-            logger.error(e)
-            response = ReadResponse(success=False, error=e, data=dataframe)
-        return response
+            return ReadResponse(success=True, error=None, data=dataframe)
+        except Exception:
+            raise DataProcessError('Error selecting columns of a dataframe')
 
     def show_dataframe(self, dataframe: DataFrame) -> WriteResponse:
-        try:
-            pd.set_option('display.max_rows', None)
-            pd.set_option('display.max_columns', None)
-            logger.info(dataframe)
-            pd.reset_option('display.max_rows')
-            pd.reset_option('display.max_columns')
-            response = WriteResponse(success=True, error=None)
-        except Exception as e:
-            logger.error(e)
-            response = WriteResponse(success=False, error=e)
-        return response
+        pd.set_option('display.max_rows', None)
+        pd.set_option('display.max_columns', None)
+        logger.info(dataframe)
+        pd.reset_option('display.max_rows')
+        pd.reset_option('display.max_columns')

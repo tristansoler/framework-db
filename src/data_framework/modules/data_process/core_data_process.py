@@ -5,7 +5,6 @@ from data_framework.modules.data_process.interface_data_process import (
     WriteResponse
 )
 from data_framework.modules.config.core import config
-from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.model.flows import Technologies, DatabaseTable
 from typing import List, Any
 
@@ -26,17 +25,11 @@ class CoreDataProcess(object):
 
     @classmethod
     def merge(cls, dataframe: Any, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
-        response = cls._data_process.merge(
+        return cls._data_process.merge(
             dataframe=dataframe,
             table_config=table_config,
             custom_strategy=custom_strategy
         )
-
-        if not response.success:
-            logger.error(response.error)
-            raise response.error
-
-        return response
 
     @classmethod
     def datacast(
