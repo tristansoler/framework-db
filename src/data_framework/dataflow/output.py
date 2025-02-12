@@ -5,7 +5,7 @@ from data_framework.modules.config.model.flows import OutputReport
 from data_framework.modules.exception.output_exceptions import (
     OutputError,
     OutputGenerationError,
-    NoDataError
+    NoOutputDataError
 )
 from pyspark.sql import DataFrame
 from datetime import datetime
@@ -57,7 +57,7 @@ class ProcessingCoordinator(DataFlowInterface):
             self.write_data_to_file(df, config_output)
             self.logger.info(f'Output {config_output.name} generated successfully')
         else:
-            raise NoDataError(output_name=config_output.name)
+            raise NoOutputDataError(output_name=config_output.name)
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """

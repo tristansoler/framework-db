@@ -22,7 +22,7 @@ class OutputGenerationError(DataFrameworkError):
         )
 
 
-class NoDataError(DataFrameworkError):
+class NoOutputDataError(DataFrameworkError):
     """Error raised when there is no data to include in a specific output file"""
 
     def __init__(self, output_name: str):
