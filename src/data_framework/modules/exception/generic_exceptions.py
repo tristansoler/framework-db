@@ -1,3 +1,5 @@
+"""Definition of generic data framework exceptions"""
+
 import traceback
 
 

@@ -1,3 +1,5 @@
+"""Definition of exceptions for output step"""
+
 from data_framework.modules.exception.generic_exceptions import DataFrameworkError
 from typing import List
 

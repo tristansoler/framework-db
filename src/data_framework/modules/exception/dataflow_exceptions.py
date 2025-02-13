@@ -1,3 +1,5 @@
+"""Definition of exceptions for dataflow module"""
+
 from data_framework.modules.exception.generic_exceptions import DataFrameworkError
 
 

@@ -1,3 +1,5 @@
+"""Definition of exceptions for landing step"""
+
 from data_framework.modules.exception.generic_exceptions import DataFrameworkError
 
 
