@@ -63,6 +63,8 @@ class SparkDataProcess(DataProcessInterface):
                 # S3
                 ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "3000"),
                 ("fs.s3.maxConnections", "100"),
+                # Memory
+                ("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
                 # Iceberg
                 ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
                 ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
@@ -85,6 +87,7 @@ class SparkDataProcess(DataProcessInterface):
 
                 ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
 
+
             ])
 
             volumetric_expectation = json_config.spark_configuration.volumetric_expectation
@@ -92,7 +95,8 @@ class SparkDataProcess(DataProcessInterface):
                 dataset_size_gb=volumetric_expectation.data_size_gb,
                 avg_file_size_mb=volumetric_expectation.avg_file_size_mb
             )
-            # spark_config.setAll(pairs=dynamic_config.items())
+
+            #spark_config.setAll(pairs=dynamic_config.items())
 
             # Add custom configurations
             for custom_config in json_config.spark_configuration.custom_configuration:
