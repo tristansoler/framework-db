@@ -115,13 +115,14 @@ class CatalogueAWSGlue(CatalogueInterface):
             l_names = [column['Name'] for column in l_columns]
             l_types = [column['Type'] for column in l_columns]
             l_ispartitioned = [False for _ in l_columns]
-            l_partition_keys = table_gl['Table']['PartitionKeys']
-            l_partition_keys_names = [column['Name'] for column in l_partition_keys]
-            l_partition_keys_types = [column['Type'] for column in l_partition_keys]
-            l_partition_keys_ispartitioned = [True for _ in l_partition_keys]
-            l_names.extend(l_partition_keys_names)
-            l_types.extend(l_partition_keys_types)
-            l_ispartitioned.extend(l_partition_keys_ispartitioned)
+            if table_gl['Table'].get('PartitionKeys'):
+                l_partition_keys = table_gl['Table']['PartitionKeys']
+                l_partition_keys_names = [column['Name'] for column in l_partition_keys]
+                l_partition_keys_types = [column['Type'] for column in l_partition_keys]
+                l_partition_keys_ispartitioned = [True for _ in l_partition_keys]
+                l_names.extend(l_partition_keys_names)
+                l_types.extend(l_partition_keys_types)
+                l_ispartitioned.extend(l_partition_keys_ispartitioned)
             n_cols = len(l_names)
             l_order = [number+1 for number in range(n_cols)]
             l_schema_zip = list(zip(l_names, l_types, l_order, l_ispartitioned))
