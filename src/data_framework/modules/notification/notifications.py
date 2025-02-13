@@ -8,6 +8,13 @@ from data_framework.modules.notification.interface_notifications import (
     NotificationToSend,
     Notification
 )
+from data_framework.modules.exception.notification_exceptions import (
+    DuplicatedNotificationError,
+    NotificationError,
+    NotificationLimitExceededError,
+    SubjectLimitExceededError,
+    BodyLimitExceededError
+)
 from typing import Dict, Any, List
 
 
@@ -25,11 +32,7 @@ class Notifications(InterfaceNotifications):
         custom_keys = custom_notifications.notifications.keys()
         common_keys = set(default_keys) & set(custom_keys)
         if common_keys:
-            common_keys_str = ', '.join(common_keys)
-            raise ValueError(
-                f'The following notifications are already defined in Data Framework: {common_keys_str}. ' +
-                'Please rename the notifications in your config file.'
-            )
+            raise DuplicatedNotificationError(duplicated_notifications=list(common_keys))
         else:
             combined_notifications = NotificationDict({
                 **default_notifications.notifications,
@@ -42,15 +45,15 @@ class Notifications(InterfaceNotifications):
             # Obtain notification info
             notification = self.notifications.get_notification(notification_name)
             if not notification.active:
-                raise ValueError(f'Notification {notification_name} is deactivated')
-            elif notification.type == NotificationType.EMAIL:
-                self._send_email_notification(notification, notification_name, arguments)
+                logger.warning(f'Notification {notification_name} is deactivated')
             else:
-                raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
-        except Exception as e:
-            logger.error(f'Error sending notification {notification_name}: {e}')
-        else:
-            logger.info(f'Notification {notification_name} sent successfully')
+                if notification.type == NotificationType.EMAIL:
+                    self._send_email_notification(notification, notification_name, arguments)
+                else:
+                    raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
+                logger.info(f'Notification {notification_name} sent successfully')
+        except Exception:
+            raise NotificationError(notification=notification_name)
 
     def _send_email_notification(
         self,
@@ -88,23 +91,19 @@ class Notifications(InterfaceNotifications):
     def _validate_subject_length(self, subject: str, notification_name: str) -> None:
         max_subject_len = self.config.data_framework_notifications.parameters.max_subject_length
         if len(subject) > max_subject_len:
-            raise ValueError(
-                f'Subject of the {notification_name} notifications exceeds the {max_subject_len} character limit'
-            )
+            raise SubjectLimitExceededError(notification=notification_name, max_length=max_subject_len)
 
     def _validate_body_length(self, body: str, notification_name: str) -> None:
         max_body_len = self.config.data_framework_notifications.parameters.max_body_length
         if len(body) > max_body_len:
-            raise ValueError(
-                f'Body of the {notification_name} notifications exceeds the {max_body_len} character limit'
-            )
+            raise BodyLimitExceededError(notification=notification_name, max_length=max_body_len)
 
     def _add_notification(self, notification_to_send: NotificationToSend) -> None:
         max_notifications = self.config.data_framework_notifications.parameters.max_number_of_notifications
         if len(self.notifications_to_send) < max_notifications:
             self.notifications_to_send.append(notification_to_send)
         else:
-            raise ValueError(f'The limit of {max_notifications} notifications has been exceeded')
+            raise NotificationLimitExceededError(max_notifications=max_notifications)
 
     def get_notifications_to_send(self) -> List[NotificationToSend]:
         return self.notifications_to_send

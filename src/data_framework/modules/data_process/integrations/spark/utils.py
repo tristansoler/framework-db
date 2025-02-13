@@ -1,5 +1,9 @@
 from data_framework.modules.catalogue import interface_catalogue as catalogue
 from data_framework.modules.config.model.flows import Transformation
+from data_framework.modules.exception.data_process_exceptions import (
+    TransformationNotImplementedError,
+    TransformationError
+)
 from importlib import import_module
 from typing import List, Dict, Any
 from pyspark.sql import DataFrame
@@ -8,20 +12,16 @@ from pyspark.sql.types import (
      IntegerType, FloatType, DoubleType, BooleanType, DateType, TimestampType
 )
 
+
 def convert_schema(schema: catalogue.Schema) -> StructType:
     schema_columns = []
-
     for column in schema.columns:
         struct_field = StructField(column.name, StringType(), True)
         schema_columns.append(struct_field)
-
     return StructType(schema_columns)
 
 
-
-
 def map_to_spark_type(db_type: str):
-
     mapping = {
         "string": StringType(),
         "varchar": StringType(),
@@ -40,7 +40,6 @@ def map_to_spark_type(db_type: str):
         "date": DateType(),
         "timestamp": TimestampType()
     }
-
     return mapping.get(db_type.lower(), StringType())
 
 
@@ -57,5 +56,7 @@ def apply_transformations(
             transformation_function = getattr(module, function_name)
             df = transformation_function(df, transformation, **kwargs)
         except (ModuleNotFoundError, AttributeError):
-            raise NotImplementedError(f'Transformation {function_name} not implemented')
+            raise TransformationNotImplementedError(transformation=function_name)
+        except Exception:
+            raise TransformationError(transformation=function_name)
     return df

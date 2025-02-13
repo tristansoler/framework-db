@@ -5,9 +5,15 @@ from data_framework.modules.catalogue.interface_catalogue import (
     Column,
     Schema
 )
+from data_framework.modules.exception.aws_exceptions import GlueError
+from data_framework.modules.exception.catalogue_exceptions import (
+    CreatePartitionError,
+    InvalidPartitionFieldError,
+    SchemaError
+)
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.core import config
-from typing import Union
+from typing import Union, Any
 import boto3
 
 
@@ -35,64 +41,63 @@ class CatalogueAWSGlue(CatalogueInterface):
         :return: GenericResponse
         """
         try:
-
             response = self.get_schema(database, table)
-            l_cols_part = [column.name for column in response.schema.columns if column.ispartitioned is True]
-
+            l_cols_part = [
+                column.name
+                for column in response.schema.columns
+                if column.ispartitioned is True
+            ]
             if partition_field not in l_cols_part:
-                success = False
-                msg_error = (f'GlueClientTool.create_partition - Partition Field'
-                             f' {partition_field} is not a field in table {table}.')
-                self.logger.info(msg_error)
-                return GenericResponse(success=success, error=msg_error)
-
+                raise InvalidPartitionFieldError(
+                    database=database,
+                    table=table,
+                    partition_field=partition_field
+                )
             else:
-                l_partitions_table = self.glue_client.get_partitions(DatabaseName=database, TableName=table)
+                try:
+                    l_partitions_table = self.glue_client.get_partitions(
+                        DatabaseName=database,
+                        TableName=table
+                    )
+                except Exception as e:
+                    raise GlueError(error_message=f'Error obtaining partitions of {database}.{table}: {e}')
                 l_partitions_table_values = [elem['Values'] for elem in l_partitions_table['Partitions']]
-
                 if [partition_value] in l_partitions_table_values:
-                    success = True
-                    msg_error = 'GlueClientTool.create_partition - Partition already exists.'
-                    self.logger.info(msg_error)
-                    return GenericResponse(success=success, error=msg_error)
-
+                    self.logger.info(
+                        f'Partition {partition_field}={partition_value} already exists in {database}.{table}'
+                    )
                 else:
-                    table_gl = self.glue_client.get_table(DatabaseName=database, Name=table)
+                    table_gl = self._get_glue_table(database, table)
                     stg_desc_table_gl = table_gl['Table']['StorageDescriptor']
                     stg_desc = stg_desc_table_gl.copy()
                     location = stg_desc['Location']
                     location += f"/{partition_field}={partition_value}"
                     stg_desc['Location'] = location
-
-                    partition_desc = {
+                    partition_desc_l = [{
                         'Values': [partition_value],
                         'StorageDescriptor': stg_desc,
                         'Parameters': {}
-                    }
-                    partition_desc_l = [partition_desc]
-
+                    }]
                     response_gc = self.glue_client.batch_create_partition(
                         DatabaseName=database,
                         TableName=table,
                         PartitionInputList=partition_desc_l
                     )
-
                     if 'Errors' in response_gc and response_gc['Errors']:
-                        success = False
-                        msg_error = f"Error creating partition {location}: {response_gc['Errors']}"
-                        self.logger.info(msg_error)
+                        raise GlueError(error_message=str(response_gc['Errors']))
                     else:
-                        success = True
-                        msg_error = None
-                        self.logger.info(f'New partition created: {partition_field}:{partition_value}')
-
-                    response = GenericResponse(success=success, error=msg_error)
-                    return response
-
-        except Exception as error:
-            msg_error = f'Error in create_partition: {str(error)}'
-            response = GenericResponse(success=False, error=msg_error)
-            return response
+                        self.logger.info(
+                            f'Partition {partition_field}={partition_value} successfully created in {database}.{table}'
+                        )
+        except Exception:
+            raise CreatePartitionError(
+                database=database,
+                table=table,
+                partition_field=partition_field,
+                partition_value=partition_value
+            )
+        else:
+            return GenericResponse(success=True, error=None)
 
     def get_schema(self, database: str, table: str) -> SchemaResponse:
         """
@@ -101,50 +106,40 @@ class CatalogueAWSGlue(CatalogueInterface):
         :param table: name of the table
         :return: SchemaResponse
         """
-        
         try:
             cache_key = f'schema.{database}.{table}'
-            
             if cache_key in self.cache:
                 return self.cache.get(cache_key)
-        
-            response_gc = self.glue_client.get_table(DatabaseName=database, Name=table)
+            table_gl = self._get_glue_table(database, table)
+            l_columns = table_gl['Table']['StorageDescriptor']['Columns']
+            l_names = [column['Name'] for column in l_columns]
+            l_types = [column['Type'] for column in l_columns]
+            l_ispartitioned = [False for _ in l_columns]
+            if table_gl['Table'].get('PartitionKeys'):
+                l_partition_keys = table_gl['Table']['PartitionKeys']
+                l_partition_keys_names = [column['Name'] for column in l_partition_keys]
+                l_partition_keys_types = [column['Type'] for column in l_partition_keys]
+                l_partition_keys_ispartitioned = [True for _ in l_partition_keys]
+                l_names.extend(l_partition_keys_names)
+                l_types.extend(l_partition_keys_types)
+                l_ispartitioned.extend(l_partition_keys_ispartitioned)
+            n_cols = len(l_names)
+            l_order = [number+1 for number in range(n_cols)]
+            l_schema_zip = list(zip(l_names, l_types, l_order, l_ispartitioned))
+            l_schema = [Column(elem[0], elem[1], elem[2], elem[3]) for elem in l_schema_zip]
+            schema = Schema(columns=l_schema)
+            response = SchemaResponse(success=True, error=None, schema=schema)
+            self.cache[cache_key] = response
+            return response
+        except Exception:
+            raise SchemaError(database=database, table=table)
 
-            if 'Errors' in response_gc and response_gc['Errors']:
-                msg_error = f"Error get_schema {database}.{table}: {response_gc['Errors']}"
-                self.logger.info(msg_error)
-                response = SchemaResponse(success=False, error=msg_error, schema=None)
-                return response
-
-            else:
-                l_columns = response_gc['Table']['StorageDescriptor']['Columns']
-                l_names = [column['Name'] for column in l_columns]
-                l_types = [column['Type'] for column in l_columns]
-                l_ispartitioned = [False for _ in l_columns]
-
-                try:
-                    l_partition_keys = response_gc['Table']['PartitionKeys']
-                    l_partition_keys_names = [column['Name'] for column in l_partition_keys]
-                    l_partition_keys_types = [column['Type'] for column in l_partition_keys]
-                    l_partition_keys_ispartitioned = [True for _ in l_partition_keys]
-                    l_names.extend(l_partition_keys_names)
-                    l_types.extend(l_partition_keys_types)
-                    l_ispartitioned.extend(l_partition_keys_ispartitioned)
-                except Exception:
-                    self.logger.debug(f"The table '{database}'.'{table}' is not partitioned")
-
-                n_cols = len(l_names)
-                l_order = [number+1 for number in range(n_cols)]
-
-                l_schema_zip = list(zip(l_names, l_types, l_order, l_ispartitioned))
-                l_schema = [Column(elem[0], elem[1], elem[2], elem[3]) for elem in l_schema_zip]
-                schema = Schema(columns=l_schema)
-                response = SchemaResponse(success=True, error=None, schema=schema)
-                
-                self.cache[cache_key] = response
-                
-                return response
-            
-        except Exception as error:
-            msg_error = f"Error in get_schema(database='{database}' table='{table}'): {str(error)}"
-            raise Exception(msg_error)
+    def _get_glue_table(self, database: str, table: str) -> Any:
+        try:
+            response = self.glue_client.get_table(
+                DatabaseName=database,
+                Name=table
+            )
+            return response
+        except Exception as e:
+            raise GlueError(error_message=f'Error obtaining table {database}.{table}: {e}')

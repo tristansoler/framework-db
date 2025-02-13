@@ -1,3 +1,4 @@
+from data_framework.modules.exception.generic_exceptions import DataFrameworkError
 from importlib import import_module
 import sys
 
@@ -36,10 +37,20 @@ class Launcher:
         except AttributeError:
             print(f'Class {class_name} not found in {module.__name__}')
 
-        _instance_class = _class()
-        _instance_class.process()
-        _instance_class.save_monitorization()
-        _instance_class.save_payload_response()
+        try:
+            _instance_class = _class()
+            _instance_class.process()
+            _instance_class.save_monitorization()
+            _instance_class.save_payload_response()
+        except DataFrameworkError as e:
+            print(e.format_exception())
+            raise e
+        except Exception as e:
+            # Unhandled exception
+            e = DataFrameworkError(str(e))
+            print(e.format_exception())
+            raise e
+
 
 if __name__ == '__main__':
 

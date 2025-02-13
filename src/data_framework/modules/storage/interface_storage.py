@@ -49,6 +49,7 @@ class ListResponse:
     error: str
     result: list
 
+
 @dataclass
 class PathResponse:
     success: bool
@@ -85,7 +86,7 @@ class CoreStorageInterface(ABC):
     @abstractmethod
     def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
         pass
-    
+
     @abstractmethod
     def base_layer_path(self, layer: Layer) -> PathResponse:
         pass

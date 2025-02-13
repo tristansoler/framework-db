@@ -4,6 +4,7 @@
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.config.model.flows import DatabaseTable
+from data_framework.modules.exception.data_process_exceptions import CastQueryError
 from functools import reduce
 from typing import Any, Dict
 import pandas as pd
@@ -49,54 +50,53 @@ class Cast:
 
         return query
 
-    def get_query_datacast_simple(self, l_cols_source, l_types_target, table, where_source):
-        query = self.build_query_datacast(l_cols_source, l_types_target, table, where_source)
-        return query
-
     def get_query_datacast(
         self,
         table_source: DatabaseTable,
         table_target: DatabaseTable
     ) -> Any:
+        try:
+            partitioned = True
 
-        partitioned = True
+            schema_source = self.catalogue.get_schema(table_source.database_relation, table_source.table)
+            l_cols_source = schema_source.schema.get_column_names(partitioned)
 
-        schema_source = self.catalogue.get_schema(table_source.database_relation, table_source.table)
-        l_cols_source = schema_source.schema.get_column_names(partitioned)
+            schema_target = self.catalogue.get_schema(table_target.database_relation, table_target.table)
+            l_types_target = schema_target.schema.get_type_columns(partitioned)
 
-        schema_target = self.catalogue.get_schema(table_target.database_relation, table_target.table)
-        l_types_target = schema_target.schema.get_type_columns(partitioned)
+            query = self.build_query_datacast(
+                l_cols_source,
+                l_types_target,
+                "data_to_cast",
+                table_source.sql_where
+            )
 
-        query = self.get_query_datacast_simple(
-            l_cols_source,
-            l_types_target,
-            "data_to_cast",
-            table_source.sql_where
-        )
-
-        return query
+            return query
+        except Exception:
+            raise CastQueryError()
 
     def get_query_to_insert_dataframe(self, dataframe: DataFrame, table_config: DatabaseTable) -> str:
-        # Obtain data types of the target table
-        response = self.catalogue.get_schema(table_config.database_relation, table_config.table)
-        if not response.success:
-            raise response.error
-        target_schema = response.schema
-        target_columns = target_schema.get_column_names(partitioned=True)
-        target_types = target_schema.get_type_columns(partitioned=True)
-        column_types = {column: _type for column, _type in zip(target_columns, target_types)}
-        # Select dataframe needed columns
-        dataframe = dataframe[target_columns]
-        # Cast dataframe values
-        rows_list = dataframe.apply(self.cast_df_row, axis=1, args=(column_types,))
-        rows = ', '.join(rows_list)
-        # Build INSERT query
-        columns = ', '.join(dataframe.columns)
-        query = f"""
-            INSERT INTO {table_config.database_relation}.{table_config.table}
-            ({columns}) VALUES {rows};
-        """
-        return query
+        try:
+            # Obtain data types of the target table
+            response = self.catalogue.get_schema(table_config.database_relation, table_config.table)
+            target_schema = response.schema
+            target_columns = target_schema.get_column_names(partitioned=True)
+            target_types = target_schema.get_type_columns(partitioned=True)
+            column_types = {column: _type for column, _type in zip(target_columns, target_types)}
+            # Select dataframe needed columns
+            dataframe = dataframe[target_columns]
+            # Cast dataframe values
+            rows_list = dataframe.apply(self.cast_df_row, axis=1, args=(column_types,))
+            rows = ', '.join(rows_list)
+            # Build INSERT query
+            columns = ', '.join(dataframe.columns)
+            query = f"""
+                INSERT INTO {table_config.database_relation}.{table_config.table}
+                ({columns}) VALUES {rows};
+            """
+            return query
+        except Exception:
+            raise CastQueryError()
 
     def cast_df_row(self, row: Series, column_types: Dict[str, str]) -> str:
         values = ', '.join(

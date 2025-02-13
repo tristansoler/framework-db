@@ -1,6 +1,12 @@
 from data_framework.modules.config.model.flows import DatabaseTable, Database, Technologies, Platform
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.config.core import config
+from data_framework.modules.exception.validation_exceptions import (
+    InvalidThresholdError,
+    InvalidDataFrameError,
+    InvalidAlgorithmError,
+    InvalidRuleError
+)
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -217,58 +223,58 @@ class ControlThreshold:
     def validate(self) -> None:
         threshold_types = ThresholdType.available_threshold_types()
         if not self.threshold_type:
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 'Undefined threshold type. ' +
                 f'Available threshold types: {", ".join(threshold_types)}'
-            )
+            ))
         if self.threshold_type not in threshold_types:
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 f'Invalid threshold type: {self.threshold_type}. ' +
                 f'Available threshold types: {", ".join(threshold_types)}'
-            )
+            ))
         if (
             self.threshold_min is not None and
             self.threshold_max is not None and
             self.threshold_min > self.threshold_max
         ):
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 'Invalid threshold limits. Min threshold is greater than max threshold: ' +
                 f'{self.threshold_min} > {self.threshold_max}'
-            )
+            ))
         if (
             self.threshold_rag_min is not None and
             self.threshold_rag_max is not None and
             self.threshold_rag_min > self.threshold_rag_max
         ):
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 'Invalid threshold percentages. Min threshold is greater than max threshold: ' +
                 f'{self.threshold_rag_min} > {self.threshold_rag_max}'
-            )
+            ))
         if (
             self.threshold_rag_min is not None and not
             0.0 <= self.threshold_rag_min <= 1.0
         ):
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 'Invalid min threshold percentage. Must be expressed between 0.0 and 1.0: ' +
                 f'{self.threshold_rag_min}'
-            )
+            ))
         if (
             self.threshold_rag_max is not None and not
             0.0 <= self.threshold_rag_max <= 1.0
         ):
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 'Invalid max threshold percentage. Must be expressed between 0.0 and 1.0: ' +
                 f'{self.threshold_rag_max}'
-            )
+            ))
         if (
             self.threshold_min is not None and
             self.threshold_max is not None and
             self.threshold_type == ThresholdType.BINARY.value
         ):
-            raise ValueError(
+            raise InvalidThresholdError(error_message=(
                 f'Invalid threshold limits. {ThresholdType.BINARY.value} ' +
                 'threshold does not need threshold limits'
-            )
+            ))
 
     def apply_threshold(self, df_result: Any) -> ThresholdResult:
         if (
@@ -276,10 +282,10 @@ class ControlThreshold:
             'identifier' not in df_result.columns or
             'result' not in df_result.columns
         ):
-            raise ValueError(
+            raise InvalidDataFrameError(error_message=(
                 'The DataFrame with the results on which to apply the threshold ' +
                 'must have the columns "identifier" and "result"'
-            )
+            ))
         if self.threshold_type == ThresholdType.STANDARD.value:
             return self.calculate_standard_threshold(df_result)
         elif self.threshold_type == ThresholdType.ABSOLUTE.value:
@@ -421,17 +427,17 @@ class ControlAlgorithm:
     def validate(self) -> None:
         algorithm_types = AlgorithmType.available_algorithm_types()
         if not self.algorithm_type:
-            raise ValueError(
+            raise InvalidAlgorithmError(error_message=(
                 'Undefined algorithm type. ' +
                 f'Available algorithm types: {", ".join(algorithm_types)}'
-            )
+            ))
         if self.algorithm_type not in algorithm_types:
-            raise ValueError(
+            raise InvalidAlgorithmError(error_message=(
                 f'Invalid algorithm type: {self.algorithm_type}. ' +
                 f'Available algorithm types: {", ".join(algorithm_types)}'
-            )
+            ))
         if not self.algorithm_description:
-            raise ValueError('Undefined algorithm description')
+            raise InvalidAlgorithmError(error_message='Undefined algorithm description')
 
 
 @dataclass
@@ -505,15 +511,15 @@ class ControlRule:
         self.algorithm.validate()
         control_levels = ControlLevel.available_control_levels()
         if not self.level:
-            raise ValueError(
+            raise InvalidRuleError(error_message=(
                 'Undefined control level. ' +
                 f'Available control levels: {", ".join(control_levels)}'
-            )
+            ))
         if self.level not in control_levels:
-            raise ValueError(
+            raise InvalidRuleError(error_message=(
                 f'Invalid control level: {self.level}. ' +
                 f'Available control levels: {", ".join(control_levels)}'
-            )
+            ))
 
     def calculate_result(self, df_result: Any) -> ThresholdResult:
         threshold_result = self.threshold.apply_threshold(df_result)

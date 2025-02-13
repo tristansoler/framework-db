@@ -16,10 +16,16 @@ from data_framework.modules.monitoring.core_monitoring import (
     Metric,
     MetricNames
 )
+from data_framework.modules.exception.dataflow_exceptions import (
+    DataflowInitializationError,
+    PayloadResponseError
+)
+from data_framework.modules.exception.aws_exceptions import SSMError
 from dataclasses import dataclass, asdict, field
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 import boto3
-import json, time
+import json
+import time
 
 
 @dataclass
@@ -106,28 +112,29 @@ class DataFlowInterface(ABC):
         return self.__current_process_config.output_reports
 
     def __init__(self):
-        self.__config = config()
-        self.__current_process_config = self.__config.current_process_config()
-        self.__logger = logger
-        self.__data_process = CoreDataProcess()
-        self.__quality_controls = CoreQualityControls()
-        self.__notifications = CoreNotifications()
-        self.__payload_response = PayloadResponse()
-        self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
-        self.__monitoring = CoreMonitoring()
+        try:
+            self.__config = config()
+            self.__current_process_config = self.__config.current_process_config()
+            self.__logger = logger
+            self.__data_process = CoreDataProcess()
+            self.__quality_controls = CoreQualityControls()
+            self.__notifications = CoreNotifications()
+            self.__payload_response = PayloadResponse()
+            self.__ssm_client = boto3.client('ssm', region_name=self.config.parameters.region)
+            self.__monitoring = CoreMonitoring()
 
-        if self.config.is_first_process:
-            self.__monitoring.track_process_metric(
-                name=MetricNames.DATAFLOW_START_EVENT,
-                value=1
-            )
+            if self.config.is_first_process:
+                self.__monitoring.track_process_metric(
+                    name=MetricNames.DATAFLOW_START_EVENT,
+                    value=1
+                )
 
-        self.__start_process = time.time()
+            self.__start_process = time.time()
+        except Exception:
+            raise DataflowInitializationError()
 
     def process(self):
-        message = "It is mandatory to implement this function"
-        self.logger.error(message)
-        raise RuntimeError(message)
+        raise NotImplementedError('It is mandatory to implement process() function')
 
     def vars(self, name: str):
         return self.__current_process_config.vars.get_variable(name=name)
@@ -138,101 +145,63 @@ class DataFlowInterface(ABC):
         name_of_staging_table_to_casting: str = None
     ) -> Any:
         input_table = self.source_tables.table(name_of_raw_table)
-
         name_of_staging_table_to_casting = (
             name_of_staging_table_to_casting
             if name_of_staging_table_to_casting
             else name_of_raw_table
         )
-
         execution_mode = self.config.parameters.execution_mode
-
         casting_table = self.target_tables.table(name_of_staging_table_to_casting)
-
         response = self.data_process.datacast(
             table_source=input_table,
             table_target=casting_table
         )
-
-        if response.success:
-            df = response.data
-
-            if execution_mode == ExecutionMode.FULL:
-                self.logger.info(
-                    f'[ExecutionMode:{execution_mode.value}] Read from {input_table.full_name}'
-                )
-            else:
-                self.logger.info(
-                    f"[ExecutionMode:{execution_mode.value}] Read {df.count()} rows " +
-                    f"from {input_table.full_name} with partition {input_table.sql_where}"
-                )
-            return df
-        else:
-            self.logger.error(
-                f'[ExecutionMode:{execution_mode}] Error reading data from {input_table.full_name} ' +
-                f'with filter {input_table.sql_where}: {response.error}'
+        df = response.data
+        if execution_mode == ExecutionMode.FULL:
+            self.logger.info(
+                f'[ExecutionMode:{execution_mode.value}] Read from {input_table.full_name}'
             )
-
-            raise response.error
+        else:
+            self.logger.info(
+                f"[ExecutionMode:{execution_mode.value}] Read {df.count()} rows " +
+                f"from {input_table.full_name} with partition {input_table.sql_where}"
+            )
+        return df
 
     def read_table(self, name_of_table: str) -> Any:
         input_table = self.source_tables.table(name_of_table)
-
         execution_mode = self.config.parameters.execution_mode
-
         sql_where = input_table.sql_where
-
         if execution_mode == ExecutionMode.FULL.value:
             sql_where = None
-
         response = self.data_process.read_table(
             database=input_table.database_relation,
             table=input_table.table,
             filter=sql_where
         )
-
-        if response.success:
-            df = response.data
-
-            if execution_mode == ExecutionMode.FULL.value:
-                self.logger.info(f'[ExecutionMode:{execution_mode}] Read {df.count()} rows from {input_table.full_name}')
-            else:
-                self.logger.info(f"[ExecutionMode:{execution_mode}] Read {df.count()} rows from {input_table.full_name} with partition {sql_where}")
-            return df
+        df = response.data
+        if execution_mode == ExecutionMode.FULL.value:
+            self.logger.info(
+                f'[ExecutionMode:{execution_mode}] Read {df.count()} rows from {input_table.full_name}'
+            )
         else:
-            self.logger.error(
-                f'[ExecutionMode:{execution_mode.value}] Error reading data from {input_table.full_name} with filter {sql_where}: {response.error}'
+            self.logger.info(
+                f"[ExecutionMode:{execution_mode}] Read {df.count()} rows " +
+                f"from {input_table.full_name} with partition {sql_where}"
             )
-            raise response.error
-
-    def read_all_source_tables(self, _filter: str = None) -> Dict[str, Any]:
-        tables_content = {}
-        for table_key, table_config in self.source_tables.tables.items():
-            response = self.data_process.read_table(
-                table_config.database_relation, table_config.table, _filter
-            )
-            tables_content[table_key] = response.data
-            if not response.success:
-                self.logger.error(
-                    f'Error reading data from {table_config.full_name}: {response.error}'
-                )
-        return tables_content
+        return df
 
     def write(self, df: Any, output_table_key: str) -> None:
         output_table = self.target_tables.table(output_table_key)
-        response = self.data_process.merge(
+        self.data_process.merge(
             df,
             output_table.database_relation,
             output_table.table,
             # TODO: obtain primary keys from Glue table
             output_table.primary_keys
         )
-        if response.success:
-            self.logger.info(f'Successfully inserted data into {output_table.full_name}')
-        else:
-            self.logger.error(f'Error inserting data into {output_table.full_name}: {response.error}')
-            raise response.error
-    
+        self.logger.info(f'Successfully inserted data into {output_table.full_name}')
+
     def save_monitorization(self):
 
         seconds = time.time() - self.__start_process
@@ -247,7 +216,7 @@ class DataFlowInterface(ABC):
             name=MetricNames.PROCESS_DURATION,
             value=seconds
         )
-        
+
         # if self.config.has_next_process == False:
         #     self.__monitoring.track_process_metric(
         #         name=MetricNames.DATAFLOW_END_EVENT,
@@ -255,38 +224,39 @@ class DataFlowInterface(ABC):
         #         success=True
         #     )
 
-
     def save_payload_response(self):
-        if self.config.parameters.process == 'landing_to_raw':
-            dq_table = DataQualityTable(
-                database=self.__current_process_config.output_file.database.value,
-                table=self.__current_process_config.output_file.table
-            )
-            self.payload_response.data_quality.tables.append(dq_table)
-        elif self.config.parameters.process != 'business_to_output':
-            for tale_name in self.__current_process_config.target_tables.tables:
-                table_info = self.__current_process_config.target_tables.table(table_key=tale_name)
-
+        try:
+            if self.config.parameters.process == 'landing_to_raw':
                 dq_table = DataQualityTable(
-                    database=table_info.database.value,
-                    table=table_info.table
+                    database=self.__current_process_config.output_file.database.value,
+                    table=self.__current_process_config.output_file.table
                 )
-
                 self.payload_response.data_quality.tables.append(dq_table)
+            elif self.config.parameters.process != 'business_to_output':
+                for tale_name in self.__current_process_config.target_tables.tables:
+                    table_info = self.__current_process_config.target_tables.table(table_key=tale_name)
+                    dq_table = DataQualityTable(
+                        database=table_info.database.value,
+                        table=table_info.table
+                    )
 
-        # Add notifications to send
-        self.payload_response.notifications = self.__notifications.get_notifications_to_send()
-
-        payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
-
-        ssm_name = (
-            f'/dataflow/{self.config.project_id}/' +
-            f'{self.config.parameters.dataflow}-{self.config.parameters.process}/result'
-        )
-
-        self.__ssm_client.put_parameter(
-            Name=ssm_name,
-            Value=payload_json,
-            Type='String',
-            Overwrite=True
-        )
+                    self.payload_response.data_quality.tables.append(dq_table)
+            # Add notifications to send
+            self.payload_response.notifications = self.__notifications.get_notifications_to_send()
+            # Convert to JSON
+            payload_json = json.dumps(asdict(self.payload_response), ensure_ascii=False, indent=2)
+            try:
+                ssm_name = (
+                    f'/dataflow/{self.config.project_id}/' +
+                    f'{self.config.parameters.dataflow}-{self.config.parameters.process}/result'
+                )
+                self.__ssm_client.put_parameter(
+                    Name=ssm_name,
+                    Value=payload_json,
+                    Type='String',
+                    Overwrite=True
+                )
+            except Exception:
+                raise SSMError(error_message=f'Error saving parameter {ssm_name} in SSM')
+        except Exception:
+            raise PayloadResponseError()

@@ -4,9 +4,15 @@ from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.storage.interface_storage import Layer, Database
 from data_framework.modules.validation.integrations.file_validator import FileValidator
+from data_framework.modules.exception.landing_exceptions import (
+    FileProcessError,
+    FileReadError,
+    InvalidDateRegexError,
+    InvalidRegexGroupError,
+    InvalidFileError
+)
 import re
 import hashlib
-from traceback import format_exc
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -77,9 +83,6 @@ class ProcessingCoordinator(DataFlowInterface):
                 layer=Layer.LANDING,
                 table_config=self.config.processes.landing_to_raw.output_file
             )
-
-            if not response.success:
-                raise response.error
             if response.overall_result:
                 process_file = True
                 # Compare with the previous file
@@ -93,50 +96,45 @@ class ProcessingCoordinator(DataFlowInterface):
                     self.payload_response.next_stage = True
                 self.payload_response.success = True
             else:
-                raise Exception(
-                    'The input file has failed quality controls. Check controls results table for more information'
-                )
-        except Exception as e:
-            self.logger.error(
-                f'Error processing file {self.parameters.source_file_path}\n' +
-                f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
-            )
-            raise e
+                raise InvalidFileError(file_path=self.parameters.source_file_path)
+        except Exception:
+            raise FileProcessError(file_path=self.parameters.source_file_path)
 
     def read_data(self) -> dict:
-        response = self.storage.read(
-            layer=Layer.LANDING,
-            key_path=self.parameters.source_file_path
-        )
-        if not response.success:
-            raise response.error
-        s3_file_content = BytesIO(response.data)
-        filename = Path(self.parameters.source_file_path).name
-        file_contents = {
-            filename: {
-                'content': s3_file_content,
-                'validate': True
+        try:
+            response = self.storage.read(
+                layer=Layer.LANDING,
+                key_path=self.parameters.source_file_path
+            )
+            s3_file_content = BytesIO(response.data)
+            filename = Path(self.parameters.source_file_path).name
+            file_contents = {
+                filename: {
+                    'content': s3_file_content,
+                    'validate': True
+                }
             }
-        }
-        if self.incoming_file.zipped == 'zip':
-            file_contents[filename]['validate'] = False
-            with ZipFile(s3_file_content, 'r') as z:
-                for filename in z.namelist():
-                    with z.open(filename) as f:
+            if self.incoming_file.zipped == 'zip':
+                file_contents[filename]['validate'] = False
+                with ZipFile(s3_file_content, 'r') as z:
+                    for filename in z.namelist():
+                        with z.open(filename) as f:
+                            file_contents[filename] = {
+                                'content': BytesIO(f.read()),
+                                'validate': True
+                            }
+            elif self.incoming_file.zipped == 'tar':
+                file_contents[filename]['validate'] = False
+                with tarfile.open(fileobj=s3_file_content, mode='r') as t:
+                    for filename in t.getnames():
+                        content = t.extractfile(filename).read()
                         file_contents[filename] = {
-                            'content': BytesIO(f.read()),
+                            'content': BytesIO(content),
                             'validate': True
                         }
-        elif self.incoming_file.zipped == 'tar':
-            file_contents[filename]['validate'] = False
-            with tarfile.open(fileobj=s3_file_content, mode='r') as t:
-                for filename in t.getnames():
-                    content = t.extractfile(filename).read()
-                    file_contents[filename] = {
-                        'content': BytesIO(content),
-                        'validate': True
-                    }
-        return file_contents
+            return file_contents
+        except Exception:
+            raise FileReadError(file_path=self.parameters.source_file_path)
 
     def obtain_file_date(self) -> str:
         if self.incoming_file.csv_specs.date_located == DateLocated.FILENAME:
@@ -144,10 +142,7 @@ class ProcessingCoordinator(DataFlowInterface):
             pattern = self.incoming_file.csv_specs.date_located_filename.regex
             match = re.search(pattern, filename)
             if not match:
-                raise ValueError(
-                    f'The date in the filename {filename} does not match the pattern {pattern}. ' +
-                    'Please check the date regex pattern in your config file.'
-                )
+                raise InvalidDateRegexError(filename=filename, pattern=pattern)
             elif match.groupdict():
                 # Custom year-month-day order
                 try:
@@ -155,18 +150,14 @@ class ProcessingCoordinator(DataFlowInterface):
                     month = match.group('month')
                     day = match.group('day')
                 except IndexError:
-                    raise ValueError(
-                        f'The name of the groups in the date regex pattern {pattern} must be year, month and day. ' +
-                        'Example: (?P<year>\\d{4})_(?P<month>\\d{2})_(?P<day>\\d{2}). ' +
-                        'Please check the date regex pattern in your config file.'
-                    )
+                    raise InvalidRegexGroupError(pattern=pattern)
             else:
                 # Default year-month-day order
                 year, month, day = match.groups()
             return f'{year}-{month}-{day}'
         elif self.incoming_file.csv_specs.date_located == DateLocated.COLUMN:
             # TODO: implementar
-            return ''
+            raise NotImplementedError('Feature date_located = column is not implemented yet')
 
     def compare_with_previous_file(self, file_contents: dict) -> bool:
         prefix = f'{self.config.project_id}/processed'

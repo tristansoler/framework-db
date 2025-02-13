@@ -1,16 +1,20 @@
 from data_framework.modules.dataflow.interface_dataflow import DataFlowInterface, OutputResponse
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.storage.interface_storage import Layer
-from data_framework.modules.config.model.flows import OutputReport, OutputFileFormat
+from data_framework.modules.config.model.flows import OutputReport
+from data_framework.modules.exception.output_exceptions import (
+    OutputError,
+    OutputGenerationError,
+    NoOutputDataError
+)
 from pyspark.sql import DataFrame
-from pyspark.sql import functions as f
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from io import BytesIO
 import re
-import subprocess
 
 TIME_ZONE = ZoneInfo('Europe/Madrid')
+
 
 class ProcessingCoordinator(DataFlowInterface):
 
@@ -19,42 +23,30 @@ class ProcessingCoordinator(DataFlowInterface):
         self.storage = Storage()
 
     def process(self) -> dict:
-
         self.payload_response.success = True
-
-        try:
-            # Generate all outputs
-            for config_output in self.output_reports:
-                try:
-                    self.generate_output_file(config_output)
-                except Exception as e:
-                    self.logger.error(f'Error generating output {config_output.name}: {e}')
-                    output = OutputResponse(
-                        name=config_output.name,
-                        success=False,
-                        error=e
-                    )
-                    self.payload_response.outputs.append(output)
-                    self.payload_response.success = False
-                else:
-                    output = OutputResponse(
-                        name=config_output.name,
-                        success=True
-                    )
-                    self.payload_response.outputs.append(output)
-        except Exception as e:
-            self.logger.error(f'Error generating outputs: {e}')
-            self.payload_response.success = False
-            raise e
-        else:
-            if not self.payload_response.success:
-                failed_outputs = self.payload_response.get_failed_outputs()
-                error_message = (
-                    f"Error generating the following outputs: {', '.join(failed_outputs)}. " +
-                    "Check logs for more information"
+        # Generate all outputs
+        for config_output in self.output_reports:
+            try:
+                self.generate_output_file(config_output)
+            except Exception as e:
+                error = OutputGenerationError(output_name=config_output.name, error_message=str(e))
+                self.logger.error(error.format_exception())
+                output = OutputResponse(
+                    name=config_output.name,
+                    success=False,
+                    error=error
                 )
-                self.logger.error(error_message)
-                raise Exception(error_message)
+                self.payload_response.outputs.append(output)
+                self.payload_response.success = False
+            else:
+                output = OutputResponse(
+                    name=config_output.name,
+                    success=True
+                )
+                self.payload_response.outputs.append(output)
+        if not self.payload_response.success:
+            failed_outputs = self.payload_response.get_failed_outputs()
+            raise OutputError(failed_outputs=failed_outputs)
 
     def generate_output_file(self, config_output: OutputReport) -> None:
         self.logger.info(f'Generating output {config_output.name}')
@@ -63,9 +55,9 @@ class ProcessingCoordinator(DataFlowInterface):
         # Upload output data to S3
         if df and not df.isEmpty():
             self.write_data_to_file(df, config_output)
-            self.logger.info(f"Output '{config_output.name}' generated successfully")
+            self.logger.info(f'Output {config_output.name} generated successfully')
         else:
-            raise ValueError(f'No data available for output {config_output.name}')
+            raise NoOutputDataError(output_name=config_output.name)
 
     def retrieve_data(self, config_output: OutputReport) -> DataFrame:
         """
@@ -91,11 +83,7 @@ class ProcessingCoordinator(DataFlowInterface):
         response = self.data_process.read_table(
             config_output.source_table.database_relation, config_output.source_table.table, _filter, columns
         )
-        if response.success:
-            return response.data
-        else:
-            self.logger.error(f'Error reading data: {response.error}')
-            raise response.error
+        return response.data
 
     def write_data_to_file(self, df: DataFrame, config_output: OutputReport) -> None:
         """
@@ -136,13 +124,11 @@ class ProcessingCoordinator(DataFlowInterface):
                     for replace, new_value in replace_dict.items():
                         file = file.replace(replace, new_value)
                 file = file.encode('utf-8')
-                    
+
             file_to_save = BytesIO(file)
 
         response = self.storage.write_to_path(Layer.OUTPUT, file_path, file_to_save.getvalue())
-        if not response.success:
-            raise response.error
-        else:
+        if response.success:
             self.notifications.send_notification(
                 notification_name='output_generated',
                 arguments={

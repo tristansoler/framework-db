@@ -3,6 +3,13 @@ from data_framework.modules.notification.interface_notifications import (
     NotificationDict,
     DataFrameworkNotifications
 )
+from data_framework.modules.exception.config_exceptions import (
+    EmptyProcessConfigError,
+    ProcessNotFoundError,
+    TableKeyError,
+    TableConfigNotFoundError
+)
+from data_framework.modules.exception.data_process_exceptions import TransformationNotImplementedError
 from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Optional, List, Tuple, Union
@@ -169,6 +176,7 @@ class IncomingFileLandingToRaw:
     csv_specs: CSVSpecs
     compare_with_previous_file: Optional[bool] = False
 
+
 @dataclass
 class Transformation:
     type: TransformationType
@@ -181,7 +189,10 @@ class Transformation:
         }
         subclass = transformation_mapping.get(transformation_type)
         if not subclass:
-            raise NotImplementedError(f'Transformation type {transformation_type} not implemented')
+            raise TransformationNotImplementedError(
+                transformation=transformation_type,
+                available_types=list(transformation_mapping.keys())
+            )
         return subclass
 
 
@@ -235,9 +246,9 @@ class TableDict:
     def table(self, table_key: str) -> Union[DatabaseTable, None]:
         table_info = self.tables.get(table_key)
         if not table_info:
-            table_keys = ', '.join(self.tables.keys())
-            raise ValueError(
-                f'Table key {table_key} not found. Available table keys: {table_keys}'
+            raise TableKeyError(
+                table_key=table_key,
+                available_table_keys=list(self.tables.keys())
             )
         return table_info
 
@@ -245,7 +256,7 @@ class TableDict:
         for table_key, database_table in self.tables.items():
             if database_table.database.value == database and database_table.table == table:
                 return table_key
-        raise ValueError(f'Table key for {database}.{table} not found in config file')
+        raise TableConfigNotFoundError(database=database, table=table)
 
 
 @dataclass
@@ -271,6 +282,7 @@ class GenericProcess:
     processing_specifications: ProcessingSpecifications
     notifications: NotificationDict = field(default_factory=NotificationDict)
     vars: Optional[ProcessVars] = field(default_factory=ProcessVars)
+
 
 @dataclass
 class OutputReport:
@@ -326,7 +338,7 @@ class Config:
         next_processes = [process for process in possible_processes if getattr(self.processes, process) is not None]
 
         return not next_processes
-    
+
     @property
     def is_first_process(self) -> bool:
         procesess = [field.name for field in fields(Processes)]
@@ -340,10 +352,10 @@ class Config:
             current_process = self.parameters.process
             current_process_config = getattr(self.processes, current_process)
             if current_process_config is None:
-                raise ValueError(f'Configuration of process {current_process} is empty')
+                raise EmptyProcessConfigError(process=current_process)
             return current_process_config
         except AttributeError:
-            processes = ', '.join(self.processes.__dict__.keys())
-            raise ValueError(
-                f'Process {current_process} not found in config. Available processes: {processes}'
+            raise ProcessNotFoundError(
+                process=current_process,
+                available_processes=list(self.processes.__dict__.keys())
             )
