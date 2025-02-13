@@ -36,6 +36,7 @@ from pyspark.sql.functions import when
 import time
 import random
 from pyspark.sql.types import StructType, StructField, StringType
+import inspect
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
 
@@ -61,10 +62,10 @@ class SparkDataProcess(DataProcessInterface):
 
             spark_config.setAll([
                 # S3
-                ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "3000"),
+                ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "2000"),
                 ("fs.s3.maxConnections", "100"),
                 # Memory
-                ("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
+                #("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
                 # Iceberg
                 ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
                 ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
@@ -85,6 +86,7 @@ class SparkDataProcess(DataProcessInterface):
                 ("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
                 ("spark.sql.catalogImplementation", "hive"),
 
+
                 ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
 
 
@@ -96,7 +98,7 @@ class SparkDataProcess(DataProcessInterface):
                 avg_file_size_mb=volumetric_expectation.avg_file_size_mb
             )
 
-            #spark_config.setAll(pairs=dynamic_config.items())
+            spark_config.setAll(pairs=dynamic_config.items())
 
             # Add custom configurations
             for custom_config in json_config.spark_configuration.custom_configuration:
@@ -156,6 +158,13 @@ class SparkDataProcess(DataProcessInterface):
 
     def merge(self, dataframe: DataFrame, table_config: DatabaseTable, custom_strategy: str = None) -> WriteResponse:
         try:
+            ""
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
+
+            source_method = inspect.stack()[2].function
+
+            self.spark.sparkContext.setJobGroup(f"[MERGE] {source_method}", table_name, interruptOnCancel=True)
+
             table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
@@ -184,6 +193,9 @@ class SparkDataProcess(DataProcessInterface):
             """
             logger.info(f'merge sql \n{merge_query}')
             self._execute_query(merge_query)
+
+            self.spark.sparkContext.setJobGroup("", "", False)
+
             response = WriteResponse(success=True, error=None)
             self._track_table_metric(table_config=table_config)
             return response
@@ -209,22 +221,7 @@ class SparkDataProcess(DataProcessInterface):
                 df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
 
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
-
-                source_schema_response = self.catalogue.get_schema(
-                    Database.CONFIG_SCHEMAS.value, table_target.table
-                )
-
-                df_temp = self.spark.read.options(**csv_read_config).csv(read_path.path)
-                expected_schema = {
-                    column.name: utils.map_to_spark_type(column.type)
-                    for column in source_schema_response.schema.columns
-                }
-                dynamic_schema = StructType([
-                    StructField(col_name, expected_schema.get(col_name, StringType()), True)
-                    for col_name in df_temp.columns
-                ])
-
-                df_raw = self.spark.read.schema(dynamic_schema).options(**csv_read_config).csv(read_path.path)
+                df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
 
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
