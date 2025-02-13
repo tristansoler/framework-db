@@ -1,3 +1,4 @@
+from data_framework.modules.exception.notification_exceptions import NotificationNotFoundError
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Union
 from dataclasses import dataclass, field
@@ -36,12 +37,12 @@ class NotificationDict:
 
     def get_notification(self, notification_name: str) -> Union[Notification, None]:
         if not self.notifications:
-            raise ValueError(f'Notification key {notification_name} not found. No notifications defined')
+            raise NotificationNotFoundError(notification=notification_name)
         notification = self.notifications.get(notification_name)
         if not notification:
-            notification_names = ', '.join(self.notifications.keys())
-            raise ValueError(
-                f'Notification key {notification_name} not found. Available notification keys: {notification_names}'
+            raise NotificationNotFoundError(
+                notification=notification_name,
+                available_notifications=list(self.notifications.keys())
             )
         return notification
 
