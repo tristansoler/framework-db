@@ -13,7 +13,6 @@ from data_framework.modules.config.model.flows import Technologies, DatabaseTabl
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.utils.debug import debug_code
 from typing import Any, Dict
-from traceback import format_exc
 import pandas as pd
 
 
@@ -79,10 +78,7 @@ class QualityControls(InterfaceQualityControls):
                         overall_result=True
                     )
         except Exception as e:
-            self.logger.error(
-                f'Error validating data from {table_config.full_name}\n' +
-                f'Exception:\n   {type(e).__name__}\nError:\n    {e}\nTrace:\n  {format_exc()}'
-            )
+            self.logger.error(f'Error validating data from {table_config.full_name}')
             response = ControlsResponse(
                 success=False,
                 error=e,
