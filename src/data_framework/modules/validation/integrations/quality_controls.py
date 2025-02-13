@@ -12,6 +12,13 @@ from data_framework.modules.data_process.core_data_process import CoreDataProces
 from data_framework.modules.config.model.flows import Technologies, DatabaseTable
 from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.utils.debug import debug_code
+from data_framework.modules.exception.validation_exceptions import (
+    QualityControlsError,
+    FailedRulesError,
+    ValidationFunctionNotFoundError,
+    ParentNotConfiguredError,
+    RuleComputeError
+)
 from typing import Any, Dict
 import pandas as pd
 
@@ -78,7 +85,6 @@ class QualityControls(InterfaceQualityControls):
                         overall_result=True
                     )
         except Exception as e:
-            self.logger.error(f'Error validating data from {table_config.full_name}')
             response = ControlsResponse(
                 success=False,
                 error=e,
@@ -88,6 +94,7 @@ class QualityControls(InterfaceQualityControls):
                 results=None,
                 overall_result=False
             )
+            raise QualityControlsError(table_name=table_config.full_name)
         return response
 
     def _get_active_rules(self, layer: Layer, table_config: DatabaseTable) -> Any:
@@ -97,40 +104,31 @@ class QualityControls(InterfaceQualityControls):
             self.dataset_table.filter_rules(layer, table_config),
             columns=self.dataset_table.mandatory_columns
         )
-        if response_rules.success:
-            response_master = self.data_process.read_table(
-                self.master_table.table_config.database_relation,
-                self.master_table.table_config.table,
-                columns=self.master_table.mandatory_columns
-            )
-            if response_master.success:
-                df_rules = response_rules.data
-                df_master = response_master.data
-                common_columns = list(set(df_rules.columns) & set(df_master.columns) - set(['control_master_id']))
-                response = self.data_process.join(
-                    df_rules, df_master,
-                    how='left',
-                    left_on=['control_master_id'],
-                    left_suffix='_rules',
-                    right_suffix='_master'
-                )
-                if response.success:
-                    df_rules = self.data_process.overwrite_columns(
-                        response.data, common_columns,
-                        custom_column_suffix='_rules',
-                        default_column_suffix='_master'
-                    ).data
-                    self.logger.info(
-                        f'Obtained {self.data_process.count_rows(df_rules)} rules ' +
-                        f'for layer {layer.value} and table {table_config.full_name}'
-                    )
-                    return df_rules
-                else:
-                    raise response.error
-            else:
-                raise response_master.error
-        else:
-            raise response_rules.error
+        response_master = self.data_process.read_table(
+            self.master_table.table_config.database_relation,
+            self.master_table.table_config.table,
+            columns=self.master_table.mandatory_columns
+        )
+        df_rules = response_rules.data
+        df_master = response_master.data
+        common_columns = list(set(df_rules.columns) & set(df_master.columns) - set(['control_master_id']))
+        response = self.data_process.join(
+            df_rules, df_master,
+            how='left',
+            left_on=['control_master_id'],
+            left_suffix='_rules',
+            right_suffix='_master'
+        )
+        df_rules = self.data_process.overwrite_columns(
+            response.data, common_columns,
+            custom_column_suffix='_rules',
+            default_column_suffix='_master'
+        ).data
+        self.logger.info(
+            f'Obtained {self.data_process.count_rows(df_rules)} rules ' +
+            f'for layer {layer.value} and table {table_config.full_name}'
+        )
+        return df_rules
 
     def _get_overall_result(self, df_rules: Any, df_results: Any) -> bool:
         response = self.data_process.join(
@@ -145,8 +143,6 @@ class QualityControls(InterfaceQualityControls):
             how='inner',
             left_on=['control_master_id', 'control_table_id'],
         )
-        if not response.success:
-            raise response.error
         # Check if there are blocker controls with KO result
         df = response.data
         if self.technology == Technologies.EMR:
@@ -171,13 +167,10 @@ class QualityControls(InterfaceQualityControls):
             return False
 
     def _insert_results(self, df_results: Any) -> None:
-        response = self.data_process.insert_dataframe(df_results, self.results_table.table_config)
-        if response.success:
-            self.logger.info(
-                f'Successfully written control results in table {self.results_table.table_config.full_name}'
-            )
-        else:
-            raise response.error
+        self.data_process.insert_dataframe(df_results, self.results_table.table_config)
+        self.logger.info(
+            f'Successfully written control results in table {self.results_table.table_config.full_name}'
+        )
 
     def _compute_rules(self, df_data: Any, df_rules: Any, **kwargs: Dict[str, Any]) -> Any:
         if debug_code:
@@ -194,15 +187,12 @@ class QualityControls(InterfaceQualityControls):
                 (df_results['control_master_id'].notna()) & (df_results['control_table_id'].notna())
             ]
         if len(df_rules) != len(df_results):
-            raise ValueError('Some rules could not be executed correctly')
+            raise FailedRulesError(n_failed_rules=(len(df_rules)-len(df_results)))
         if not df_results.empty:
             if self.technology == Technologies.EMR:
                 # Transform into PySpark dataframe
                 response = self.data_process.create_dataframe(df_results)
-                if response.success:
-                    df_results = response.data
-                else:
-                    raise response.error
+                df_results = response.data
             if debug_code:
                 self.logger.info('Controls results:')
                 self.data_process.show_dataframe(df_results)
@@ -229,8 +219,9 @@ class QualityControls(InterfaceQualityControls):
             rule_result = rule.result.to_series()
             self.logger.info(f'Successfully computed rule {rule.id}')
             return rule_result
-        except Exception as e:
-            self.logger.error(f'Error computing rule {rule.id}: {e}')
+        except Exception:
+            error = RuleComputeError(rule_id=rule.id, rule_type=rule.algorithm.algorithm_type)
+            self.logger.error(error.format_exception())
             return pd.Series()
 
     def _compute_sql_rule(self, rule: ControlRule, **kwargs: Dict[str, Any]) -> None:
@@ -242,33 +233,28 @@ class QualityControls(InterfaceQualityControls):
         self.logger.info(f'Executing query {query}')
         # TODO: aplicar query sobre dataframe de datos en vez de BBDD
         response = self.data_process.query(query)
-        if response.success:
-            result = rule.calculate_result(response.data)
-            if result.invalid_identifiers:
-                rule.result.add_detail(f"Invalid records: {', '.join(result.invalid_identifiers)}")
-        else:
-            raise response.error
+        result = rule.calculate_result(response.data)
+        if result.invalid_identifiers:
+            rule.result.add_detail(f"Invalid records: {', '.join(result.invalid_identifiers)}")
 
     def _compute_python_rule(self, rule: ControlRule, df_data: Any, **kwargs: Dict[str, Any]) -> None:
+        if not self.parent:
+            raise ParentNotConfiguredError()
         try:
-            if not self.parent:
-                self.logger.error('QualityControls parent is not set. Configure it using set_parent method')
             function_name = rule.algorithm.algorithm_description
             validation_function = getattr(self.parent, function_name)
             if rule.level == ControlLevel.DATA.value:
                 validation_function(rule, df_data, **kwargs)
             elif rule.level == ControlLevel.FILE.value:
                 validation_function(rule, **kwargs)
-        except AttributeError as e:
-            raise ValueError(f'Error executing Python function {function_name}: {e}')
+        except AttributeError:
+            raise ValidationFunctionNotFoundError(function_name=function_name)
 
     def _compute_regex_rule(self, rule: ControlRule, df_data: Any) -> None:
         pattern = rule.algorithm.algorithm_description
         columns = rule.field_list
         target_columns = ['identifier', 'value']
         response = self.data_process.stack_columns(df_data, columns, target_columns)
-        if not response.success:
-            raise response.error
         df_result = response.data
         if self.technology == Technologies.EMR:
             from pyspark.sql.functions import col, when, lit
