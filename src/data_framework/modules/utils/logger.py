@@ -1,5 +1,5 @@
+from data_framework.modules.exception.generic_exceptions import LoggerInitializationError
 import logging
-import json
 import threading
 import sys
 
@@ -28,8 +28,8 @@ class Logger:
                     logger.addHandler(console_handler)
 
                     cls._instance.logger = logging.getLogger(app_name)
-                except (FileNotFoundError, json.JSONDecodeError) as e:
-                    raise RuntimeError(f"Failed to initialize logger due to error: {e}")
+                except Exception:
+                    raise LoggerInitializationError()
         return cls._instance
 
 

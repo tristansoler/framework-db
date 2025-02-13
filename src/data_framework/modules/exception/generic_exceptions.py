@@ -11,3 +11,10 @@ class DataFrameworkError(Exception):
         error_message = str(self)
         error_trace = traceback.format_exc()
         return f'Error type: {error_type}\n\nDescription: {error_message}\n\nTrace:\n\n{error_trace}'
+
+
+class LoggerInitializationError(DataFrameworkError):
+    """Error raised when logger could not be configured correctly"""
+
+    def __init__(self):
+        super().__init__('Failed to initialize logger')
