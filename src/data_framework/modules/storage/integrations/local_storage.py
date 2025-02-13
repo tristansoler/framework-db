@@ -9,10 +9,16 @@ from data_framework.modules.storage.interface_storage import (
     ListResponse,
     PathResponse
 )
+from data_framework.modules.exception.storage_exceptions import (
+    StorageError,
+    StorageReadError,
+    StorageWriteError
+)
 import os
 
 
 class LocalStorage(CoreStorageInterface):
+
     def __init__(self):
         self.logger = logger
 
@@ -26,15 +32,13 @@ class LocalStorage(CoreStorageInterface):
             if os.path.exists(full_path):
                 with open(full_path, 'rb') as f:
                     data = f.read()
-                response = ReadResponse(error=None, success=True, data=data)
+                return ReadResponse(error=None, success=True, data=data)
             else:
                 message = f'Path {full_path} does not exist'
                 self.logger.info(message)
-                response = ReadResponse(error=message, success=False, data=None)
-        except Exception as error:
-            self.logger.error(f'Failed to read: {error}')
-            response = ReadResponse(error=error, success=False, data=None)
-        return response
+                return ReadResponse(error=message, success=False, data=None)
+        except Exception:
+            return StorageReadError(path=full_path)
 
     def _build_folder_name(self, layer: Layer) -> str:
         return f'{config().parameters.bucket_prefix}-{layer.value}'
@@ -75,11 +79,9 @@ class LocalStorage(CoreStorageInterface):
             with open(full_path, 'wb') as f:
                 f.write(data)
             logger.info(f'Successfully wrote to path: {full_path}')
-            response = WriteResponse(success=True, error=None)
-        except Exception as error:
-            logger.error(f'Failed to write: {error}')
-            response = WriteResponse(success=False, error=error)
-        return response
+            return WriteResponse(success=True, error=None)
+        except Exception:
+            raise StorageWriteError(path=full_path)
 
     def write_to_path(self, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
         try:
@@ -90,11 +92,9 @@ class LocalStorage(CoreStorageInterface):
             with open(full_path, 'wb') as f:
                 f.write(data)
             logger.info(f'Successfully wrote to path: {full_path}')
-            response = WriteResponse(success=True, error=None)
-        except Exception as error:
-            logger.error(f'Failed to write: {error}')
-            response = WriteResponse(success=False, error=error)
-        return response
+            return WriteResponse(success=True, error=None)
+        except Exception:
+            raise StorageWriteError(path=full_path)
 
     def list_files(self, layer: Layer, prefix: str) -> ListResponse:
         try:
@@ -110,16 +110,21 @@ class LocalStorage(CoreStorageInterface):
                 message = f'Path {full_path} does not exist'
                 self.logger.info(message)
                 return ListResponse(error=message, success=False, result=[])
-        except Exception as error:
-            logger.error(f'Error listing files: {error}')
-            return ListResponse(error=error, success=False, result=[])
+        except Exception:
+            raise StorageError(
+                error_message=f'Error listing files from {full_path}'
+            )
 
     def raw_layer_path(self, database: Database, table_name: str, data_date: str) -> PathResponse:
         local_folder = self._build_folder_name(layer=Layer.RAW)
-        local_path = self._build_file_path(database=database, table=table_name, partitions={"data_date": data_date})
-
+        local_path = self._build_file_path(
+            database=database,
+            table=table_name,
+            partitions={"data_date": data_date}
+        )
         final_path = f'{local_folder}/{local_path}'
-
         response = PathResponse(success=True, error=None, path=final_path)
-
         return response
+
+    def base_layer_path(self, layer: Layer) -> PathResponse:
+        raise NotImplementedError('Function base_layer_path not implemented in local storage')
