@@ -1,0 +1,60 @@
+name: aws-s3-upload-environment
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: Github Runner
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      flavor_folder:
+        required: true
+        type: string
+
+
+jobs:
+  upload-to-s3:
+    runs-on: python-runner
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Zip files
+        run: |
+          rm -fr src/data_framework/tests
+          mv src/data_framework data_framework
+          zip -r data_framework.zip data_framework
+      - name: Debug Environment
+        run: |
+          echo "Deploying to environment: ${{ inputs.environment }}"
+          echo "${{ secrets.aws_account_name }}" | sed 's/./& /g'
+          echo "${{ secrets.aws_assume_role }}" | sed 's/./& /g'
+          echo "${{ secrets.aws_session_name }}" | sed 's/./& /g'
+          echo "Deploying to directory: ${{ inputs.flavor_folder }}"
+      - name: AWS Login
+        id: login
+        uses: santander-group-wealth-ng/wmi-awslz-actions-workflows/.github/actions/AWSlogin@main
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          assume_role: ${{ secrets.AWS_ASSUME_ROLE }}
+          session_name: ${{ secrets.AWS_SESSION_NAME }}
+
+      - name: Upload file Data Framework
+        uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
+        with:
+          MODIFY_FILE: data_framework.zip
+          AWS_S3_BUCKET_TARGET: s3://${{ secrets.AWS_ACCOUNT_NAME }}-productcode
+          AWS_S3_PATH_TARGET: libs/data_framework/${{ inputs.flavor_folder }}
+
+      - name: Upload file Launcher
+        uses: santander-group-wealth-ng/wmi-dataplatform-cicd-dataflow/.github/actions/aws-s3_cp@main
+        with:
+          MODIFY_FILE: src/launchers/emr_launcher.py
+          AWS_S3_BUCKET_TARGET: s3://${{ secrets.AWS_ACCOUNT_NAME }}-productcode
+          AWS_S3_PATH_TARGET: libs/data_framework/${{ inputs.flavor_folder }}

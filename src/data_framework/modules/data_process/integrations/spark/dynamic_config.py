@@ -149,11 +149,11 @@ class DynamicConfig:
     @classmethod
     def recommend_spark_config(
         cls,
-        dataset_size_gb: float,
+        dataset_size_gb: float = 2,
         job_type: str = "batch",
         optimization_goal: str = "cost",
         avg_file_size_mb: int = 500,
-        max_executors: int = 50,
+        max_executors: int = 10,
         max_memory_per_executor_gb: int = 120,
         emr_application_id: str = None,
         num_instances: int = 10
@@ -190,6 +190,7 @@ class DynamicConfig:
             "spark.dynamicAllocation.initialExecutors": "3",
             "spark.dynamicAllocation.minExecutors": "2",
             "spark.dynamicAllocation.maxExecutors": str(max_executors)
+            #"spark.executor.extraJavaOptions": "XX:+UseG1GC -XX:InitiatingHeapOccupancyPercent=20 -XX:+UnlockDiagnosticVMOptions"
         }
         
         if job_type == "batch":
@@ -212,13 +213,18 @@ class DynamicConfig:
             "spark.executor.cores": str(adj_executor_cpu),
             "spark.driver.memory": f"{adj_driver_mem}g",
             "spark.driver.cores": str(adj_driver_cpu),
-            "spark.shuffle.partitions": str(shuffle_partitions),
+            #"spark.shuffle.partitions": str(shuffle_partitions),
+            # "spark.executor.memoryOverhead": "3g",
+            # "spark.memory.offHeap.enabled": "true",
+            # "spark.memory.offHeap.size": "2g",
+            # "spark.shuffle.file.buffer": "1m",
+            # "spark.reducer.maxSizeInFlight": "96m",
             # "spark.sql.iceberg.handle-timestamp-without-timezone": "true",
             # "spark.sql.iceberg.merge-snapshot.enabled": "true",
             
             # EMR Serverless:
-            "spark.emr-serverless.executor.disk": f"{disk_gb}G",
-            "spark.emr-serverless.driver.disk": f"{disk_gb}G",
+            #"spark.emr-serverless.executor.disk": f"{disk_gb}G",
+            #"spark.emr-serverless.driver.disk": f"{disk_gb}G",
             "spark.emr-serverless.memoryOverheadFactor": str(memory_overhead_factor)
         })
         

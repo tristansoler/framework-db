@@ -115,12 +115,14 @@ class CSVSpecs:
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
     special_character: Optional[str] = None
+    multiline: bool = False
 
     def read_config(self) -> dict:
         config = {
             "header": str(self.header).lower(),
             "encoding": self.encoding,
-            "sep": self.delimiter
+            "sep": self.delimiter,
+            "multiLine": str(self.multiline).lower()
         }
 
         if self.special_character:
