@@ -209,6 +209,7 @@ class SparkDataProcess(DataProcessInterface):
     ) -> ReadResponse:
         try:
             csv_read_config = config().processes.landing_to_raw.incoming_file.csv_specs.read_config()
+            logger.info(f'CSV parameters {csv_read_config}')
 
             read_path = self.storage.raw_layer_path(
                 database=table_source.database,
