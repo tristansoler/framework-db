@@ -1,8 +1,11 @@
-from data_framework.modules.dataflow.interface_dataflow import *
-from data_framework.modules.config.model.flows import DateLocated
+from data_framework.modules.dataflow.interface_dataflow import (
+    DataFlowInterface,
+    ExecutionMode
+)
+from data_framework.modules.config.model.flows import DateLocated, LandingFileFormat
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
-from data_framework.modules.storage.interface_storage import Layer, Database
+from data_framework.modules.storage.interface_storage import Layer
 from data_framework.modules.validation.integrations.file_validator import FileValidator
 from data_framework.modules.exception.landing_exceptions import (
     FileProcessError,
@@ -18,6 +21,7 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import tarfile
+from pandas import read_xml, read_excel
 
 
 class ProcessingCoordinator(DataFlowInterface):
@@ -137,9 +141,10 @@ class ProcessingCoordinator(DataFlowInterface):
             raise FileReadError(file_path=self.parameters.source_file_path)
 
     def obtain_file_date(self) -> str:
-        if self.incoming_file.csv_specs.date_located == DateLocated.FILENAME:
+        specifications = self.incoming_file.get_specifications()
+        if specifications.date_located == DateLocated.FILENAME:
             filename = Path(self.parameters.source_file_path).name
-            pattern = self.incoming_file.csv_specs.date_located_filename.regex
+            pattern = specifications.date_located_filename.regex
             match = re.search(pattern, filename)
             if not match:
                 raise InvalidDateRegexError(filename=filename, pattern=pattern)
@@ -155,7 +160,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 # Default year-month-day order
                 year, month, day = match.groups()
             return f'{year}-{month}-{day}'
-        elif self.incoming_file.csv_specs.date_located == DateLocated.COLUMN:
+        elif specifications.date_located == DateLocated.COLUMN:
             # TODO: implementar
             raise NotImplementedError('Feature date_located = column is not implemented yet')
 
@@ -226,16 +231,36 @@ class ProcessingCoordinator(DataFlowInterface):
     def write_data(self, file_contents: dict, partitions: dict) -> None:
         for filename, file_data in file_contents.items():
             if file_data['validate']:
-                file_data['content'].seek(0)
-
+                file_content = self.convert_file_to_parquet(filename, file_data['content'])
                 self.storage.write(
                     layer=Layer.RAW,
                     database=self.output_file.database,
                     table=self.output_file.table,
-                    data=file_data['content'],
+                    data=file_content,
                     partitions=partitions,
                     filename=filename
                 )
+
+    def convert_file_to_parquet(self, filename: str, file_content: BytesIO) -> BytesIO:
+        file_content.seek(0)
+        if self.incoming_file.file_format == LandingFileFormat.XML:
+            self.logger.info(f'Converting XML file {filename} to parquet')
+            # TODO: more xml parameters
+            df = read_xml(file_content, encoding=self.incoming_file.xml_specs.encoding)
+            parquet_file_content = BytesIO()
+            # TODO: parquet options
+            df.to_parquet(parquet_file_content)
+            return parquet_file_content
+        elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
+            self.logger.info(f'Converting Excel file {filename} to parquet')
+            # TODO: more excel parameters
+            df = read_excel(file_content)
+            parquet_file_content = BytesIO()
+            # TODO: parquet options
+            df.to_parquet(parquet_file_content)
+            return parquet_file_content
+        else:
+            return file_content
 
 
 if __name__ == '__main__':

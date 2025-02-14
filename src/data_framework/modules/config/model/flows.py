@@ -43,6 +43,7 @@ class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
     EXCEL = "xls"
+    XML = "xml"
 
 
 class OutputFileFormat(Enum):
@@ -114,6 +115,13 @@ class DateLocatedFilename:
 
 
 @dataclass
+class XMLSpecs:
+    encoding: str
+    date_located: DateLocated
+    date_located_filename: DateLocatedFilename
+
+
+@dataclass
 class CSVSpecs:
     header_position: int
     header: bool
@@ -173,8 +181,15 @@ class IncomingFileLandingToRaw:
     file_format: LandingFileFormat
     filename_pattern: str
     filename_unzipped_pattern: Optional[str]
-    csv_specs: CSVSpecs
+    csv_specs: Optional[CSVSpecs]
+    xml_specs: Optional[XMLSpecs]
     compare_with_previous_file: Optional[bool] = False
+
+    def get_specifications(self) -> Union[CSVSpecs, XMLSpecs]:
+        if self.file_format == LandingFileFormat.XML:
+            return self.xml_specs
+        else:
+            return self.csv_specs
 
 
 @dataclass
