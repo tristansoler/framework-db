@@ -117,6 +117,7 @@ class DateLocatedFilename:
 @dataclass
 class XMLSpecs:
     encoding: str
+    xpath: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
 
