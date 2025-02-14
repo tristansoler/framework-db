@@ -121,8 +121,13 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
+    scape: Optional[str] = None
+    comment: Optional[str] = None
+    null_value: Optional[str] = None
+    nan_value: Optional[str] = None
     special_character: Optional[str] = None
     multiline: bool = False
+
 
     def read_config(self) -> dict:
         config = {
@@ -134,6 +139,19 @@ class CSVSpecs:
 
         if self.special_character:
             config["quote"] = self.special_character
+
+        if self.scape:
+            config["scape"] = self.scape
+        
+        if self.comment:
+            config["comment"] = self.comment
+        
+        if self.null_value:
+            config["nullValue"] = self.null_value
+
+        if self.nan_value:
+            config["nanValue"] = self.nan_value
+
 
         return config
 
