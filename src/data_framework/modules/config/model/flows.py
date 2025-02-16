@@ -121,7 +121,7 @@ class CSVSpecs:
     delimiter: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
-    scape: Optional[str] = None
+    escape: Optional[str] = None
     comment: Optional[str] = None
     null_value: Optional[str] = None
     nan_value: Optional[str] = None
@@ -140,8 +140,8 @@ class CSVSpecs:
         if self.special_character:
             config["quote"] = self.special_character
 
-        if self.scape:
-            config["scape"] = self.scape
+        if self.escape:
+            config["escape"] = self.escape
         
         if self.comment:
             config["comment"] = self.comment
