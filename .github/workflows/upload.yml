@@ -28,6 +28,7 @@ jobs:
         run: |
           rm -fr src/data_framework/tests
           mv src/data_framework data_framework
+          pip install -r requirements.txt -t data_framework/
           zip -r data_framework.zip data_framework
       - name: Debug Environment
         run: |

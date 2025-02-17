@@ -114,7 +114,7 @@ jobs:
     strategy:
       matrix:
         environment: [dev , pre , pro]
-    uses: santander-group-wealth-ng/aih-dataplatform-python-data_framework/.github/workflows/upload-dev-pre-pro.yml@main
+    uses: santander-group-wealth-ng/aih-dataplatform-python-data_framework/.github/workflows/upload.yml@main
     secrets: inherit
     with:
       runner: python-runner
