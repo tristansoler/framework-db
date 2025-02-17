@@ -113,7 +113,7 @@ jobs:
     needs: [ parameters ]
     strategy:
       matrix:
-        environment: [dev , pre , pro]
+        environment: [dev ,pre ,pro]
     uses: santander-group-wealth-ng/aih-dataplatform-python-data_framework/.github/workflows/upload.yml@main
     secrets: inherit
     with:
