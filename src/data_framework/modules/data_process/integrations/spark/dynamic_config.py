@@ -223,8 +223,8 @@ class DynamicConfig:
             # "spark.sql.iceberg.merge-snapshot.enabled": "true",
             
             # EMR Serverless:
-            #"spark.emr-serverless.executor.disk": f"{disk_gb}G",
-            #"spark.emr-serverless.driver.disk": f"{disk_gb}G",
+            "spark.emr-serverless.executor.disk": f"{disk_gb}G",
+            "spark.emr-serverless.driver.disk": f"{disk_gb}G",
             "spark.emr-serverless.memoryOverheadFactor": str(memory_overhead_factor)
         })
         
