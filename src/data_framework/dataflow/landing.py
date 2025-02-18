@@ -254,6 +254,7 @@ class ProcessingCoordinator(DataFlowInterface):
                 parser='etree',
                 dtype=str
             )
+            df = df.fillna('')
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content, index=False)
@@ -263,6 +264,7 @@ class ProcessingCoordinator(DataFlowInterface):
             self.logger.info(f'Converting Excel file {filename} to parquet')
             # TODO: more excel parameters
             df = read_excel(file_content, dtype=str)
+            df = df.fillna('')
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content, index=False)
