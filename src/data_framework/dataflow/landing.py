@@ -251,20 +251,21 @@ class ProcessingCoordinator(DataFlowInterface):
                 file_content,
                 encoding=self.incoming_file.xml_specs.encoding,
                 xpath=self.incoming_file.xml_specs.xpath,
-                parser='etree'
+                parser='etree',
+                dtype=str
             )
             parquet_file_content = BytesIO()
             # TODO: parquet options
-            df.to_parquet(parquet_file_content)
+            df.to_parquet(parquet_file_content, index=False)
             parquet_file_content.seek(0)
             return parquet_filename, parquet_file_content
         elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
             self.logger.info(f'Converting Excel file {filename} to parquet')
             # TODO: more excel parameters
-            df = read_excel(file_content)
+            df = read_excel(file_content, dtype=str)
             parquet_file_content = BytesIO()
             # TODO: parquet options
-            df.to_parquet(parquet_file_content)
+            df.to_parquet(parquet_file_content, index=False)
             parquet_file_content.seek(0)
             return parquet_filename, parquet_file_content
         else:
