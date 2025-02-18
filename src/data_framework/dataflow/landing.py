@@ -16,6 +16,7 @@ from data_framework.modules.exception.landing_exceptions import (
 )
 import re
 import hashlib
+from typing import Tuple
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -231,7 +232,7 @@ class ProcessingCoordinator(DataFlowInterface):
     def write_data(self, file_contents: dict, partitions: dict) -> None:
         for filename, file_data in file_contents.items():
             if file_data['validate']:
-                file_content = self.convert_file_to_parquet(filename, file_data['content'])
+                filename, file_content = self.convert_file_to_parquet(filename, file_data['content'])
                 self.storage.write(
                     layer=Layer.RAW,
                     database=self.output_file.database,
@@ -241,20 +242,21 @@ class ProcessingCoordinator(DataFlowInterface):
                     filename=filename
                 )
 
-    def convert_file_to_parquet(self, filename: str, file_content: BytesIO) -> BytesIO:
+    def convert_file_to_parquet(self, filename: str, file_content: BytesIO) -> Tuple[str, BytesIO]:
         file_content.seek(0)
+        parquet_filename = re.sub(r'\.\w+$', '.parquet', filename)
         if self.incoming_file.file_format == LandingFileFormat.XML:
             self.logger.info(f'Converting XML file {filename} to parquet')
-            # TODO: fix
             df = read_xml(
                 file_content,
                 encoding=self.incoming_file.xml_specs.encoding,
-                xpath=self.incoming_file.xml_specs.xpath
+                xpath=self.incoming_file.xml_specs.xpath,
+                parser='etree'
             )
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content)
-            return parquet_file_content
+            return parquet_filename, parquet_file_content
         elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
             self.logger.info(f'Converting Excel file {filename} to parquet')
             # TODO: more excel parameters
@@ -262,9 +264,9 @@ class ProcessingCoordinator(DataFlowInterface):
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content)
-            return parquet_file_content
+            return parquet_filename, parquet_file_content
         else:
-            return file_content
+            return filename, file_content
 
 
 if __name__ == '__main__':
