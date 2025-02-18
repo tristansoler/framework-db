@@ -243,6 +243,9 @@ class SparkDataProcess(DataProcessInterface):
                 )
 
                 df_raw = self._execute_query(query)
+            # TODO: eliminar
+            df_raw.show(truncate=False)
+            df_raw.printSchema()
             return ReadResponse(success=True, error=None, data=df_raw)
         except Exception:
             raise CastDataError(
