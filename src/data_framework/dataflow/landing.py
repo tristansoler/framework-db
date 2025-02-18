@@ -245,6 +245,7 @@ class ProcessingCoordinator(DataFlowInterface):
         file_content.seek(0)
         if self.incoming_file.file_format == LandingFileFormat.XML:
             self.logger.info(f'Converting XML file {filename} to parquet')
+            # TODO: fix
             df = read_xml(
                 file_content,
                 encoding=self.incoming_file.xml_specs.encoding,
