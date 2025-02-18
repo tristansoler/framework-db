@@ -258,7 +258,10 @@ class SparkDataProcess(DataProcessInterface):
             else:
                 return self.spark.read.options(**csv_read_config).csv(path)
         else:
-            return self.spark.read.parquet(path)
+            if schema is not None:
+                return self.spark.read.schema(schema).parquet(path)
+            else:
+                return self.spark.read.parquet(path)
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3
