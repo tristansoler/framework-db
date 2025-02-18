@@ -248,7 +248,7 @@ class SparkDataProcess(DataProcessInterface):
                 source_table=table_source.table,
                 target_database=table_target.database_relation,
                 target_table=table_target.table,
-                casting_strategy=table_target.casting.strategy
+                casting_strategy=table_target.casting.strategy.value
             )
 
     def _execute_query(self, query: str) -> DataFrame:
