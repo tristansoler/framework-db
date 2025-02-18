@@ -156,7 +156,7 @@ class DynamicConfig:
         max_executors: int = 10,
         max_memory_per_executor_gb: int = 120,
         emr_application_id: str = None,
-        num_instances: int = 10
+        num_instances: int = 20
     ):
         
         # Memory for executors
