@@ -256,6 +256,7 @@ class ProcessingCoordinator(DataFlowInterface):
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content)
+            parquet_file_content.seek(0)
             return parquet_filename, parquet_file_content
         elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
             self.logger.info(f'Converting Excel file {filename} to parquet')
@@ -264,6 +265,7 @@ class ProcessingCoordinator(DataFlowInterface):
             parquet_file_content = BytesIO()
             # TODO: parquet options
             df.to_parquet(parquet_file_content)
+            parquet_file_content.seek(0)
             return parquet_filename, parquet_file_content
         else:
             return filename, file_content
