@@ -227,6 +227,10 @@ class SparkDataProcess(DataProcessInterface):
 
             self._track_table_metric(table_config=table_source, data_frame=df_raw)
 
+            # TODO: eliminar
+            df_raw.show(truncate=False)
+            df_raw.printSchema()
+
             df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
