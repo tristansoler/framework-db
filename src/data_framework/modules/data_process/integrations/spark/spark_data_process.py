@@ -17,7 +17,8 @@ from data_framework.modules.monitoring.core_monitoring import (
 from data_framework.modules.config.model.flows import (
     DatabaseTable,
     ExecutionMode,
-    CastingStrategy
+    CastingStrategy,
+    LandingFileFormat
 )
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 from data_framework.modules.exception.data_process_exceptions import (
@@ -28,14 +29,14 @@ from data_framework.modules.exception.data_process_exceptions import (
     DeleteDataError,
     SparkConfigurationError
 )
-from typing import List, Any
+from typing import List, Any, Union
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
 import pyspark.sql.functions as f
 from pyspark.sql.functions import when
 import time
 import random
-from pyspark.sql.types import StructType, StructField, StringType
+from pyspark.sql.types import StructType
 import inspect
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
@@ -208,9 +209,6 @@ class SparkDataProcess(DataProcessInterface):
         table_target: DatabaseTable
     ) -> ReadResponse:
         try:
-            csv_read_config = config().processes.landing_to_raw.incoming_file.csv_specs.read_config()
-            logger.info(f'CSV parameters {csv_read_config}')
-
             read_path = self.storage.raw_layer_path(
                 database=table_source.database,
                 table_name=table_source.table
@@ -219,10 +217,10 @@ class SparkDataProcess(DataProcessInterface):
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
                 schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
                 spark_schema = utils.convert_schema(schema=schema_response.schema)
-                df_raw = self.spark.read.options(**csv_read_config).schema(spark_schema).csv(read_path.path)
+                df_raw = self._read_raw_file(path=read_path.path, schema=spark_schema)
 
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
-                df_raw = self.spark.read.options(**csv_read_config).csv(read_path.path)
+                df_raw = self._read_raw_file(path=read_path.path)
 
             if config().parameters.execution_mode == ExecutionMode.DELTA:
                 df_raw = df_raw.filter(table_source.sql_where)
@@ -250,6 +248,17 @@ class SparkDataProcess(DataProcessInterface):
                 target_table=table_target.table,
                 casting_strategy=table_target.casting.strategy.value
             )
+
+    def _read_raw_file(self, path: str, schema: Union[StructType, None] = None) -> DataFrame:
+        if config().processes.landing_to_raw.incoming_file.file_format == LandingFileFormat.CSV:
+            csv_read_config = config().processes.landing_to_raw.incoming_file.csv_specs.read_config()
+            logger.info(f'CSV parameters {csv_read_config}')
+            if schema is not None:
+                return self.spark.read.options(**csv_read_config).schema(schema).csv(path)
+            else:
+                return self.spark.read.options(**csv_read_config).csv(path)
+        else:
+            return self.spark.read.parquet(path)
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3
