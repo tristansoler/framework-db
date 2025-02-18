@@ -249,8 +249,7 @@ class ProcessingCoordinator(DataFlowInterface):
             df = read_xml(
                 file_content,
                 encoding=self.incoming_file.xml_specs.encoding,
-                xpath=self.incoming_file.xml_specs.xpath,
-                parser='etree'
+                xpath=self.incoming_file.xml_specs.xpath
             )
             parquet_file_content = BytesIO()
             # TODO: parquet options
