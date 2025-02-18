@@ -7,6 +7,7 @@ from data_framework.modules.config.model.flows import (
     DateLocatedFilename,
     Parameters,
     CSVSpecs,
+    XMLSpecs,
     Config,
     DatabaseTable,
     ProcessingSpecifications,
@@ -66,7 +67,7 @@ class ConfigSetup:
     _environment: None
 
     _models = (
-        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, XMLSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration, CustomConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
