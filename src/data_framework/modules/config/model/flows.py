@@ -137,7 +137,6 @@ class CSVSpecs:
     special_character: Optional[str] = None
     multiline: bool = False
 
-
     def read_config(self) -> dict:
         config = {
             "header": str(self.header).lower(),
@@ -145,23 +144,16 @@ class CSVSpecs:
             "sep": self.delimiter,
             "multiLine": str(self.multiline).lower()
         }
-
         if self.special_character:
             config["quote"] = self.special_character
-
         if self.escape:
             config["escape"] = self.escape
-        
         if self.comment:
             config["comment"] = self.comment
-        
         if self.null_value:
             config["nullValue"] = self.null_value
-
         if self.nan_value:
             config["nanValue"] = self.nan_value
-
-
         return config
 
 
