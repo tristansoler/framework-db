@@ -79,9 +79,8 @@ class FileValidator:
                 except Exception:
                     valid_csv = False
                 else:
-                    expected_n_rows = self._get_expected_number_of_rows(file_data['content'])
                     expected_n_columns = self._get_expected_number_of_columns(file_data['content'])
-                    valid_csv = df.shape == (expected_n_rows, expected_n_columns)
+                    valid_csv = df.shape[1] == expected_n_columns
                 results.append(valid_csv)
                 filenames.append(filename)
         df_result = self.data_process.create_dataframe(
@@ -142,12 +141,6 @@ class FileValidator:
         if result.invalid_identifiers:
             rule.result.add_detail(f"CSV files with invalid columns: {', '.join(invalid_columns_info)}")
         rule.result.set_data_date(self.file_date)
-
-    def _get_expected_number_of_rows(self, csv_content: BytesIO) -> int:
-        csv_content.seek(0)
-        header_position = self.incoming_file_config.csv_specs.header_position
-        lines = csv_content.getvalue().splitlines()
-        return len(lines) - (header_position + 1)
 
     def _get_expected_number_of_columns(self, csv_content: BytesIO) -> int:
         csv_content.seek(0)
