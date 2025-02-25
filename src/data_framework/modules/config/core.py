@@ -13,7 +13,6 @@ from data_framework.modules.config.model.flows import (
     ProcessingSpecifications,
     Hardware,
     SparkConfiguration,
-    CustomConfiguration,
     OutputReport,
     GenericProcess,
     TableDict,
