@@ -95,10 +95,6 @@ class SparkDataProcess(DataProcessInterface):
 
             spark_config.setAll(pairs=extra_config.items())
 
-            # Add custom configurations
-            for custom_config in json_config.spark_configuration.custom_configuration:
-                spark_config.set(custom_config.parameter, custom_config.value)
-
             logger.info(spark_config.getAll())
 
             # Create Spark session
