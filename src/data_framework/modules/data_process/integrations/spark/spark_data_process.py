@@ -204,7 +204,7 @@ class SparkDataProcess(DataProcessInterface):
             # Select only necessary columns of the dataframe
             dataframe = self._select_table_columns(dataframe, table_config)
 
-            dataframe.format("iceberg").mode('overwrite').save(table_name)
+            dataframe.write.format("iceberg").mode('overwrite').save(table_name)
 
             self.spark.sparkContext.setJobGroup("", "", False)
 
