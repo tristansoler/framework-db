@@ -30,6 +30,13 @@ class CoreDataProcess(object):
             table_config=table_config,
             custom_strategy=custom_strategy
         )
+    
+    @classmethod
+    def insert_overwrite(cls, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+        return cls._data_process.insert_overwrite(
+            dataframe=dataframe,
+            table_config=table_config
+        )
 
     @classmethod
     def datacast(

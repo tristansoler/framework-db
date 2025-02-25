@@ -83,7 +83,7 @@ class DynamicConfig:
             disk = 20
         elif dataset_size_gb < 10:
             disk = 50
-        elif dataset_size_gb < 100:
+        elif dataset_size_gb < 200:
             disk = 100
         elif dataset_size_gb < 500:
             disk = 200
@@ -153,7 +153,7 @@ class DynamicConfig:
         job_type: str = "batch",
         optimization_goal: str = "cost",
         avg_file_size_mb: int = 500,
-        max_executors: int = 10,
+        max_executors: int = 20,
         max_memory_per_executor_gb: int = 120,
         emr_application_id: str = None,
         num_instances: int = 20

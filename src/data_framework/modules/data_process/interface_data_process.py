@@ -24,6 +24,10 @@ class DataProcessInterface(ABC):
         pass
 
     @abstractmethod
+    def insert_overwrite(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+        pass
+    
+    @abstractmethod
     def datacast(
         self,
         table_source: DatabaseTable,

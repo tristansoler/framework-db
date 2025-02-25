@@ -69,7 +69,7 @@ class ConfigSetup:
     _models = (
         Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, XMLSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
-        Hardware, SparkConfiguration, CustomConfiguration,
+        Hardware, SparkConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
         VolumetricExpectation, Notification, Casting, Transformation,
         DataFrameworkNotifications, NotificationsParameters

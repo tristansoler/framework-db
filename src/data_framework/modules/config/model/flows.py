@@ -83,25 +83,49 @@ class VolumetricExpectation:
 
 
 @dataclass
-class CustomConfiguration:
-    parameter: str
-    value: str
-
-
-@dataclass
 class SparkConfiguration:
     full_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
     delta_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
-    custom_configuration: List[CustomConfiguration] = field(default_factory=list)
+    delta_custom: Optional[dict] = field(default_factory=dict)
+    full_custom: Optional[dict] = field(default_factory=dict)
 
     @property
     def volumetric_expectation(self) -> VolumetricExpectation:
+
         from data_framework.modules.config.core import config
+
         if config().parameters.execution_mode == ExecutionMode.FULL:
             return self.full_volumetric_expectation
 
         return self.delta_volumetric_expectation
+    
+    @property
+    def custom_config(self) -> dict:
+        
+        from data_framework.modules.config.core import config
 
+        if config().parameters.execution_mode == ExecutionMode.FULL:
+            return self.full_custom
+        
+        return self.delta_custom
+    
+    @property
+    def config(self) -> dict:
+
+        from data_framework.modules.config.core import config
+
+        if (config().parameters.execution_mode == ExecutionMode.FULL and self.full_custom
+            or config().parameters.execution_mode == ExecutionMode.DELTA and self.delta_custom):
+            return self.custom_config
+        else:
+
+            from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
+
+            volumetric = self.volumetric_expectation
+            return DynamicConfig.recommend_spark_config(
+                    dataset_size_gb=volumetric.data_size_gb,
+                    avg_file_size_mb=volumetric.avg_file_size_mb
+                )
 
 @dataclass
 class ProcessingSpecifications:

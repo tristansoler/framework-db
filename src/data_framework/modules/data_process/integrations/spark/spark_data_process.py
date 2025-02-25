@@ -88,18 +88,12 @@ class SparkDataProcess(DataProcessInterface):
                 ("spark.sql.catalogImplementation", "hive"),
 
 
-                ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC'),
-
-
+                ("spark.sql.sources.partitionOverwriteMode", 'DYNAMIC')
             ])
 
-            volumetric_expectation = json_config.spark_configuration.volumetric_expectation
-            dynamic_config = DynamicConfig.recommend_spark_config(
-                dataset_size_gb=volumetric_expectation.data_size_gb,
-                avg_file_size_mb=volumetric_expectation.avg_file_size_mb
-            )
+            extra_config = json_config.spark_configuration.config
 
-            spark_config.setAll(pairs=dynamic_config.items())
+            spark_config.setAll(pairs=extra_config.items())
 
             # Add custom configurations
             for custom_config in json_config.spark_configuration.custom_configuration:
@@ -166,7 +160,6 @@ class SparkDataProcess(DataProcessInterface):
 
             self.spark.sparkContext.setJobGroup(f"[MERGE] {source_method}", table_name, interruptOnCancel=True)
 
-            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
             view_name = 'data_to_merge'
             # Select only necessary columns of the dataframe
             dataframe = self._select_table_columns(dataframe, table_config)
@@ -199,6 +192,29 @@ class SparkDataProcess(DataProcessInterface):
 
             response = WriteResponse(success=True, error=None)
             self._track_table_metric(table_config=table_config)
+            return response
+        except Exception:
+            raise WriteDataError(database=table_config.database_relation, table=table_config.table)
+        
+    def insert_overwrite(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
+        try:
+            ""
+            table_name = self._build_complete_table_name(table_config.database_relation, table_config.table)
+
+            source_method = inspect.stack()[2].function
+
+            self.spark.sparkContext.setJobGroup(f"[INSERT OVERWRITE] {source_method}", table_name, interruptOnCancel=True)
+            
+            # Select only necessary columns of the dataframe
+            dataframe = self._select_table_columns(dataframe, table_config)
+
+            dataframe.format("iceberg").mode('overwrite').save(table_name)
+
+            self.spark.sparkContext.setJobGroup("", "", False)
+
+            response = WriteResponse(success=True, error=None)
+            self._track_table_metric(table_config=table_config)
+            
             return response
         except Exception:
             raise WriteDataError(database=table_config.database_relation, table=table_config.table)
