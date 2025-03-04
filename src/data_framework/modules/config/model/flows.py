@@ -77,8 +77,8 @@ class VolumetricExpectation:
 
 @dataclass
 class SparkConfiguration:
-    full_volumetric_expectation: Optional[VolumetricExpectation] = field(default_factory=VolumetricExpectation)
-    delta_volumetric_expectation: Optional[VolumetricExpectation] = field(default_factory=VolumetricExpectation)
+    full_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
+    delta_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
     delta_custom: Optional[dict] = field(default_factory=dict)
     full_custom: Optional[dict] = field(default_factory=dict)
 
