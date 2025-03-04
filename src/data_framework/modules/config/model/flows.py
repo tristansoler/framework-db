@@ -338,7 +338,7 @@ class DatabaseTable:
     def sql_where(self) -> str:
         from data_framework.modules.config.core import config
 
-        if config().parameters.execution_mode == ExecutionMode.DELTA:
+        if config().parameters.execution_mode == ExecutionMode.DELTA and self.partition_field:
             return f"{self.partition_field} = '{config().parameters.file_date}'"
         return ""
 
