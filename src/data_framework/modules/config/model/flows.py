@@ -49,6 +49,10 @@ class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
 
+    @property
+    def is_delta(self) -> bool:
+        return self.value == 'delta'
+
 class JSONSpectFormat(Enum):
     LINES = "lines"
     COLUMNS = "columns"
