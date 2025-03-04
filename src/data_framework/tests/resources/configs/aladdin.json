@@ -1,0 +1,102 @@
+{
+	"data_framework": {
+		"core_version": "last"
+	},
+	"dataflows": {
+		"default": {
+			"processes": {
+				"landing_to_raw": {
+					"incoming_file": {
+						"file_format": "json",
+						"filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})"
+					},
+					"output_file": {
+						"database": "funds_raw",
+						"table": "default_table",
+						"partition_field": "data_date"
+					}
+				},
+				"raw_to_staging": {},
+        "staging_to_common": {}
+			}
+		},
+		"positions": {
+			"config_match_by": {
+				"file_name": "*_response_of_api_aladdin_positions.json"
+			},
+			"processes": {
+				"landing_to_raw": {
+					"incoming_file": {
+						"filename_pattern": "^(\\d{4}-\\d{2}-\\d{2})\\s\\d{2}_\\d{2}_\\d{2}_response_of_api_aladdin_positions.json$",
+						"json_specs": {
+							"source_level": "response_content",
+							"source_level_format": "array",
+							"encoding": "UTF-8",
+							"date_located": "filename",
+							"date_located_filename": {
+								"regex": "(\\d{4})-(\\d{2})-(\\d{2})"
+							}
+						}
+					},
+					"output_file": {
+						"table": "aladdin_positions"
+					},
+          "processing_specifications": {
+						"technology": "emr",
+						"spark_configuration": {}
+					}
+				},
+				"raw_to_staging": {
+					"source_tables": {
+						"positions": {
+							"database": "funds_raw",
+							"table": "aladdin_positions"
+						}
+					},
+					"target_tables": {
+						"positions": {
+							"database": "funds_staging",
+							"table": "aladdin_positions",
+							"primary_keys": [
+                "data_date",
+								"assetId",
+                "priceDate"
+							]
+						}
+					},
+					"processing_specifications": {
+						"technology": "emr",
+						"spark_configuration": {
+						}
+					}
+				},
+				"staging_to_common": {
+          "source_tables": {
+						"positions": {
+							"database": "funds_staging",
+							"table": "aladdin_positions"
+						}
+					},
+					"target_tables": {
+						"positions": {
+							"database": "funds_common",
+							"table": "aladdin_positions",
+							"primary_keys": [
+                "data_date",
+								"assetId",
+                "priceDate"
+								
+							]
+						}
+					},
+					"processing_specifications": {
+						"technology": "emr",
+						"spark_configuration": {
+                            "delta_volumetric_expectation": {}
+                        }
+					}
+				}
+			}
+		}
+	}
+}

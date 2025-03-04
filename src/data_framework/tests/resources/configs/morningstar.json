@@ -9,15 +9,11 @@
           "incoming_file": {
             "zipped": "zip",
             "filename_pattern": "sample_(\\d{4})_(\\d{2})_(\\d{2})",
-            "csv_specs": {
-              "header_position": 0,
-              "header": true,
-              "encoding": "UTF-8",
-              "delimiter": ";",
-              "special_character": "\"",
+            "file_format": "json",
+            "json_specs": {
               "date_located": "filename",
               "date_located_filename": {
-                "regex": "(\\d{4})(\\d{2})(\\d{2})"
+                "regex": ""
               }
             }
           },
@@ -160,19 +156,6 @@
               }
             }
           }
-        },
-        "business_to_output": {
-          "processing_specifications": {
-            "technology": "emr",
-            "spark_configuration": {
-              "default_catalog": true,
-              "warehouse": "funds_staging",
-              "full_volumetric_expectation": {
-                "data_size_gb": 400,
-                "avg_file_size_mb": 200
-              }
-            }
-          }
         }
       }
     },
@@ -236,48 +219,6 @@
               "portfolioCode": "12"
             }
           }
-        },
-        "business_to_output": {
-          "vars": {
-            "default": {},
-            "develop": {
-              "listMemberType": "PortListMemberEntry",
-              "listName": "ISIN_AML_TEST",
-              "portfolioCode": "12"
-            },
-            "preproduction": {
-              "listMemberType": "PortListMemberEntry",
-              "listName": "ISIN_AML_TEST",
-              "portfolioCode": "12"
-            },
-            "production": {
-              "listMemberType": "PortListMemberEntry",
-              "listName": "ISIN_AML_TEST",
-              "portfolioCode": "12"
-            }
-          },
-          "output_reports": [
-            {
-              "name": "Data to Blackrock",
-              "description": "Collect Dowjones blacklist data to blackrock API",
-              "source_table": {
-                "database": "funds_business",
-                "table": "dowjones_blacklisted_companies_isins",
-                "partition_field": "data_date"
-              },
-              "columns": [
-                "api_endpoint",
-                "request_type",
-                "body_section"
-              ],
-              "file_format": "json",
-              "filename_pattern": "dowjones_blacklisted_companies_{current_date}.json",
-              "filename_date_format": "%Y%m%d",
-              "json_specs": {
-                "format": "lines"
-              }
-            }
-          ]
         }
       }
     },

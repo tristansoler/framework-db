@@ -22,22 +22,18 @@ class Environment(Enum):
     PREPRODUCTION = "preproduction"
     PRODUCTION = "production"
 
-
 class Platform(Enum):
     # TODO: remove when migrating Infinity to Data Platform
     DATA_PLATFORM = "data_platform"
     INFINITY = "infinity"
 
-
 class DateLocated(Enum):
     FILENAME = "filename"
     COLUMN = "column"
 
-
 class Technologies(Enum):
     LAMBDA = "lambda"
     EMR = "emr"
-
 
 class LandingFileFormat(Enum):
     CSV = "csv"
@@ -45,29 +41,28 @@ class LandingFileFormat(Enum):
     EXCEL = "xls"
     XML = "xml"
 
-
 class OutputFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
-
 
 class ExecutionMode(Enum):
     DELTA = "delta"
     FULL = "full"
 
-
 class JSONSpectFormat(Enum):
     LINES = "lines"
+    COLUMNS = "columns"
 
+class JSONSourceLevelFormat(Enum):
+    DICTIONARY = "dictionary"
+    ARRAY = "array"
 
 class CastingStrategy(Enum):
     ONE_BY_ONE = "one_by_one"
     DYNAMIC = "dynamic"
 
-
 class TransformationType(Enum):
     PARSE_DATES = "parse_dates"
-
 
 @dataclass
 class Hardware:
@@ -75,17 +70,15 @@ class Hardware:
     cores: int = 2
     disk: int = 20
 
-
 @dataclass
 class VolumetricExpectation:
     data_size_gb: float = 0.1
     avg_file_size_mb: int = 100
 
-
 @dataclass
 class SparkConfiguration:
-    full_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
-    delta_volumetric_expectation: VolumetricExpectation = field(default_factory=VolumetricExpectation)
+    full_volumetric_expectation: Optional[VolumetricExpectation] = field(default_factory=VolumetricExpectation)
+    delta_volumetric_expectation: Optional[VolumetricExpectation] = field(default_factory=VolumetricExpectation)
     delta_custom: Optional[dict] = field(default_factory=dict)
     full_custom: Optional[dict] = field(default_factory=dict)
 
@@ -129,8 +122,8 @@ class SparkConfiguration:
 
 @dataclass
 class ProcessingSpecifications:
-    technology: Technologies
-    spark_configuration: Optional[SparkConfiguration] = None
+    technology: Technologies = Technologies.EMR
+    spark_configuration: SparkConfiguration = field(default_factory=SparkConfiguration)
 
 
 @dataclass
@@ -138,16 +131,68 @@ class DateLocatedFilename:
     regex: str
 
 
+class InterfaceSpecs:
+
+    @property
+    def read_config(self) -> dict:
+        raise NotImplementedError('It is mandatory to implement read_config property')
+    
+    @property
+    def pandas_read_config(self) -> dict:
+        raise NotImplementedError('It is mandatory to implement pandas_read_config property')
+    
 @dataclass
-class XMLSpecs:
+class XMLSpecs(InterfaceSpecs):
     encoding: str
     xpath: str
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
 
+    @property
+    def read_config(self) -> dict:
+        return {}
+    
+    @property
+    def pandas_read_config(self) -> dict:
+        return {}
+
 
 @dataclass
-class CSVSpecs:
+class JSONSpecs(InterfaceSpecs):
+    encoding: str
+    source_level: Optional[str]
+    
+    date_located: DateLocated
+    date_located_filename: DateLocatedFilename
+    format: Optional[JSONSpectFormat]
+    values_to_string: bool = False
+    source_level_format: JSONSourceLevelFormat = JSONSourceLevelFormat.ARRAY
+
+    @property
+    def read_config(self) -> dict:
+        return {}
+    
+    @property
+    def pandas_read_config(self) -> dict:
+        config = {}
+
+        if self.values_to_string:
+            config["dtype"] = str
+
+        if self.format == JSONSpectFormat.LINES:
+            config["lines"] = True
+            config["orient"] = "records"
+        elif self.format == JSONSpectFormat.COLUMNS:
+            config["orient"] = "columns"
+
+        return config
+
+    @property
+    def levels(self) -> list[str]:
+        return self.source_level.split('.')
+
+@dataclass
+class CSVSpecs(InterfaceSpecs):
     header_position: int
     header: bool
     encoding: str
@@ -161,6 +206,7 @@ class CSVSpecs:
     special_character: Optional[str] = None
     multiline: bool = False
 
+    @property
     def read_config(self) -> dict:
         config = {
             "header": str(self.header).lower(),
@@ -179,7 +225,11 @@ class CSVSpecs:
         if self.nan_value:
             config["nanValue"] = self.nan_value
         return config
+    
 
+    @property
+    def pandas_read_config(self) -> dict:
+        return {}
 
 @dataclass
 class CSVSpecsReport:
@@ -218,11 +268,15 @@ class IncomingFileLandingToRaw:
     filename_unzipped_pattern: Optional[str]
     csv_specs: Optional[CSVSpecs]
     xml_specs: Optional[XMLSpecs]
+    json_specs: Optional[JSONSpecs]
     compare_with_previous_file: Optional[bool] = False
 
-    def get_specifications(self) -> Union[CSVSpecs, XMLSpecs]:
+    @property
+    def specifications(self) -> Union[CSVSpecs, XMLSpecs, JSONSpecs]:
         if self.file_format == LandingFileFormat.XML:
             return self.xml_specs
+        elif self.file_format == LandingFileFormat.JSON:
+            return self.json_specs
         else:
             return self.csv_specs
 
@@ -266,7 +320,7 @@ class DatabaseTable:
     table: str
     primary_keys: Optional[list] = field(default_factory=list)
     casting: Casting = field(default_factory=Casting)
-    partition_field: str = "datadate"  # TODO: data_date
+    partition_field: str = "data_date"
 
     @property
     def database_relation(self) -> str:
@@ -313,7 +367,7 @@ class TableDict:
 class LandingToRaw:
     incoming_file: IncomingFileLandingToRaw
     output_file: DatabaseTable
-    processing_specifications: ProcessingSpecifications
+    processing_specifications: ProcessingSpecifications = field(default_factory=ProcessingSpecifications)
     notifications: NotificationDict = field(default_factory=NotificationDict)
 
 
@@ -329,7 +383,7 @@ class ProcessVars:
 class GenericProcess:
     source_tables: TableDict
     target_tables: TableDict
-    processing_specifications: ProcessingSpecifications
+    processing_specifications: ProcessingSpecifications = field(default_factory=ProcessingSpecifications)
     notifications: NotificationDict = field(default_factory=NotificationDict)
     vars: Optional[ProcessVars] = field(default_factory=ProcessVars)
 

@@ -262,18 +262,22 @@ class SparkDataProcess(DataProcessInterface):
             )
 
     def _read_raw_file(self, path: str, schema: Union[StructType, None] = None) -> DataFrame:
-        if config().processes.landing_to_raw.incoming_file.file_format == LandingFileFormat.CSV:
-            csv_read_config = config().processes.landing_to_raw.incoming_file.csv_specs.read_config()
-            logger.info(f'CSV parameters {csv_read_config}')
-            if schema is not None:
-                return self.spark.read.options(**csv_read_config).schema(schema).csv(path)
-            else:
-                return self.spark.read.options(**csv_read_config).csv(path)
+        incoming_file = config().processes.landing_to_raw.incoming_file
+
+        file_format = incoming_file.file_format
+        spark_read_config = incoming_file.specifications.read_config
+
+        spark_read = self.spark.read.options(**spark_read_config)
+
+        if schema is not None:
+            spark_read = spark_read.schema(schema)
+        
+        if file_format == LandingFileFormat.CSV:
+            return spark_read.csv(path)
+        elif file_format == LandingFileFormat.JSON:
+            return spark_read.json(path)
         else:
-            if schema is not None:
-                return self.spark.read.schema(schema).parquet(path)
-            else:
-                return self.spark.read.parquet(path)
+            return spark_read.parquet(path)
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3

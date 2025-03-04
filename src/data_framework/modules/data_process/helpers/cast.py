@@ -10,45 +10,40 @@ from typing import Any, Dict
 import pandas as pd
 from pandas import DataFrame, Series
 
-
 class Cast:
 
     def __init__(self):
         self.logger = logger
         self.catalogue = CoreCatalogue()
 
-    def decode_cast(self, col, coltype):
-        q = f'{col}'
-        if coltype in ('int', 'double', 'float', 'date', 'timestamp') or coltype.startswith('decimal'):
-            q = f"try_cast({col} AS {coltype.upper()}) as {col}, " \
-                f"case when try_cast({col} AS {coltype.upper()}) is null " \
-                f"then '{col}: valor {coltype} inválido' end as {col}_control_cast"
-        elif coltype == 'boolean':
+    def decode_cast(self, column_name, column_type):
+        query = f'{column_name}'
+        if column_type in ('int', 'double', 'float', 'date', 'timestamp') or column_type.startswith('decimal'):
+            query = f'TRY_CAST({column_name} AS {column_type.upper()}) AS {column_name}'
+        elif column_type == 'boolean':
             l_true = "'true', 't', 'yes', 'y', 'si', 's', '1'"
             l_false = "'false', 'f', 'no', 'n', '0'"
-            q = f"(case when lower({col}) in ({l_true}) then true " \
-                f"when lower({col}) in ({l_false}) then false else null end) as {col}, " \
-                f"(case when lower({col}) not in ({l_true}, {l_false}) " \
-                f"then '{col}: valor {coltype} inválido' end) as {col}_control_cast"
-        return q
-
-    def build_query_datacast(self, l_columns, l_types, tabla, where=None):
-        d_cols_types = dict(zip(l_columns, l_types))
-        l_columns_no_string = [f"{key}_control_cast" for key, val in d_cols_types.items() if val != 'string']
-
-        l_decode_cols = [self.decode_cast(key, val) for key, val in d_cols_types.items()]
-        decode_cols = reduce(lambda a, b: a + ', ' + b, l_decode_cols)
-        subquery = f"select {decode_cols} from {tabla}"
-        if where:
-            subquery = f"{subquery} where {where}"
-
-        columns_query = reduce(lambda a, b: a + ', ' + b, l_columns)
-        columns_query_control = ", ' | ', ".join(l_columns_no_string)
-        columns_query = f"{columns_query}, concat({columns_query_control}) as control_cast"
-
-        query = f"select {columns_query} from ({subquery})"
-
+            query = f"(CASE WHEN LOWER({column_name}) in ({l_true}) THEN true " \
+                f'WHEN LOWER({column_name}) IN ({l_false}) THEN false ELSE null END) AS {column_name}'
+        
         return query
+
+    def build_query_datacast(self, columns, types, tabla, where=None):
+        cols_types = dict(zip(columns, types))
+        sql_decode = []
+
+        for column, type in cols_types.items():
+            fix_column_name = f"`{column}`"
+
+            column_decode = self.decode_cast(column_name=fix_column_name, column_type=type)
+            sql_decode.append(column_decode)
+
+        
+        sql_final = f"SELECT {', '.join(sql_decode)} FROM {tabla}"
+        if where:
+            sql_final = f"{sql_final} WHERE {where}"
+
+        return sql_final
 
     def get_query_datacast(
         self,

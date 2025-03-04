@@ -8,6 +8,7 @@ from data_framework.modules.config.model.flows import (
     Parameters,
     CSVSpecs,
     XMLSpecs,
+    JSONSpecs,
     Config,
     DatabaseTable,
     ProcessingSpecifications,
@@ -66,7 +67,7 @@ class ConfigSetup:
     _environment: None
 
     _models = (
-        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, XMLSpecs, IncomingFileLandingToRaw,
+        Processes, LandingToRaw, GenericProcess, ToOutput, CSVSpecs, XMLSpecs, JSONSpecs, IncomingFileLandingToRaw,
         DateLocatedFilename, DatabaseTable, ProcessingSpecifications,
         Hardware, SparkConfiguration,
         OutputReport, CSVSpecsReport, JSONSpecsReport,
@@ -301,7 +302,10 @@ class ConfigSetup:
                             environment=environment
                         )
                     elif type(None) in get_args(field_type):
-                        kwargs[field] = None
+                        if hasattr(model, field):
+                            kwargs[field] = getattr(model, field)
+                        else:
+                            kwargs[field] = None
                 elif get_origin(field_type) is list and any(model in get_args(field_type) for model in cls._models) and json_file:
                     field_model = [model for model in cls._models if model in get_args(field_type)][0]
                     if json_file.get(field):
