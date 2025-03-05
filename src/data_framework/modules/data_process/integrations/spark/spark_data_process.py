@@ -226,6 +226,7 @@ class SparkDataProcess(DataProcessInterface):
                 table_name=table_source.table
             )
 
+            logger.info(f"Casting strategy > {table_target.casting.strategy}")
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
                 schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
                 spark_schema = utils.convert_schema(schema=schema_response.schema)
