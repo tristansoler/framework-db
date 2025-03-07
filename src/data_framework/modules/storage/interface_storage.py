@@ -55,6 +55,7 @@ class PathResponse:
     success: bool
     error: str
     path: str
+    base_path: str
 
 
 class CoreStorageInterface(ABC):

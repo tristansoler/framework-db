@@ -17,6 +17,16 @@ from data_framework.modules.exception.storage_exceptions import (
     StorageWriteError
 )
 
+from data_framework.modules.config.model.flows import (
+    ExecutionMode
+)
+from typing import NamedTuple
+
+
+class BuildPathResponse(NamedTuple):
+    base_path: str
+    data_path: str = None
+
 
 class S3Storage(CoreStorageInterface):
 
@@ -46,12 +56,17 @@ class S3Storage(CoreStorageInterface):
         table: str,
         partitions: dict = {},
         filename: str = ''
-    ) -> str:
+    ) -> BuildPathResponse:
         if partitions:
             partitions_path = '/'.join([f"{partition_name}={value}" for partition_name, value in partitions.items()])
-            return f'{database.value}/{table}/{partitions_path}/{filename}'
+            return BuildPathResponse(
+                data_path=f'{database.value}/{table}/{partitions_path}/{filename}',
+                base_path=f'{database.value}/{table}/'
+            )
         else:
-            return f'{database.value}/{table}/{filename}'
+            return BuildPathResponse(
+                base_path=f'{database.value}/{table}/'
+            )
 
     def write(
         self,
@@ -71,7 +86,7 @@ class S3Storage(CoreStorageInterface):
                 filename=filename
             )
             try:
-                self.s3.put_object(Bucket=bucket, Key=key_path, Body=data)
+                self.s3.put_object(Bucket=bucket, Key=key_path.base_path, Body=data)
             except Exception:
                 raise S3Error(error_message='Error uploading file to S3')
             logger.info(f'Successfully wrote to path: {key_path}')
@@ -111,15 +126,21 @@ class S3Storage(CoreStorageInterface):
     def raw_layer_path(self, database: Database, table_name: str) -> PathResponse:
         s3_bucket = self._build_s3_bucket_name(layer=Layer.RAW)
         partitions = {}
-        # if config().parameters.execution_mode == ExecutionMode.DELTA:
-        #     partitions["datadate"] = config().parameters.file_date #TODO: change to data_date
+        if config().parameters.execution_mode == ExecutionMode.DELTA:
+            partitions[config().processes.landing_to_raw.output_file.partition_field] = config().parameters.file_date
+            
         s3_key = self._build_s3_key_path(database=database, table=table_name, partitions=partitions)
-        final_path = f's3://{s3_bucket}/{s3_key}'
-        response = PathResponse(success=True, error=None, path=final_path)
+
+        response = PathResponse(
+            success=True,
+            error=None,
+            path=f's3://{s3_bucket}/{s3_key.data_path}',
+            base_path=f's3://{s3_bucket}/{s3_key.base_path}'
+            )
         return response
 
     def base_layer_path(self, layer: Layer) -> PathResponse:
         s3_bucket = self._build_s3_bucket_name(layer=layer)
         final_path = f's3://{s3_bucket}'
-        response = PathResponse(success=True, error=None, path=final_path)
+        response = PathResponse(success=True, error=None, base_path=final_path)
         return response

@@ -227,17 +227,15 @@ class SparkDataProcess(DataProcessInterface):
             )
 
             logger.info(f"Casting strategy > {table_target.casting.strategy}")
+            logger.info(f"Read path > {read_path.path}")
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
                 schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
                 spark_schema = utils.convert_schema(schema=schema_response.schema)
-                df_raw = self._read_raw_file(path=read_path.path, schema=spark_schema)
+                df_raw = self._read_raw_file(base_path=read_path.base_path, data_path=read_path.path, schema=spark_schema)
 
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
-                df_raw = self._read_raw_file(path=read_path.path)
-
-            if config().parameters.execution_mode == ExecutionMode.DELTA:
-                df_raw = df_raw.filter(table_source.sql_where)
+                df_raw = self._read_raw_file(base_path=read_path.base_path, data_path=read_path.path)
 
             self._track_table_metric(table_config=table_source, data_frame=df_raw)
 
@@ -263,11 +261,12 @@ class SparkDataProcess(DataProcessInterface):
                 casting_strategy=table_target.casting.strategy.value
             )
 
-    def _read_raw_file(self, path: str, schema: Union[StructType, None] = None) -> DataFrame:
+    def _read_raw_file(self, base_path: str, data_path: str, schema: Union[StructType, None] = None) -> DataFrame:
         incoming_file = config().processes.landing_to_raw.incoming_file
 
         file_format = incoming_file.file_format
         spark_read_config = incoming_file.specifications.read_config
+        spark_read_config["basePath"] = base_path
 
         logger.info(f"read with spark options {spark_read_config}")
 
@@ -277,11 +276,11 @@ class SparkDataProcess(DataProcessInterface):
             spark_read = spark_read.schema(schema)
         
         if file_format == LandingFileFormat.CSV:
-            return spark_read.csv(path)
+            return spark_read.csv(data_path)
         elif file_format == LandingFileFormat.JSON:
-            return spark_read.json(path)
+            return spark_read.json(data_path)
         else:
-            return spark_read.parquet(path)
+            return spark_read.parquet(data_path)
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3
