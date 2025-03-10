@@ -65,6 +65,7 @@ class S3Storage(CoreStorageInterface):
             )
         else:
             return BuildPathResponse(
+                data_path=f'{database.value}/{table}/{filename}',
                 base_path=f'{database.value}/{table}/'
             )
 
@@ -86,13 +87,13 @@ class S3Storage(CoreStorageInterface):
                 filename=filename
             )
             try:
-                self.s3.put_object(Bucket=bucket, Key=key_path.base_path, Body=data)
+                self.s3.put_object(Bucket=bucket, Key=key_path.data_path, Body=data)
             except Exception:
                 raise S3Error(error_message='Error uploading file to S3')
-            logger.info(f'Successfully wrote to path: {key_path}')
+            logger.info(f'Successfully wrote to path: {key_path.data_path}')
             return WriteResponse(success=True, error=None)
         except Exception:
-            raise StorageWriteError(path=f's3://{bucket}/{key_path}')
+            raise StorageWriteError(path=f's3://{bucket}/{key_path.data_path}')
 
     def write_to_path(self, layer: Layer, key_path: str, data: bytes) -> WriteResponse:
         try:
