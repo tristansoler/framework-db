@@ -266,7 +266,15 @@ class SparkDataProcess(DataProcessInterface):
 
         file_format = incoming_file.file_format
         spark_read_config = incoming_file.specifications.read_config
-        spark_read_config["basePath"] = base_path
+        
+        final_data_path = None
+        if config().parameters.execution_mode == ExecutionMode.DELTA:
+            spark_read_config["basePath"] = base_path
+            final_data_path = data_path
+        else:
+            final_data_path = base_path
+
+        
 
         logger.info(f"read with spark options {spark_read_config}")
 
@@ -276,11 +284,11 @@ class SparkDataProcess(DataProcessInterface):
             spark_read = spark_read.schema(schema)
         
         if file_format == LandingFileFormat.CSV:
-            return spark_read.csv(data_path)
+            return spark_read.csv(final_data_path)
         elif file_format == LandingFileFormat.JSON:
-            return spark_read.json(data_path)
+            return spark_read.json(final_data_path)
         else:
-            return spark_read.parquet(data_path)
+            return spark_read.parquet(final_data_path)
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3
