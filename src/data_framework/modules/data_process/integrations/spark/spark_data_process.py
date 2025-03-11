@@ -278,15 +278,20 @@ class SparkDataProcess(DataProcessInterface):
         incoming_file = config().processes.landing_to_raw.incoming_file
         file_format = incoming_file.file_format
         spark_read_config = incoming_file.specifications.read_config
-        spark_read_config["basePath"] = base_path
-        logger.info(f"Reading raw file with Spark options {spark_read_config}")
+        final_data_path = None
+        if config().parameters.execution_mode == ExecutionMode.DELTA:
+            spark_read_config["basePath"] = base_path
+            final_data_path = data_path
+        else:
+            final_data_path = base_path
+        logger.info(f"read with spark options {spark_read_config}")
         spark_read = self.spark.read.options(**spark_read_config)
         if schema is not None:
             spark_read = spark_read.schema(schema)
         if file_format == LandingFileFormat.CSV:
-            return spark_read.csv(data_path)
+            return spark_read.csv(final_data_path)
         else:
-            return spark_read.parquet(data_path)
+            return spark_read.parquet(final_data_path)
 
     def _read_raw_json_file(self, data_path: str, casting_strategy: CastingStrategy) -> DataFrame:
         # Read JSON file from S3
