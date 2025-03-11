@@ -57,7 +57,7 @@ class JSONSpectFormat(Enum):
     LINES = "lines"
     COLUMNS = "columns"
 
-class JSONSourceLevelFormat(Enum):
+class JSONFormat(Enum):
     DICTIONARY = "dictionary"
     ARRAY = "array"
 
@@ -95,24 +95,26 @@ class SparkConfiguration:
             return self.full_volumetric_expectation
 
         return self.delta_volumetric_expectation
-    
+
     @property
     def custom_config(self) -> dict:
-        
+
         from data_framework.modules.config.core import config
 
         if config().parameters.execution_mode == ExecutionMode.FULL:
             return self.full_custom
-        
+
         return self.delta_custom
-    
+
     @property
     def config(self) -> dict:
 
         from data_framework.modules.config.core import config
 
-        if (config().parameters.execution_mode == ExecutionMode.FULL and self.full_custom
-            or config().parameters.execution_mode == ExecutionMode.DELTA and self.delta_custom):
+        if (
+            config().parameters.execution_mode == ExecutionMode.FULL and self.full_custom
+            or config().parameters.execution_mode == ExecutionMode.DELTA and self.delta_custom
+        ):
             return self.custom_config
         else:
 
@@ -140,11 +142,8 @@ class InterfaceSpecs:
     @property
     def read_config(self) -> dict:
         raise NotImplementedError('It is mandatory to implement read_config property')
-    
-    @property
-    def pandas_read_config(self) -> dict:
-        raise NotImplementedError('It is mandatory to implement pandas_read_config property')
-    
+
+
 @dataclass
 class XMLSpecs(InterfaceSpecs):
     encoding: str
@@ -155,45 +154,28 @@ class XMLSpecs(InterfaceSpecs):
     @property
     def read_config(self) -> dict:
         return {}
-    
-    @property
-    def pandas_read_config(self) -> dict:
-        return {}
 
 
 @dataclass
 class JSONSpecs(InterfaceSpecs):
     encoding: str
-    source_level: Optional[str]
-    
     date_located: DateLocated
     date_located_filename: DateLocatedFilename
-    format: Optional[JSONSpectFormat]
-    values_to_string: bool = False
-    source_level_format: JSONSourceLevelFormat = JSONSourceLevelFormat.ARRAY
+    source_level: Optional[str]
+    source_level_format: JSONFormat = JSONFormat.ARRAY
 
     @property
     def read_config(self) -> dict:
-        return {}
-    
-    @property
-    def pandas_read_config(self) -> dict:
-        config = {}
-
-        if self.values_to_string:
-            config["dtype"] = str
-
-        if self.format == JSONSpectFormat.LINES:
-            config["lines"] = True
-            config["orient"] = "records"
-        elif self.format == JSONSpectFormat.COLUMNS:
-            config["orient"] = "columns"
-
-        return config
+        return {
+            'encoding': self.encoding
+        }
 
     @property
-    def levels(self) -> list[str]:
-        return self.source_level.split('.')
+    def levels(self) -> List[str]:
+        if self.source_level:
+            return self.source_level.split('.')
+        else:
+            return []
 
 @dataclass
 class CSVSpecs(InterfaceSpecs):
@@ -229,11 +211,7 @@ class CSVSpecs(InterfaceSpecs):
         if self.nan_value:
             config["nanValue"] = self.nan_value
         return config
-    
 
-    @property
-    def pandas_read_config(self) -> dict:
-        return {}
 
 @dataclass
 class CSVSpecsReport:

@@ -5,10 +5,10 @@ from data_framework.modules.utils.logger import logger
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from data_framework.modules.config.model.flows import DatabaseTable
 from data_framework.modules.exception.data_process_exceptions import CastQueryError
-from functools import reduce
-from typing import Any, Dict
+from typing import Any, Dict, List
 import pandas as pd
 from pandas import DataFrame, Series
+
 
 class Cast:
 
@@ -16,56 +16,41 @@ class Cast:
         self.logger = logger
         self.catalogue = CoreCatalogue()
 
-    def decode_cast(self, column_name, column_type):
-        query = f'{column_name}'
+    def cast_columns(self, column_name: str, column_type: str) -> str:
         if column_type in ('int', 'double', 'float', 'date', 'timestamp') or column_type.startswith('decimal'):
             query = f'TRY_CAST({column_name} AS {column_type.upper()}) AS {column_name}'
         elif column_type == 'boolean':
-            l_true = "'true', 't', 'yes', 'y', 'si', 's', '1'"
-            l_false = "'false', 'f', 'no', 'n', '0'"
-            query = f"(CASE WHEN LOWER({column_name}) in ({l_true}) THEN true " \
-                f'WHEN LOWER({column_name}) IN ({l_false}) THEN false ELSE null END) AS {column_name}'
-        
+            query = f"""
+                (
+                    CASE WHEN LOWER({column_name}) in ('true', 't', 'yes', 'y', 'si', 's', '1') THEN true
+                    WHEN LOWER({column_name}) IN ('false', 'f', 'no', 'n', '0') THEN false
+                    ELSE null END
+                ) AS {column_name}
+            """
+        else:
+            query = f'{column_name}'
         return query
 
-    def build_query_datacast(self, columns, types, tabla, where=None):
-        cols_types = dict(zip(columns, types))
-        sql_decode = []
-
-        for column, type in cols_types.items():
-            fix_column_name = f"`{column}`"
-
-            column_decode = self.decode_cast(column_name=fix_column_name, column_type=type)
-            sql_decode.append(column_decode)
-
-        
-        sql_final = f"SELECT {', '.join(sql_decode)} FROM {tabla}"
-        if where:
-            sql_final = f"{sql_final} WHERE {where}"
-
-        return sql_final
-
-    def get_query_datacast(
+    def build_datacast_query(
         self,
-        table_source: DatabaseTable,
-        table_target: DatabaseTable
-    ) -> Any:
+        source_columns: List[str],
+        table_target: DatabaseTable,
+        view_name: str = 'data_to_cast'
+    ) -> str:
         try:
-            partitioned = True
-
-            schema_source = self.catalogue.get_schema(table_source.database_relation, table_source.table)
-            l_cols_source = schema_source.schema.get_column_names(partitioned)
-
+            # Obtain the target schema with the type of each column
             schema_target = self.catalogue.get_schema(table_target.database_relation, table_target.table)
-            l_types_target = schema_target.schema.get_type_columns(partitioned)
-
-            query = self.build_query_datacast(
-                l_cols_source,
-                l_types_target,
-                "data_to_cast",
-                table_source.sql_where
-            )
-
+            target_types = schema_target.schema.get_column_type_mapping(partitioned=True)
+            # Cast each column to its target type
+            casted_columns = [
+                self.cast_columns(
+                    column_name=f"`{column}`",
+                    column_type=target_types.get(column, 'string')
+                )
+                for column in source_columns
+            ]
+            # Build SQL query
+            query = f"SELECT {', '.join(casted_columns)} FROM {view_name}"
             return query
         except Exception:
             raise CastQueryError()

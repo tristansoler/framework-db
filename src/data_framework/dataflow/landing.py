@@ -4,8 +4,7 @@ from data_framework.modules.dataflow.interface_dataflow import (
 )
 from data_framework.modules.config.model.flows import (
     DateLocated,
-    LandingFileFormat,
-    JSONSourceLevelFormat
+    LandingFileFormat
 )
 from data_framework.modules.storage.core_storage import Storage
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
@@ -26,7 +25,7 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import tarfile
-from pandas import read_xml, read_excel, read_json, DataFrame as pd_dataframe
+from pandas import read_xml, read_excel
 
 
 class ProcessingCoordinator(DataFlowInterface):
@@ -249,11 +248,7 @@ class ProcessingCoordinator(DataFlowInterface):
     def convert_file_to_parquet(self, filename: str, file_content: BytesIO) -> Tuple[str, BytesIO]:
         file_content.seek(0)
         parquet_filename = re.sub(r'\.\w+$', '.parquet', filename)
-
         self.logger.info(f'Converting {self.incoming_file.file_format} file {filename} to parquet')
-        specifications = self.incoming_file.specifications
-        read_config = specifications.pandas_read_config
-
         if self.incoming_file.file_format == LandingFileFormat.XML:
             df = read_xml(
                 file_content,
@@ -268,37 +263,7 @@ class ProcessingCoordinator(DataFlowInterface):
             df.to_parquet(parquet_file_content, index=False)
             parquet_file_content.seek(0)
             return parquet_filename, parquet_file_content
-        elif self.incoming_file.file_format == LandingFileFormat.JSON:
-
-            df_raw = None
-            if specifications.source_level:
-                import json
-                json_file = json.loads(file_content.getvalue())
-                
-                for key_level in specifications.levels:
-                    json_file = json_file[key_level]
-
-                if specifications.source_level_format == JSONSourceLevelFormat.DICTIONARY:
-                    df_raw = pd_dataframe.from_dict(json_file, orient='index')
-                    df_raw.index.name = 'pandas_index'
-                    df_raw = df_raw.reset_index()
-                    del df_raw['pandas_index']
-
-                elif specifications.source_level_format == JSONSourceLevelFormat.ARRAY:
-                    df_raw = pd_dataframe(json_file)
-            else:
-                df_raw = read_json(file_content=file_content, **read_config)
-
-            # all columns to string
-            df_raw = df_raw.astype(str)
-            
-            parquet_file_content = BytesIO()
-            df_raw.to_parquet(parquet_file_content, index=False)
-            parquet_file_content.seek(0)
-
-            return parquet_filename, parquet_file_content
         elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
-
             # TODO: more excel parameters
             df = read_excel(file_content, dtype=str)
             df = df.fillna('')
