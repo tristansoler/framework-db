@@ -1,4 +1,3 @@
-from data_framework.modules.catalogue import interface_catalogue as catalogue
 from data_framework.modules.config.model.flows import Transformation
 from data_framework.modules.exception.data_process_exceptions import (
     TransformationNotImplementedError,
@@ -13,12 +12,11 @@ from pyspark.sql.types import (
 )
 
 
-def convert_schema(schema: catalogue.Schema) -> StructType:
-    schema_columns = []
-    for column in schema.columns:
-        struct_field = StructField(column.name, StringType(), True)
-        schema_columns.append(struct_field)
-    return StructType(schema_columns)
+def convert_schema_to_strings(columns: List[str]) -> StructType:
+    return StructType([
+        StructField(column, StringType(), True)
+        for column in columns
+    ])
 
 
 def map_to_spark_type(db_type: str):
