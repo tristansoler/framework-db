@@ -15,19 +15,19 @@ class Column:
 class Schema:
     columns: (Column)
 
-    def get_column_names(self, partitioned=False) -> List[str]:
+    def get_column_names(self, partitioned: bool = False) -> List[str]:
         if partitioned:
             return [column.name for column in self.columns]
         else:
             return [column.name for column in self.columns if not column.ispartitioned]
 
-    def get_type_columns(self, partitioned=False) -> List[str]:
+    def get_type_columns(self, partitioned: bool = False) -> List[str]:
         if partitioned:
             return [column.type for column in self.columns]
         else:
             return [column.type for column in self.columns if not column.ispartitioned]
 
-    def get_column_type_mapping(self, partitioned=False) -> Dict[str]:
+    def get_column_type_mapping(self, partitioned: bool = False) -> Dict[str, str]:
         if partitioned:
             return {
                 column.name: column.type
