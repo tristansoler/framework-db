@@ -289,14 +289,16 @@ class ProcessingCoordinator(DataFlowInterface):
         return parquet_filename, parquet_file_content
 
     def convert_json_to_json_lines(self, file_content: BytesIO, file_date: str) -> BytesIO:
-        json_content = json.load(file_content)
-        if isinstance(json_content, list):
-            # TODO: implementar
-            raise NotImplementedError('JSON file containing a list of dictionaries is not supported yet')
-        json_content['data_date'] = file_date
-        json_lines_content = BytesIO()
         encoding = self.incoming_file.json_specs.encoding
-        json_lines_content.write(json.dumps(json_content).encode(encoding))
+        json_content = json.load(file_content)
+        json_lines_content = BytesIO()
+        if isinstance(json_content, list):
+            for item in json_content:
+                item[self.output_file.partition_field] = file_date
+                json_lines_content.write(json.dumps(item).encode(encoding) + b'\n')
+        elif isinstance(json_content, dict):
+            json_content[self.output_file.partition_field] = file_date
+            json_lines_content.write(json.dumps(json_content).encode(encoding))
         json_lines_content.seek(0)
         return json_lines_content
 
