@@ -290,6 +290,9 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def convert_json_to_json_lines(self, file_content: BytesIO, file_date: str) -> BytesIO:
         json_content = json.load(file_content)
+        if isinstance(json_content, list):
+            # TODO: implementar
+            raise NotImplementedError('JSON file containing a list of dictionaries is not supported yet')
         json_content['data_date'] = file_date
         json_lines_content = BytesIO()
         encoding = self.incoming_file.json_specs.encoding
