@@ -58,6 +58,7 @@ class PathResponse:
     path: str
     base_path: str
     relative_path: str
+    relative_base_path: str
 
 
 class CoreStorageInterface(ABC):

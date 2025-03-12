@@ -138,7 +138,8 @@ class S3Storage(CoreStorageInterface):
             bucket=s3_bucket,
             path=f's3://{s3_bucket}/{s3_key.data_path}',
             base_path=f's3://{s3_bucket}/{s3_key.base_path}',
-            relative_path=s3_key.data_path
+            relative_path=s3_key.data_path,
+            relative_base_path=s3_key.base_path
         )
         return response
 
@@ -151,6 +152,7 @@ class S3Storage(CoreStorageInterface):
             bucket=s3_bucket,
             path=None,
             base_path=final_path,
-            relative_path=None
+            relative_path=None,
+            relative_base_path=None
         )
         return response

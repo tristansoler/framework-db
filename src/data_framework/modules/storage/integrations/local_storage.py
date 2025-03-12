@@ -129,7 +129,8 @@ class LocalStorage(CoreStorageInterface):
             bucket=local_folder,
             path=None,
             base_path=final_path,
-            relative_path=None
+            relative_path=None,
+            relative_base_path=None
         )
         return response
 
