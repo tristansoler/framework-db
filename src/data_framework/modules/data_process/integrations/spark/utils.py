@@ -95,7 +95,7 @@ def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTabl
 
     for field in df_origin.schema.fields:
         new_field_name = re.sub(fix_name_regex, '', field.name)
-        target_type = target_columns.get(field, 'string')
+        target_type = target_columns.get(field.lower(), 'string')
         if target_type in 'struct<':
             df_modified = df_modified.withColumn(
                 field.name,

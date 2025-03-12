@@ -47,7 +47,7 @@ class Cast:
             casted_columns = [
                 self.cast_columns(
                     column_name=f"`{column}`",
-                    column_type=target_types.get(column, 'string')
+                    column_type=target_types.get(column.lower(), 'string')
                 )
                 for column in source_columns
             ]

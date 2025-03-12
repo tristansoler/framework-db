@@ -30,12 +30,12 @@ class Schema:
     def get_column_type_mapping(self, partitioned: bool = False) -> Dict[str, str]:
         if partitioned:
             return {
-                column.name: column.type
+                column.name.lower(): column.type
                 for column in self.columns
             }
         else:
             return {
-                column.name: column.type
+                column.name.lower(): column.type
                 for column in self.columns
                 if not column.ispartitioned
             }
