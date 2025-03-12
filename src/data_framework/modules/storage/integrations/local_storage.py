@@ -123,7 +123,14 @@ class LocalStorage(CoreStorageInterface):
             partitions={"data_date": data_date}
         )
         final_path = f'{local_folder}/{local_path}'
-        response = PathResponse(success=True, error=None, path=final_path)
+        response = PathResponse(
+            success=True,
+            error=None,
+            bucket=local_folder,
+            path=None,
+            base_path=final_path,
+            relative_path=None
+        )
         return response
 
     def base_layer_path(self, layer: Layer) -> PathResponse:
