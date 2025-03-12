@@ -256,6 +256,9 @@ class SparkDataProcess(DataProcessInterface):
             df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
+                if debug_code:
+                    logger.info('Schema before casting:')
+                    df_raw.printSchema()
                 if table_target.casting.fix_incompatible_characters:
                     df_raw = utils.fix_incompatible_characters(
                         df_origin=df_raw,
@@ -270,6 +273,9 @@ class SparkDataProcess(DataProcessInterface):
                     view_name=view_name
                 )
                 df_raw = self._execute_query(query)
+                if debug_code:
+                    logger.info('Schema after casting:')
+                    df_raw.printSchema()
             return ReadResponse(success=True, error=None, data=df_raw)
         except Exception:
             raise CastDataError(
@@ -300,6 +306,7 @@ class SparkDataProcess(DataProcessInterface):
             return spark_read.parquet(final_data_path)
 
     def _read_raw_json_file(self, data_path: str, casting_strategy: CastingStrategy) -> DataFrame:
+        # TODO: implement FULL execution mode
         # Read JSON file from S3
         file_path = data_path + config().parameters.file_name
         response = self.storage.read(layer=Layer.RAW, key_path=file_path)
@@ -324,16 +331,12 @@ class SparkDataProcess(DataProcessInterface):
             df = self.create_dataframe(data=data, schema=schema).data
             # Add data_date column
             df = df.withColumn('data_date', f.lit(data_date))
-            if debug_code:
-                df.printSchema()
             return df
         elif casting_strategy == CastingStrategy.DYNAMIC:
             # Each field type is inferred by Spark
             df = self.create_dataframe(data=data).data
             # Add data_date column
             df = df.withColumn('data_date', f.to_date(f.lit(data_date)))
-            if debug_code:
-                df.printSchema()
             return df
 
     def _execute_query(self, query: str) -> DataFrame:
