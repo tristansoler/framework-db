@@ -306,6 +306,7 @@ class SparkDataProcess(DataProcessInterface):
         file_content = BytesIO(response.data)
         # Parse into a Python dictionary
         json_file = json.loads(file_content.getvalue())
+        data_date = json_file.get('data_date', config().parameters.file_date)
         # Obtain JSON specifications
         json_specs = config().processes.landing_to_raw.incoming_file.json_specs
         # Obtain the data to be parsed into a DataFrame based on the specified path
@@ -321,12 +322,16 @@ class SparkDataProcess(DataProcessInterface):
             columns = max(data, key=len).keys()
             schema = utils.convert_schema_to_strings(columns=columns)
             df = self.create_dataframe(data=data, schema=schema).data
+            # Add data_date column
+            df = df.withColumn('data_date', f.lit(data_date))
             if debug_code:
                 df.printSchema()
             return df
         elif casting_strategy == CastingStrategy.DYNAMIC:
             # Each field type is inferred by Spark
             df = self.create_dataframe(data=data).data
+            # Add data_date column
+            df = df.withColumn('data_date', f.to_date(f.lit(data_date)))
             if debug_code:
                 df.printSchema()
             return df
