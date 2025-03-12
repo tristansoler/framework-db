@@ -300,7 +300,8 @@ class SparkDataProcess(DataProcessInterface):
 
     def _read_raw_json_file(self, data_path: str, casting_strategy: CastingStrategy) -> DataFrame:
         # Read JSON file from S3
-        response = self.storage.read(layer=Layer.RAW, key_path=data_path)
+        file_path = data_path + config().parameters.file_name
+        response = self.storage.read(layer=Layer.RAW, key_path=file_path)
         file_content = BytesIO(response.data)
         # Parse into a Python dictionary
         json_file = json.loads(file_content.getvalue())
