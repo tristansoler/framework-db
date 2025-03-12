@@ -88,15 +88,15 @@ def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTabl
 
     catalogue = CoreCatalogue()
     schema_target = catalogue.get_schema(table_target.database_relation, table_target.table).schema
+    target_columns = schema_target.get_column_type_mapping(partitioned=True)
 
     df_modified = df_origin
     udf_fix_column_incompatible_characters = f.udf(fix_column_incompatible_characters, StringType())
 
-    for index, field in enumerate(df_origin.schema.fields):
+    for field in df_origin.schema.fields:
         new_field_name = re.sub(fix_name_regex, '', field.name)
-        target_column = schema_target.columns[index]
-
-        if target_column.type in 'struct<':
+        target_type = target_columns.get(field, 'string')
+        if target_type in 'struct<':
             df_modified = df_modified.withColumn(
                 field.name,
                 udf_fix_column_incompatible_characters(f.col(field.name))

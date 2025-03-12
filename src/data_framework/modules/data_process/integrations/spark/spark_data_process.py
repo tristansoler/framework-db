@@ -21,6 +21,7 @@ from data_framework.modules.config.model.flows import (
     LandingFileFormat,
     JSONFormat
 )
+from data_framework.modules.utils.debug import debug_code
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 from data_framework.modules.exception.data_process_exceptions import (
     ReadDataError,
@@ -319,10 +320,16 @@ class SparkDataProcess(DataProcessInterface):
             # All fields are converted into strings
             columns = max(data, key=len).keys()
             schema = utils.convert_schema_to_strings(columns=columns)
-            return self.spark.createDataFrame(data=data, schema=schema)
+            df = self.create_dataframe(data=data, schema=schema).data
+            if debug_code:
+                df.printSchema()
+            return df
         elif casting_strategy == CastingStrategy.DYNAMIC:
             # Each field type is inferred by Spark
-            return self.spark.createDataFrame(data=data)
+            df = self.create_dataframe(data=data).data
+            if debug_code:
+                df.printSchema()
+            return df
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3
