@@ -234,7 +234,7 @@ class SparkDataProcess(DataProcessInterface):
 
             if config().processes.landing_to_raw.incoming_file.file_format == LandingFileFormat.JSON:
                 df_raw = self._read_raw_json_file(
-                    data_path=read_path.path,
+                    data_path=read_path.relative_path,
                     casting_strategy=table_target.casting.strategy
                 )
             elif table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
