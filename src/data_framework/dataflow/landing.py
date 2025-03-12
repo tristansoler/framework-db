@@ -17,8 +17,10 @@ from data_framework.modules.exception.landing_exceptions import (
     InvalidRegexGroupError,
     InvalidFileError
 )
+from data_framework.modules.utils import regex as regex_utils
 import re
 import hashlib
+import json
 from typing import Tuple
 from datetime import datetime
 from io import BytesIO
@@ -100,7 +102,7 @@ class ProcessingCoordinator(DataFlowInterface):
                     # Create partitions
                     partitions = self.create_partitions(file_date)
                     # Save file in raw table
-                    self.write_data(file_contents, partitions)
+                    self.write_data(file_contents, partitions, file_date)
                     self.payload_response.next_stage = True
                 self.payload_response.success = True
             else:
@@ -220,7 +222,6 @@ class ProcessingCoordinator(DataFlowInterface):
 
     def create_partitions(self, file_date: str) -> dict:
         partitions = {}
-
         partition_field = self.output_file.partition_field
         response = self.catalogue.create_partition(
             self.output_file.database_relation,
@@ -232,10 +233,14 @@ class ProcessingCoordinator(DataFlowInterface):
             partitions[partition_field] = file_date
         return partitions
 
-    def write_data(self, file_contents: dict, partitions: dict) -> None:
+    def write_data(self, file_contents: dict, partitions: dict, file_date: str) -> None:
         for filename, file_data in file_contents.items():
             if file_data['validate']:
-                filename, file_content = self.convert_file_to_parquet(filename, file_data['content'])
+                filename, file_content = self.normalize_file_content(
+                    filename,
+                    file_data['content'],
+                    file_date
+                )
                 self.storage.write(
                     layer=Layer.RAW,
                     database=self.output_file.database,
@@ -245,35 +250,52 @@ class ProcessingCoordinator(DataFlowInterface):
                     filename=filename
                 )
 
-    def convert_file_to_parquet(self, filename: str, file_content: BytesIO) -> Tuple[str, BytesIO]:
+    def normalize_file_content(self, filename: str, file_content: BytesIO, file_date: str) -> Tuple[str, BytesIO]:
         file_content.seek(0)
-        parquet_filename = re.sub(r'\.\w+$', '.parquet', filename)
-        self.logger.info(f'Converting {self.incoming_file.file_format} file {filename} to parquet')
         if self.incoming_file.file_format == LandingFileFormat.XML:
-            df = read_xml(
-                file_content,
-                encoding=self.incoming_file.xml_specs.encoding,
-                xpath=self.incoming_file.xml_specs.xpath,
-                parser='etree',
-                dtype=str
-            )
-            df = df.fillna('')
-            parquet_file_content = BytesIO()
-            # TODO: parquet options
-            df.to_parquet(parquet_file_content, index=False)
-            parquet_file_content.seek(0)
-            return parquet_filename, parquet_file_content
+            return self.convert_xml_to_parquet(filename, file_content)
         elif self.incoming_file.file_format == LandingFileFormat.EXCEL:
-            # TODO: more excel parameters
-            df = read_excel(file_content, dtype=str)
-            df = df.fillna('')
-            parquet_file_content = BytesIO()
-            # TODO: parquet options
-            df.to_parquet(parquet_file_content, index=False)
-            parquet_file_content.seek(0)
-            return parquet_filename, parquet_file_content
+            return self.convert_excel_to_parquet(filename, file_content)
+        elif self.incoming_file.file_format == LandingFileFormat.JSON:
+            file_content = self.convert_json_to_json_lines(file_content, file_date)
+            return filename, file_content
         else:
             return filename, file_content
+
+    def convert_xml_to_parquet(self, filename: str, file_content: BytesIO) -> Tuple[str, BytesIO]:
+        parquet_filename = regex_utils.change_file_extension(filename, '.parquet')
+        self.logger.info(f'Converting XML file {filename} to parquet file {parquet_filename}')
+        df = read_xml(
+            file_content,
+            encoding=self.incoming_file.xml_specs.encoding,
+            xpath=self.incoming_file.xml_specs.xpath,
+            parser='etree',
+            dtype=str
+        )
+        df = df.fillna('')
+        parquet_file_content = BytesIO()
+        df.to_parquet(parquet_file_content, index=False)
+        parquet_file_content.seek(0)
+        return parquet_filename, parquet_file_content
+
+    def convert_excel_to_parquet(self, filename: str, file_content: BytesIO) -> Tuple[str, BytesIO]:
+        parquet_filename = regex_utils.change_file_extension(filename, '.parquet')
+        self.logger.info(f'Converting Excel file {filename} to parquet file {parquet_filename}')
+        df = read_excel(file_content, dtype=str)
+        df = df.fillna('')
+        parquet_file_content = BytesIO()
+        df.to_parquet(parquet_file_content, index=False)
+        parquet_file_content.seek(0)
+        return parquet_filename, parquet_file_content
+
+    def convert_json_to_json_lines(self, file_content: BytesIO, file_date: str) -> BytesIO:
+        json_content = json.load(file_content)
+        json_content['data_date'] = file_date
+        json_lines_content = BytesIO()
+        encoding = self.incoming_file.json_specs.encoding
+        json_lines_content.write(json.dumps(json_content).encode(encoding))
+        json_lines_content.seek(0)
+        return json_lines_content
 
 
 if __name__ == '__main__':
