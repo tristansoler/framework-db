@@ -235,7 +235,8 @@ class SparkDataProcess(DataProcessInterface):
 
             if config().processes.landing_to_raw.incoming_file.file_format == LandingFileFormat.JSON:
                 df_raw = self._read_raw_json_file(
-                    data_path=read_path.relative_path,
+                    table_path=read_path.relative_base_path,
+                    partition_path=read_path.relative_path,
                     casting_strategy=table_target.casting.strategy
                 )
             elif table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
@@ -305,38 +306,43 @@ class SparkDataProcess(DataProcessInterface):
         else:
             return spark_read.parquet(final_data_path)
 
-    def _read_raw_json_file(self, data_path: str, casting_strategy: CastingStrategy) -> DataFrame:
-        # TODO: implement FULL execution mode
-        # Read JSON file from S3
-        file_path = data_path + config().parameters.file_name
-        response = self.storage.read(layer=Layer.RAW, key_path=file_path)
-        file_content = BytesIO(response.data)
-        # Parse into a Python dictionary
-        json_file = json.loads(file_content.getvalue())
-        data_date = json_file.get('data_date', config().parameters.file_date)
+    def _read_raw_json_file(self, table_path: str, partition_path: str, casting_strategy: CastingStrategy) -> DataFrame:
         # Obtain JSON specifications
         json_specs = config().processes.landing_to_raw.incoming_file.json_specs
-        # Obtain the data to be parsed into a DataFrame based on the specified path
-        for key_level in json_specs.levels:
-            json_file = json_file[key_level]
-        if json_specs.source_level_format == JSONFormat.ARRAY:
-            data = json_file
-        elif json_specs.source_level_format == JSONFormat.DICTIONARY:
-            data = list(json_file.values())
+        partition_field = config().processes.landing_to_raw.output_file.partition_field
+        # Read JSON files from S3
+        if config().parameters.execution_mode == ExecutionMode.DELTA:
+            file_path = partition_path + config().parameters.file_name
+            response = self.storage.read(layer=Layer.RAW, key_path=file_path)
+            files = [BytesIO(response.data)]
+        else:
+            files = [
+                BytesIO(self.storage.read(layer=Layer.RAW, key_path=file_key).data)
+                for file_key in self.storage.list_files(layer=Layer.RAW, prefix=table_path).result
+            ]
+        # Parse into Python dictionaries
+        data = []
+        for file in files:
+            for line in file.readlines():
+                json_data = json.loads(line)
+                data_date = json_data.get(partition_field, config().parameters.file_date)
+                # Obtain the data to be parsed into a DataFrame based on the specified json path
+                for key_level in json_specs.levels:
+                    json_data = json_data[key_level]
+                if json_specs.source_level_format == JSONFormat.DICTIONARY:
+                    json_data = list(json_data.values())
+                [item.update({partition_field: data_date}) for item in json_data]
+                data += json_data
         # Transform into a DataFrame
         if casting_strategy == CastingStrategy.ONE_BY_ONE:
             # All fields are converted into strings
             columns = max(data, key=len).keys()
             schema = utils.convert_schema_to_strings(columns=columns)
             df = self.create_dataframe(data=data, schema=schema).data
-            # Add data_date column
-            df = df.withColumn('data_date', f.lit(data_date))
             return df
         elif casting_strategy == CastingStrategy.DYNAMIC:
             # Each field type is inferred by Spark
             df = self.create_dataframe(data=data).data
-            # Add data_date column
-            df = df.withColumn('data_date', f.to_date(f.lit(data_date)))
             return df
 
     def _execute_query(self, query: str) -> DataFrame:
