@@ -19,6 +19,8 @@ class Cast:
     def cast_columns(self, column_name: str, column_type: str) -> str:
         if column_type in ('int', 'double', 'float', 'date', 'timestamp') or column_type.startswith('decimal'):
             query = f'TRY_CAST({column_name} AS {column_type.upper()}) AS {column_name}'
+        elif 'struct<' in column_type or 'array<' in column_type:
+            query = f"FROM_JSON({column_name}, '{column_type}') AS {column_name}"
         elif column_type == 'boolean':
             query = f"""
                 (

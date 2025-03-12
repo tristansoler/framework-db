@@ -38,6 +38,8 @@ class Technologies(Enum):
 class LandingFileFormat(Enum):
     CSV = "csv"
     JSON = "json"
+    # TODO: JSON Lines implementation
+    JSON_LINES = "json_lines"
     EXCEL = "xls"
     XML = "xml"
 
@@ -292,6 +294,7 @@ class ParseDatesTransformation(Transformation):
 @dataclass
 class Casting:
     strategy: CastingStrategy = CastingStrategy.ONE_BY_ONE
+    fix_incompatible_characters: bool = True
     master_table: Optional[str] = None
     transformations: List[Transformation] = field(default_factory=list)
 

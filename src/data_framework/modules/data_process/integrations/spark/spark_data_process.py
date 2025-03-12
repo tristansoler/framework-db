@@ -255,6 +255,11 @@ class SparkDataProcess(DataProcessInterface):
             df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
+                if table_target.casting.fix_incompatible_characters:
+                    df_raw = utils.fix_incompatible_characters(
+                        df_origin=df_raw,
+                        table_target=table_target
+                    )
                 # After reading the data as strings, each field is converted to its corresponding data type
                 view_name = 'data_to_cast'
                 df_raw.createOrReplaceTempView(view_name)
