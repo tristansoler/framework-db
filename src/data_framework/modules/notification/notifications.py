@@ -1,6 +1,6 @@
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
-from data_framework.modules.config.model.flows import Environment
+from data_framework.modules.config.model.flows import Environment, ExecutionMode
 from data_framework.modules.notification.interface_notifications import (
     InterfaceNotifications,
     NotificationDict,
@@ -42,16 +42,17 @@ class Notifications(InterfaceNotifications):
 
     def send_notification(self, notification_name: str, arguments: Dict[str, Any]) -> None:
         try:
-            # Obtain notification info
-            notification = self.notifications.get_notification(notification_name)
-            if not notification.active:
-                logger.warning(f'Notification {notification_name} is deactivated')
-            else:
-                if notification.type == NotificationType.EMAIL:
-                    self._send_email_notification(notification, notification_name, arguments)
+            if self.config.parameters.execution_mode == ExecutionMode.DELTA:
+                # Obtain notification info
+                notification = self.notifications.get_notification(notification_name)
+                if not notification.active:
+                    logger.warning(f'Notification {notification_name} is deactivated')
                 else:
-                    raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
-                logger.info(f'Notification {notification_name} sent successfully')
+                    if notification.type == NotificationType.EMAIL:
+                        self._send_email_notification(notification, notification_name, arguments)
+                    else:
+                        raise NotImplementedError(f'Notification type {notification.type.value} not implemented')
+                    logger.info(f'Notification {notification_name} sent successfully')
         except Exception:
             raise NotificationError(notification=notification_name)
 
