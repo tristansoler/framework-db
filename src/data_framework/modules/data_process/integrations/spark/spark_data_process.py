@@ -5,7 +5,7 @@ from data_framework.modules.data_process.interface_data_process import (
 )
 from data_framework.modules.data_process.integrations.spark import utils as utils
 from data_framework.modules.storage.core_storage import Storage
-from data_framework.modules.storage.interface_storage import Layer
+from data_framework.modules.storage.interface_storage import Database
 from data_framework.modules.config.core import config
 from data_framework.modules.utils.logger import logger
 from data_framework.modules.data_process.helpers.cast import Cast
@@ -20,7 +20,6 @@ from data_framework.modules.config.model.flows import (
     CastingStrategy,
     LandingFileFormat
 )
-from data_framework.modules.utils.debug import debug_code
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
 from data_framework.modules.exception.data_process_exceptions import (
     ReadDataError,
@@ -31,14 +30,13 @@ from data_framework.modules.exception.data_process_exceptions import (
     SparkConfigurationError
 )
 from typing import List, Any, Union
-from io import BytesIO
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import when
-from pyspark.sql.types import StructType
 import pyspark.sql.functions as f
+from pyspark.sql.functions import when
 import time
 import random
+from pyspark.sql.types import StructType
 import inspect
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
@@ -68,7 +66,7 @@ class SparkDataProcess(DataProcessInterface):
                 ("spark.sql.catalog.iceberg_catalog.http-client.apache.max-connections", "2000"),
                 ("fs.s3.maxConnections", "100"),
                 # Memory
-                # ("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
+                #("spark.serializer", "org.apache.spark.serializer.KryoSerializer"),
                 # Iceberg
                 ("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
                 ("spark.sql.catalog.iceberg_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO"),
@@ -193,7 +191,7 @@ class SparkDataProcess(DataProcessInterface):
             return response
         except Exception:
             raise WriteDataError(database=table_config.database_relation, table=table_config.table)
-
+        
     def insert_overwrite(self, dataframe: Any, table_config: DatabaseTable) -> WriteResponse:
         try:
             ""
@@ -202,7 +200,7 @@ class SparkDataProcess(DataProcessInterface):
             source_method = inspect.stack()[2].function
 
             self.spark.sparkContext.setJobGroup(f"[INSERT OVERWRITE] {source_method}", table_name, interruptOnCancel=True)
-
+            
             # Select only necessary columns of the dataframe
             dataframe = self._select_table_columns(dataframe, table_config)
 
@@ -212,7 +210,7 @@ class SparkDataProcess(DataProcessInterface):
 
             response = WriteResponse(success=True, error=None)
             self._track_table_metric(table_config=table_config)
-
+            
             return response
         except Exception:
             raise WriteDataError(database=table_config.database_relation, table=table_config.table)
@@ -231,50 +229,28 @@ class SparkDataProcess(DataProcessInterface):
             logger.info(f"Casting strategy > {table_target.casting.strategy}")
             logger.info(f"Read path > {read_path.path}")
 
-            if config().processes.landing_to_raw.incoming_file.file_format == LandingFileFormat.JSON:
-                df_raw = self._read_raw_json_file(
-                    table_path=read_path.relative_base_path,
-                    partition_path=read_path.relative_path,
-                    casting_strategy=table_target.casting.strategy
-                )
-            elif table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
-                # First, the raw data is read converting all the fields into strings
+            if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
                 schema_response = self.catalogue.get_schema(table_source.database_relation, table_source.table)
-                columns = schema_response.schema.get_column_names(partitioned=True)
-                spark_schema = utils.convert_schema_to_strings(columns=columns)
-                df_raw = self._read_raw_file(
-                    base_path=read_path.base_path,
-                    data_path=read_path.path,
-                    schema=spark_schema
-                )
+                spark_schema = utils.convert_schema(schema=schema_response.schema)
+                df_raw = self._read_raw_file(base_path=read_path.base_path, data_path=read_path.path, schema=spark_schema)
+
             elif table_target.casting.strategy == CastingStrategy.DYNAMIC:
-                # The schema is inferred directly from the raw data
                 df_raw = self._read_raw_file(base_path=read_path.base_path, data_path=read_path.path)
 
             self._track_table_metric(table_config=table_source, data_frame=df_raw)
+
             df_raw = utils.apply_transformations(df_raw, table_target.casting.transformations)
 
             if table_target.casting.strategy == CastingStrategy.ONE_BY_ONE:
-                if debug_code:
-                    logger.info('Schema before casting:')
-                    df_raw.printSchema()
-                if table_target.casting.fix_incompatible_characters:
-                    df_raw = utils.fix_incompatible_characters(
-                        df_origin=df_raw,
-                        table_target=table_target
-                    )
-                # After reading the data as strings, each field is converted to its corresponding data type
-                view_name = 'data_to_cast'
-                df_raw.createOrReplaceTempView(view_name)
-                query = Cast().build_datacast_query(
-                    source_columns=df_raw.columns,
-                    table_target=table_target,
-                    view_name=view_name
+
+                df_raw.createOrReplaceTempView("data_to_cast")
+
+                query = Cast().get_query_datacast(
+                    table_source=table_source,
+                    table_target=table_target
                 )
+
                 df_raw = self._execute_query(query)
-                if debug_code:
-                    logger.info('Schema after casting:')
-                    df_raw.printSchema()
             return ReadResponse(success=True, error=None, data=df_raw)
         except Exception:
             raise CastDataError(
@@ -287,47 +263,32 @@ class SparkDataProcess(DataProcessInterface):
 
     def _read_raw_file(self, base_path: str, data_path: str, schema: Union[StructType, None] = None) -> DataFrame:
         incoming_file = config().processes.landing_to_raw.incoming_file
+
         file_format = incoming_file.file_format
         spark_read_config = incoming_file.specifications.read_config
+        
         final_data_path = None
         if config().parameters.execution_mode == ExecutionMode.DELTA:
             spark_read_config["basePath"] = base_path
             final_data_path = data_path
         else:
             final_data_path = base_path
+
+        
+
         logger.info(f"read with spark options {spark_read_config}")
+
         spark_read = self.spark.read.options(**spark_read_config)
+
         if schema is not None:
             spark_read = spark_read.schema(schema)
+        
         if file_format == LandingFileFormat.CSV:
             return spark_read.csv(final_data_path)
+        elif file_format == LandingFileFormat.JSON:
+            return spark_read.json(final_data_path)
         else:
             return spark_read.parquet(final_data_path)
-
-    def _read_raw_json_file(self, table_path: str, partition_path: str, casting_strategy: CastingStrategy) -> DataFrame:
-        # Read JSON files from S3
-        if config().parameters.execution_mode == ExecutionMode.DELTA:
-            file_path = partition_path + config().parameters.file_name
-            response = self.storage.read(layer=Layer.RAW, key_path=file_path)
-            files = [BytesIO(response.data)]
-        else:
-            files = [
-                BytesIO(self.storage.read(layer=Layer.RAW, key_path=file_key).data)
-                for file_key in self.storage.list_files(layer=Layer.RAW, prefix=table_path).result
-            ]
-        # Parse into Python dictionaries
-        data = utils.parse_json(files)
-        # Transform into a DataFrame
-        if casting_strategy == CastingStrategy.ONE_BY_ONE:
-            # All fields are converted into strings
-            columns = max(data, key=len).keys()
-            schema = utils.convert_schema_to_strings(columns=columns)
-            df = self.create_dataframe(data=data, schema=schema).data
-            return df
-        elif casting_strategy == CastingStrategy.DYNAMIC:
-            # Each field type is inferred by Spark
-            df = self.create_dataframe(data=data).data
-            return df
 
     def _execute_query(self, query: str) -> DataFrame:
         max_retries = 3

@@ -129,30 +129,19 @@ class S3Storage(CoreStorageInterface):
         partitions = {}
         if config().parameters.execution_mode == ExecutionMode.DELTA:
             partitions[config().processes.landing_to_raw.output_file.partition_field] = config().parameters.file_date
-
+            
         s3_key = self._build_s3_key_path(database=database, table=table_name, partitions=partitions)
 
         response = PathResponse(
             success=True,
             error=None,
-            bucket=s3_bucket,
             path=f's3://{s3_bucket}/{s3_key.data_path}',
-            base_path=f's3://{s3_bucket}/{s3_key.base_path}',
-            relative_path=s3_key.data_path,
-            relative_base_path=s3_key.base_path
-        )
+            base_path=f's3://{s3_bucket}/{s3_key.base_path}'
+            )
         return response
 
     def base_layer_path(self, layer: Layer) -> PathResponse:
         s3_bucket = self._build_s3_bucket_name(layer=layer)
         final_path = f's3://{s3_bucket}'
-        response = PathResponse(
-            success=True,
-            error=None,
-            bucket=s3_bucket,
-            path=None,
-            base_path=final_path,
-            relative_path=None,
-            relative_base_path=None
-        )
+        response = PathResponse(success=True, error=None, base_path=final_path)
         return response

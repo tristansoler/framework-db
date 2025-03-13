@@ -108,7 +108,7 @@ class ProcessingCoordinator(DataFlowInterface):
 
         if config_output.json_specs:
             response = Storage.base_layer_path(layer=Layer.OUTPUT)
-            tmp_write_path = f"{response.base_path}/{self.config.project_id}/{output_folder}/tmp/"
+            tmp_write_path = f"{response.path}/{self.config.project_id}/{output_folder}/tmp/"
             df.coalesce(1).write.mode("overwrite").json(path=tmp_write_path)
 
             tmp_read_path = f"{self.config.project_id}/{output_folder}/tmp/"
