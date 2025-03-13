@@ -1,5 +1,4 @@
 from data_framework.modules.config.core import config
-from data_framework.modules.utils.logger import logger
 from data_framework.modules.config.model.flows import Environment
 from data_framework.modules.code.lazy_class_property import LazyClassProperty
 from data_framework.modules.storage.interface_storage import (
@@ -65,7 +64,6 @@ class Storage:
             database=database,
             table_name=table_name
         )
-        logger.info(f'response path ~> {response.path}')
         return response
 
     @classmethod
