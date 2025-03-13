@@ -18,8 +18,7 @@ from data_framework.modules.config.model.flows import (
     DatabaseTable,
     ExecutionMode,
     CastingStrategy,
-    LandingFileFormat,
-    JSONFormat
+    LandingFileFormat
 )
 from data_framework.modules.utils.debug import debug_code
 from data_framework.modules.data_process.integrations.spark.dynamic_config import DynamicConfig
@@ -41,7 +40,6 @@ import pyspark.sql.functions as f
 import time
 import random
 import inspect
-import json
 
 iceberg_exceptions = ['ConcurrentModificationExceptio', 'CommitFailedException', 'ValidationException']
 
@@ -307,9 +305,6 @@ class SparkDataProcess(DataProcessInterface):
             return spark_read.parquet(final_data_path)
 
     def _read_raw_json_file(self, table_path: str, partition_path: str, casting_strategy: CastingStrategy) -> DataFrame:
-        # Obtain JSON specifications
-        json_specs = config().processes.landing_to_raw.incoming_file.json_specs
-        partition_field = config().processes.landing_to_raw.output_file.partition_field
         # Read JSON files from S3
         if config().parameters.execution_mode == ExecutionMode.DELTA:
             file_path = partition_path + config().parameters.file_name
@@ -321,18 +316,7 @@ class SparkDataProcess(DataProcessInterface):
                 for file_key in self.storage.list_files(layer=Layer.RAW, prefix=table_path).result
             ]
         # Parse into Python dictionaries
-        data = []
-        for file in files:
-            for line in file.readlines():
-                json_data = json.loads(line)
-                data_date = json_data.get(partition_field, config().parameters.file_date)
-                # Obtain the data to be parsed into a DataFrame based on the specified json path
-                for key_level in json_specs.levels:
-                    json_data = json_data[key_level]
-                if json_specs.source_level_format == JSONFormat.DICTIONARY:
-                    json_data = list(json_data.values())
-                [item.update({partition_field: data_date}) for item in json_data]
-                data += json_data
+        data = utils.parse_json(files)
         # Transform into a DataFrame
         if casting_strategy == CastingStrategy.ONE_BY_ONE:
             # All fields are converted into strings

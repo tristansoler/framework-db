@@ -1,4 +1,9 @@
-from data_framework.modules.config.model.flows import Transformation, DatabaseTable
+from data_framework.modules.config.model.flows import (
+    Transformation,
+    DatabaseTable,
+    JSONFormat
+)
+from data_framework.modules.config.core import config
 from data_framework.modules.exception.data_process_exceptions import (
     TransformationNotImplementedError,
     TransformationError
@@ -6,6 +11,7 @@ from data_framework.modules.exception.data_process_exceptions import (
 from data_framework.modules.catalogue.core_catalogue import CoreCatalogue
 from importlib import import_module
 from typing import List, Dict, Any
+from io import BytesIO
 import pyspark.sql.functions as f
 from pyspark.sql import DataFrame
 from pyspark.sql.types import (
@@ -14,6 +20,7 @@ from pyspark.sql.types import (
     BooleanType, DateType, TimestampType
 )
 import re
+import json
 
 
 def convert_schema_to_strings(columns: List[str]) -> StructType:
@@ -105,3 +112,25 @@ def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTabl
         df_modified = df_modified.withColumnRenamed(field.name, new_field_name)
 
     return df_modified
+
+
+def parse_json(files: List[BytesIO]) -> List[dict]:
+    # Obtain JSON specifications
+    json_specs = config().processes.landing_to_raw.incoming_file.json_specs
+    partition_field = config().processes.landing_to_raw.output_file.partition_field
+    data = []
+    for file in files:
+        for line in file.readlines():
+            json_data = json.loads(line)
+            data_date = json_data.get(partition_field, config().parameters.file_date)
+            # Obtain the data to be parsed into a DataFrame based on the specified json path
+            for key_level in json_specs.levels:
+                try:
+                    json_data = json_data[key_level]
+                except KeyError:
+                    raise KeyError(f'Path {json_specs.source_level} not found in JSON file')
+            if json_specs.source_level_format == JSONFormat.DICTIONARY:
+                json_data = list(json_data.values())
+            [item.update({partition_field: data_date}) for item in json_data]
+            data += json_data
+    return data
