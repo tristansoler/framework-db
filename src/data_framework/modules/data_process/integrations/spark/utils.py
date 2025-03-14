@@ -108,8 +108,8 @@ def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTabl
                 field.name,
                 udf_fix_column_incompatible_characters(f.col(field.name))
             )
-
-        df_modified = df_modified.withColumnRenamed(field.name, new_field_name)
+        if field.name != new_field_name:
+            df_modified = df_modified.withColumnRenamed(field.name, new_field_name)
 
     return df_modified
 
