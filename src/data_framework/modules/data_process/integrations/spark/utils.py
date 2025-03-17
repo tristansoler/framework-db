@@ -72,27 +72,25 @@ def apply_transformations(
 
 
 def fix_column_incompatible_characters(json):
-    find_keys = r"'([^\"]+)'(?=\s*:)"
-    fix_name_regex = r'[^a-zA-Z0-9_]'
 
     def repl(match):
         key = match.group(1)
-
-        new_key = re.sub(fix_name_regex, '', key).lower()
+        new_key = re.sub(r'\W', '', key).lower()
         return f'"{new_key}"'
 
-    fixed_key_names = re.sub(find_keys, repl, json)
-    # 'key' => : "key"
-    fixed_key_names = re.sub(r"'([^']+)'(\s*:\s*)", r'"\1"\2', fixed_key_names)
-    # 'value' => : "value"
-    fixed_key_names = re.sub(r"(:\s*)'([^']+)'", r'\1"\2"', fixed_key_names)
+    # key=value => "key": "value"
+    json = re.sub(r'([^{},=\s]+)=([^,}]+)', r'"\1": "\2"', json)
+    # '@key' => "key" or "@key" => "key"
+    json = re.sub(r"[\"']([^\"']+)[\"'](?=\s*:)", repl, json)
+    # 'key': => "key":
+    json = re.sub(r"'([^']+)'(\s*:\s*)", r'"\1"\2', json)
+    # :'value' => :"value"
+    json = re.sub(r"(:\s*)'([^']+)'", r'\1"\2"', json)
 
-    return fixed_key_names
+    return json
 
 
 def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTable) -> DataFrame:
-    fix_name_regex = r'[^a-zA-Z0-9_]'
-
     catalogue = CoreCatalogue()
     schema_target = catalogue.get_schema(table_target.database_relation, table_target.table).schema
     target_columns = schema_target.get_column_type_mapping(partitioned=True)
@@ -101,9 +99,9 @@ def fix_incompatible_characters(df_origin: DataFrame, table_target: DatabaseTabl
     udf_fix_column_incompatible_characters = f.udf(fix_column_incompatible_characters, StringType())
 
     for field in df_origin.schema.fields:
-        new_field_name = re.sub(fix_name_regex, '', field.name)
+        new_field_name = re.sub(r'\W', '', field.name)
         target_type = target_columns.get(field.name.lower(), 'string')
-        if target_type in 'struct<':
+        if 'struct<' in target_type:
             df_modified = df_modified.withColumn(
                 field.name,
                 udf_fix_column_incompatible_characters(f.col(field.name))
